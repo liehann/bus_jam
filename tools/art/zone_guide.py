@@ -23,7 +23,6 @@ COLOURS = {
     "counter": (255, 215, 0),        # yellow
     "bench": (224, 0, 42),           # red
     "holder": (128, 0, 255),         # purple
-    "board_frame": (0, 90, 40),      # dark green
     "board": (0, 176, 80),           # green
 }
 
@@ -64,10 +63,9 @@ def render(layout):
 
     d.rounded_rectangle(box(z["kitchen"]["rect"]), radius=round(4 * s), fill=COLOURS["kitchen"])
 
-    bx0, by0, bx1, by1 = z["board"]["rect"]
-    f = z["board"]["frame"]
-    d.rounded_rectangle(box([bx0, by0, bx1, by1]), radius=round(8 * s), fill=COLOURS["board_frame"])
-    d.rounded_rectangle(box([bx0 + f, by0 + f, bx1 - f, by1 - f]), radius=round(4 * s), fill=COLOURS["board"])
+    # The board itself is drawn by the app; the painting only supplies a calm floor here (no frame colour,
+    # which v1 left behind as a dark green border).
+    d.rectangle(box(z["board"]["rect"]), fill=COLOURS["board"])
     return img
 
 

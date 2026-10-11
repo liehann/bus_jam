@@ -13,3 +13,13 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - Colours: 4. Direction shown by a large roof arrow.
 - Difficulty: tutorial-level, shallow blocking.
 - Unknown: bus capacity, later size variety, VIP slot rule.
+
+### Level 3 (2026-10-11)
+- 22 vehicles, 3 colours (blue, yellow, red). Three visual types: sedan car (short), tall-roof van (similar length),
+  long bus (~1.5× a car by pixels, so lengths roughly 2:3, not 1:2:3).
+- Queue: blue/yellow blocks with short red islands (2–4) inside them — interrupted runs already at level 3.
+- Board: mirror-symmetric (left/right); difficulty concentrated in a vertical central spine (bus ↓, bus, car ↓,
+  car ↓); sides are easy pairs. Roughly grid-aligned with some half-cell row offsets.
+- A worried-face emoji appears over a waiting passenger (likely a waiting/crowding warning).
+- Patterns worth reusing (generic, not layouts): symmetry + central spine for early readability; short islands
+  early to teach interrupted runs; a pressure warning indicator.

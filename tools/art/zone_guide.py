@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 # One flat, saturated colour per zone. The same table is used by the prompts and by the fitting step.
 COLOURS = {
-    "scenery": (200, 200, 200),      # grey: free area for theme decorations
+    "scenery": (128, 128, 0),        # olive: free area for theme decorations (grey read as "leave empty" in v1/v2)
     "top_bar": (255, 255, 255),      # white: plain area, the app draws the UI here
     "kitchen": (255, 140, 0),        # orange
     "belt": (255, 0, 255),           # magenta: both the incoming belt and the loop band

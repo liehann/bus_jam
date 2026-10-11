@@ -44,9 +44,7 @@ import com.phloots.jam.core.model.Status
 import com.phloots.busjam.game.GameUiState
 import com.phloots.busjam.game.PhaseKind
 import com.phloots.busjam.game.Snapshot
-import com.phloots.busjam.ui.DebugHeader
 import com.phloots.busjam.ui.GameButton
-import com.phloots.busjam.ui.PackChip
 import com.phloots.busjam.ui.StarRow
 import com.phloots.busjam.ui.theme.Palette
 
@@ -62,7 +60,6 @@ fun GameScreen(
     onLevels: () -> Unit,
     onHome: () -> Unit,
     /** Debug builds: pack chip, level metrics and motif tags under the title. */
-    debugHeader: DebugHeader? = null,
     /** Staging spot count; defaults to the level's [com.phloots.jam.core.model.Level.stagingSpots]. */
     stagingSpots: Int = ui.state.level.stagingSpots,
 ) {
@@ -118,7 +115,7 @@ fun GameScreen(
 
     Box(Modifier.fillMaxSize().background(Palette.background)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
-            TopBar(ui.levelNumber, ui.isBoss, ui.potentialStars, debugHeader, onLevels)
+            TopBar(ui.levelNumber, ui.isBoss, ui.potentialStars, onLevels)
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 PlayField(
                     logical = ui.state,
@@ -175,7 +172,6 @@ internal fun TopBar(
     levelNumber: Int,
     isBoss: Boolean,
     potentialStars: Int,
-    header: DebugHeader?,
     onLevels: () -> Unit,
     /** Extra control before the stars (real-time pause button). */
     action: (@Composable () -> Unit)? = null,
@@ -209,27 +205,6 @@ internal fun TopBar(
         Spacer(Modifier.weight(1f))
         action?.invoke()
         StarRow(potentialStars, 18.dp, Modifier.padding(end = 12.dp))
-    }
-    if (header != null) DebugHeaderLines(levelNumber, header)
-}
-
-/** Debug builds: pack chip and the level's generator info under the top bar. */
-@Composable
-internal fun DebugHeaderLines(levelNumber: Int, header: DebugHeader) {
-    Column(
-        Modifier.fillMaxWidth().testTag("debug-header"),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        PackChip("${header.packLabel} · L${levelNumber}", header.packColor, Modifier.testTag("pack-chip"))
-        header.info?.let {
-            Text(it, fontSize = 11.sp, color = Palette.ink.copy(alpha = 0.7f), textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 2.dp).testTag("debug-info"))
-        }
-        header.tags?.let {
-            Text(it, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = header.packColor,
-                textAlign = TextAlign.Center, maxLines = 2,
-                modifier = Modifier.testTag("debug-tags"))
-        }
     }
 }
 

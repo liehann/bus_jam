@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.phloots.busjam.game.rt.RtUiState
-import com.phloots.busjam.ui.DebugHeader
 import com.phloots.busjam.ui.GameButton
 import com.phloots.busjam.ui.theme.Palette
 import com.phloots.busjam.ui.skin.LocalSkin
@@ -73,7 +72,6 @@ fun RealTimeGameScreen(
     onNext: () -> Unit,
     onLevels: () -> Unit,
     onHome: () -> Unit,
-    debugHeader: DebugHeader? = null,
 ) {
     val haptic = LocalHapticFeedback.current
     val frame by rememberUpdatedState(onFrame)
@@ -103,12 +101,12 @@ fun RealTimeGameScreen(
 
     val skin = LocalSkin.current
     if (skin === CritterCafeSkin) {
-        CritterGameScreen(ui, { pulse?.value ?: 0f }, { shakeAnim.value }, onTogglePause, onTap, onUndo, onRestart, onHint, onNext, onLevels, onHome, debugHeader)
+        CritterGameScreen(ui, { pulse?.value ?: 0f }, { shakeAnim.value }, onTogglePause, onTap, onUndo, onRestart, onHint, onNext, onLevels, onHome)
         return
     }
     Box(Modifier.fillMaxSize().background(skin.background)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
-            TopBar(ui.levelNumber, ui.isBoss, ui.potentialStars, debugHeader, onLevels) {
+            TopBar(ui.levelNumber, ui.isBoss, ui.potentialStars, onLevels) {
                 PauseButton(ui.paused, onTogglePause)
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -205,7 +203,6 @@ private fun CritterGameScreen(
     onNext: () -> Unit,
     onLevels: () -> Unit,
     onHome: () -> Unit,
-    debugHeader: DebugHeader?,
 ) {
     var settingsOpen by remember { mutableStateOf(false) }
     var settingsPaused by remember { mutableStateOf(false) }
@@ -225,7 +222,6 @@ private fun CritterGameScreen(
                     settingsOpen = true
                 },
             )
-            debugHeader?.let { DebugHeaderLines(ui.levelNumber, it) }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 RingField(
                     ui = ui,

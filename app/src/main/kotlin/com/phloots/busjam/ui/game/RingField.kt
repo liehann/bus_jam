@@ -87,7 +87,7 @@ class RingLayout(
     private val seatGuess = (if (compact) 8 else 11) * dp * seatScale
 
     // belt mode: kitchen + belt band above the loop, a taller dock band, spare height shared out
-    val beltH = if (belt) 54 * dp else 0f
+    val beltH = if (belt) 86 * dp else 0f
     private val baseDockH = if (belt) style.dockBandDp * dp else 0f
     private val badgeRoom = if (belt) 12 * dp else 9 * dp
     private val spare = if (!belt) 0f else {
@@ -121,31 +121,50 @@ class RingLayout(
     /** Kitchen hatch (belt mode), top left above the loop. */
     val kitchen: Rect? = if (belt) Rect(Offset(6 * dp, 2 * dp + padTop), Size(46 * dp, 46 * dp)) else null
 
-    /** Belt centre-line from the kitchen hatch to the loop's entry (belt mode), as a dense polyline. */
+    val beltBand = seatR * 2.6f
+
+    /**
+     * Queue plates: in belt mode the same size as the loop's, at most [QUEUE_MAX] (as many as the belt holds);
+     * otherwise the inside snake's smaller tokens.
+     */
+    val queueToken = if (belt) seatToken else insideToken
+    val queuePitch = if (belt) maxOf(seatToken * 1.08f, pitch * 0.9f) else insideToken * 1.1f
+
+    /**
+     * Belt centre-line from the kitchen hatch to the loop's entry (belt mode), as a dense polyline: right from the
+     * hatch, a U-turn down, back left to the middle, then down into the entry. The U-turn's x is chosen so the belt
+     * holds [QUEUE_MAX] plates (capped by the screen width).
+     */
     val beltLine: List<Offset> = if (!belt) emptyList() else buildList {
         val k = kitchen!!
-        val y = k.top + k.height * 0.62f
-        val r = 16 * dp
+        val y1 = k.top + k.height * 0.62f
+        val turnR = (beltBand + 7 * dp) / 2
+        val y2 = y1 + 2 * turnR
+        val r2 = 14 * dp
         val cx = width / 2
         val startX = k.right - 6 * dp
+        val drop = (trackTop - y2 - r2).coerceAtLeast(0f)
+        val needed = beltBand * 0.4f + queuePitch * (QUEUE_MAX + 0.4f)
+        val fixed = PI.toFloat() * turnR + PI.toFloat() / 2 * r2 + drop
+        val ux = ((needed - fixed + startX + cx + r2) / 2).coerceIn(cx + r2 + turnR, width - turnR - beltBand / 2 - 4 * dp)
         val steps = 24
-        for (i in 0..steps) add(Offset(startX + (cx - r - startX) * i / steps, y))
-        for (i in 1..12) {
-            val a = (PI / 2 * i / 12).toFloat()
-            add(Offset(cx - r + r * sin(a), y + r - r * cos(a)))
+        for (i in 0..steps) add(Offset(startX + (ux - startX) * i / steps, y1))
+        for (i in 1..16) {
+            val t = (-PI / 2 + PI * i / 16).toFloat()
+            add(Offset(ux + turnR * cos(t), y1 + turnR + turnR * sin(t)))
         }
-        val endY = trackTop
-        for (i in 1..8) add(Offset(cx, y + r + (endY - y - r) * i / 8))
+        for (i in 1..steps) add(Offset(ux + (cx + r2 - ux) * i / steps, y2))
+        for (i in 1..10) {
+            val t = (-PI / 2 - PI / 2 * i / 10).toFloat()
+            add(Offset(cx + r2 + r2 * cos(t), y2 + r2 + r2 * sin(t)))
+        }
+        for (i in 1..6) add(Offset(cx, y2 + r2 + drop * i / 6))
     }
     private val beltLengths: FloatArray = FloatArray(beltLine.size).also { acc ->
         for (i in 1 until beltLine.size) acc[i] = acc[i - 1] + (beltLine[i] - beltLine[i - 1]).getDistance()
     }
     val beltLength: Float get() = beltLengths.lastOrNull() ?: 0f
-    val beltBand = 24 * dp
-
-    /** Spacing of the queue places: the belt holds [QUEUE_MAX] plates (belt mode), or the inside snake's spacing. */
-    val queuePitch = if (belt) (beltLength - beltBand * 0.4f) / (QUEUE_MAX + 0.3f) else insideToken * 1.1f
-    val queueToken = if (belt) minOf(queuePitch * 0.92f, seatToken, 20 * dp) else insideToken
+    private val beltPlaces = if (belt) ((beltLength - beltBand * 0.4f) / queuePitch).toInt().coerceIn(1, QUEUE_MAX) else 0
 
     /** Point on the belt [d] pixels upstream of the entry (towards the kitchen). */
     fun beltPoint(d: Float): Offset {
@@ -204,7 +223,7 @@ class RingLayout(
 
     /** Centres of the visible queue places, front first, for an entry point at [entry]. */
     fun queuePlaces(entry: Offset): List<Offset> {
-        if (belt) return List(QUEUE_MAX) { beltPoint(beltBand * 0.4f + queuePitch * (it + 0.5f)) }
+        if (belt) return List(beltPlaces) { beltPoint(beltBand * 0.4f + queuePitch * (it + 0.5f)) }
         val out = ArrayList<Offset>()
         var x = entry.x.coerceIn(innerLeft + queuePitch / 2, innerRight - queuePitch / 2)
         while (x <= innerRight - queuePitch / 2 && out.size < QUEUE_MAX) { out += Offset(x, queueRow1Y); x += queuePitch }

@@ -3,7 +3,7 @@ package com.phloots.busjam.ui
 import com.phloots.jam.core.io.PackedLevel
 import java.util.Locale
 
-/** Testing aids shown in debug builds only (all levels unlocked, scores + metrics on tiles and the game header). */
+/** Testing aids shown in debug builds only (all levels unlocked, scores + metrics on tiles). */
 data class LevelTileInfo(val score: String, val metrics: String)
 
 private fun PackedLevel.colours() = level.colors().size
@@ -12,24 +12,6 @@ private fun PackedLevel.colours() = level.colors().size
 fun PackedLevel.tileInfo(): LevelTileInfo = LevelTileInfo(
     score = String.format(Locale.US, "%.1f", score),
     metrics = "${colours()}c ${level.containers.size}n ${level.width}x${level.height}",
-)
-
-/** One line for the game header. */
-fun PackedLevel.headerInfo(): String = String.format(
-    Locale.US,
-    "score %.1f · %d colours · %d containers · %dx%d · %d elements",
-    score, colours(), level.containers.size, level.width, level.height, level.queue.size,
-)
-
-/** Motif / fork tags of the level ("CapacityChoice M6|L10 @12  ·  ..."), or null when it has none. */
-fun PackedLevel.tagsLine(): String? = motifs.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.joinToString("  ·  ")
-
-/** Debug-build game header: which pack and level this is, its metrics and what it is testing. */
-data class DebugHeader(
-    val packLabel: String,
-    val packColor: androidx.compose.ui.graphics.Color,
-    val info: String? = null,
-    val tags: String? = null,
 )
 
 /** Distinct chip colours per pack position (campaign first). */

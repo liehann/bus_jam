@@ -29,10 +29,7 @@ import com.phloots.busjam.data.Progress
 import com.phloots.busjam.game.GameViewModel
 import com.phloots.busjam.ui.AppViewModel
 import com.phloots.busjam.data.PackInfo
-import com.phloots.busjam.ui.DebugHeader
-import com.phloots.busjam.ui.headerInfo
 import com.phloots.busjam.ui.packColor
-import com.phloots.busjam.ui.tagsLine
 import com.phloots.busjam.ui.tileInfo
 import com.phloots.busjam.game.rt.CoreRealTimeRules
 import com.phloots.busjam.game.rt.RealTimeViewModel
@@ -113,14 +110,6 @@ fun BusJamApp() {
         }
     }
 
-    val header: (Int) -> DebugHeader? = { number ->
-        val entry = levels?.getOrNull(number - 1)
-        if (showPack && entry != null) {
-            val mode = if (realTime) "real-time" else "turn-based"
-            DebugHeader(packInfo!!.label, packColor(packIndex), "${entry.headerInfo()} · $mode", entry.tagsLine())
-        } else null
-    }
-
     CompositionLocalProvider(LocalSkin provides skin) {
     Box(Modifier.fillMaxSize().background(if (screen > 0 && realTime) skin.background else Palette.background).safeDrawingPadding()) {
         val pack = levels
@@ -172,7 +161,6 @@ fun BusJamApp() {
                         onNext = { openLevel(number + 1) },
                         onLevels = { commitWins(); screen = LEVELS },
                         onHome = { commitWins(); screen = HOME },
-                        debugHeader = header(number),
                     )
                 }
             }
@@ -197,7 +185,6 @@ fun BusJamApp() {
                         onNext = { openLevel(number + 1) },
                         onLevels = { commitWins(); screen = LEVELS },
                         onHome = { commitWins(); screen = HOME },
-                        debugHeader = header(number),
                     )
                 }
             }

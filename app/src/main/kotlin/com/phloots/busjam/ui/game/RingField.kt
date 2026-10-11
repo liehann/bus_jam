@@ -89,7 +89,12 @@ class RingLayout(
     private val seatGuess = (if (compact) 8 else 11) * dp * seatScale
 
     // belt mode: kitchen + belt band above the loop, a taller dock band, spare height shared out
-    val beltH = if (belt) 86 * dp else 0f
+    // Belt rows: the band is at most seatGuess * 2.6 wide (seatR <= seatGuess), so size the band above the loop for
+    // that: the upper row level with the kitchen hatch, a U-turn, the lower row, then a clear gap above the loop's band.
+    private val beltBandMax = seatGuess * 2.6f
+    private val beltRow1 = maxOf(46 * dp * 0.62f, beltBandMax / 2 + 5 * dp)
+    private val beltTurnR = (beltBandMax + 7 * dp) / 2
+    val beltH = if (belt) beltRow1 + 2 * beltTurnR + beltBandMax + 10 * dp - seatGuess else 0f
     private val baseDockH = if (belt) style.dockBandDp * dp else 0f
     private val badgeRoom = if (belt) 12 * dp else 9 * dp
     private val spare = if (!belt) 0f else {
@@ -139,8 +144,8 @@ class RingLayout(
      */
     val beltLine: List<Offset> = if (!belt) emptyList() else buildList {
         val k = kitchen!!
-        val y1 = k.top + k.height * 0.62f
-        val turnR = (beltBand + 7 * dp) / 2
+        val y1 = k.top + beltRow1
+        val turnR = beltTurnR
         val y2 = y1 + 2 * turnR
         val r2 = 14 * dp
         val entryPoint = trackPoint(entryFromGate / seatCount.coerceAtLeast(1) * perimeter)

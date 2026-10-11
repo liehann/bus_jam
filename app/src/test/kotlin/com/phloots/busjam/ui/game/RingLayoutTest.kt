@@ -60,4 +60,20 @@ class RingLayoutTest {
             assertEquals("seats $seats", ringLen, beltLen, ringLen * 0.02f)
         }
     }
+
+    @Test
+    fun theBeltStaysClearOfTheLoopUntilItJoins() {
+        for (seats in listOf(20, 28, 40)) {
+            val lay = layout(seats)
+            val loop = (0 until 400).map { lay.trackPoint(lay.perimeter * it / 400) }
+            val clear = lay.beltBand / 2 + lay.seatR * 1.3f // the two bands' half widths, rims included
+            var d = lay.beltBand * 1.6f // the last stretch before the entry merges into the loop
+            while (d < lay.beltLength) {
+                val p = lay.beltPoint(d)
+                val nearest = loop.minOf { (it - p).getDistance() }
+                assertTrue("seats $seats: belt at $d is $nearest from the loop (< $clear)", nearest >= clear)
+                d += 2f
+            }
+        }
+    }
 }

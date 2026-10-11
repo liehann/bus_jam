@@ -296,8 +296,8 @@ class ScreenshotTest {
     }
 
     /** Pixel 9 Pro (1280 x 2856 px at 480 dpi = 427 x 952 dp): real-time game mid-level in each skin. */
-    private fun midLevelRealTime(): List<Pair<String, com.phloots.jam.core.realtime.RealTimeState>> {
-        val level = denseLevel(12, 14, seed = 7, colours = 10)
+    private fun midLevelRealTime(seats: Int = 40): List<Pair<String, com.phloots.jam.core.realtime.RealTimeState>> {
+        val level = denseLevel(12, 14, seed = 7, colours = 10).copy(stagingSpots = seats)
         val rules = com.phloots.busjam.game.rt.CoreRealTimeRules()
         var st = com.phloots.jam.core.realtime.RealTime.runUntilSettled(rules.initial(level)).first
         fun run(n: Int) = repeat(n) { st = rules.tick(st).state }
@@ -346,6 +346,12 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = "w427dp-h952dp-xxhdpi")
     fun pixel9ProCritterCafe() = showRealTime(com.phloots.busjam.ui.skin.critter.CritterCafeSkin, midLevelRealTime(), "p9p_critter")
+
+    /** Critter Café on the smallest ring (20 seats): bigger plates, a wider belt, the entry on the left curve. */
+    @Test
+    @Config(qualifiers = "w427dp-h952dp-xxhdpi")
+    fun pixel9ProCritterCafeSmallRing() =
+        showRealTime(com.phloots.busjam.ui.skin.critter.CritterCafeSkin, midLevelRealTime(seats = 20).take(1), "p9p_critter_ring20")
 
     /** Critter Café pause menu over the field. */
     @Test

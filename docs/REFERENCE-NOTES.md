@@ -189,3 +189,10 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - Near-miss loss with the rescue visible just outside the ring, most of the board left — "fair but painful".
 - Generator lessons: fork whose wrong answer is "dock a colour nobody on the ring is waiting for" when the line beyond
   the ring holds the needed colour (lookahead depth = reading the line, not just the ring); prefer near-miss losses.
+
+### Level 15 — second attempt, mid-level (2026-10-11)
+- Only one pink dummy, the one needing 8, in slot 1; slots 2–4 free; big right-hand cluster untouched; still no pink
+  on the ring.
+- Versus attempt 1 (pink 40 in slot 1 + pink 8 in slot 3): same decision point, but now the cheap dummy is leftmost
+  so it completes first when pink arrives. Attempt 1's choice lost much later → a left-slot-steal fork (catalogue e)
+  with a deep horizon, observed in a real "super hard" level.

@@ -353,6 +353,11 @@ class ScreenshotTest {
     fun pixel9ProCritterCafeSmallRing() =
         showRealTime(com.phloots.busjam.ui.skin.critter.CritterCafeSkin, midLevelRealTime(seats = 20).take(1), "p9p_critter_ring20")
 
+    @Test
+    @Config(qualifiers = "w427dp-h952dp-xxhdpi")
+    fun pixel9ProCritterCafeRing28() =
+        showRealTime(com.phloots.busjam.ui.skin.critter.CritterCafeSkin, midLevelRealTime(seats = 28).take(1), "p9p_critter_ring28")
+
     /** Critter Café pause menu over the field. */
     @Test
     @Config(qualifiers = "w427dp-h952dp-xxhdpi")

@@ -95,32 +95,8 @@ class RingLayout(
     private val beltRow1 = maxOf(46 * dp * 0.62f, beltBandMax / 2 + 5 * dp)
     private val beltTurnR = (beltBandMax + 7 * dp) / 2
     private val beltDropR = 14 * dp
-    private val beltGap = beltBandMax + 10 * dp // from the lowest belt row to the loop's centre-line
-
-    // The entry's x from the ring's horizontal geometry alone (the same as trackPoint's), to choose the belt shape
-    // before the vertical layout exists. A single row from the kitchen straight to above the entry when that holds
-    // QUEUE_MAX plates; otherwise a U-turn adds a second row.
-    private val entryX: Float? = run {
-        val r = (ringH - 2 * seatGuess) / 2
-        val left = seatGuess + 2 * dp + r
-        val st = (width - 2 * left).coerceAtLeast(0f)
-        val per = 2 * st + 2 * PI.toFloat() * r
-        val d = (entryFromGate / seatCount.coerceAtLeast(1) * per).mod(per) - st / 2 - PI.toFloat() * r
-        if (d in 0f..st) left + d else null // on the top straight
-    }
-    private val beltNeeded = run {
-        val r = (ringH - 2 * seatGuess) / 2
-        val per = 2 * (width - 2 * (seatGuess + 2 * dp + r)).coerceAtLeast(0f) + 2 * PI.toFloat() * r
-        per / seatCount.coerceAtLeast(1) * (QUEUE_MAX + 1.2f)
-    }
-    private val kitchenMinRight = 52 * dp
-    private val singleRowLength = entryX?.let { it - beltDropR - (kitchenMinRight - 6 * dp) + PI.toFloat() / 2 * beltDropR + beltGap - beltDropR }
-    private val singleRow = belt && singleRowLength != null && singleRowLength >= beltNeeded
-    val beltH = when {
-        !belt -> 0f
-        singleRow -> beltRow1 + beltGap - seatGuess
-        else -> beltRow1 + 2 * beltTurnR + beltGap - seatGuess
-    }
+    private val beltGap = beltBandMax + 10 * dp // from the lower belt row to the loop's centre-line
+    val beltH = if (belt) beltRow1 + 2 * beltTurnR + beltGap - seatGuess else 0f
     private val baseDockH = if (belt) style.dockBandDp * dp else 0f
     private val badgeRoom = if (belt) 12 * dp else 9 * dp
     private val spare = if (!belt) 0f else {
@@ -151,17 +127,8 @@ class RingLayout(
     val queueRow2Y = cy + (radius - seatR * 1.4f) / 2
     val gatePoint = Offset(width / 2, trackBottom)
 
-    /**
-     * Kitchen hatch (belt mode) above the loop: at the left edge, or for a single-row belt where the row has to start
-     * to hold [QUEUE_MAX] plates.
-     */
-    val kitchen: Rect? = if (!belt) null else {
-        val right = if (singleRow) {
-            val x = entryX!!
-            maxOf(kitchenMinRight, x - beltDropR + PI.toFloat() / 2 * beltDropR + (beltGap - beltDropR) - beltNeeded + 6 * dp)
-        } else kitchenMinRight
-        Rect(Offset(right - 46 * dp, 2 * dp + padTop), Size(46 * dp, 46 * dp))
-    }
+    /** Kitchen hatch (belt mode), top right above the loop. */
+    val kitchen: Rect? = if (belt) Rect(Offset(width - 52 * dp, 2 * dp + padTop), Size(46 * dp, 46 * dp)) else null
 
     val beltBand = seatR * 2.6f
 
@@ -173,46 +140,37 @@ class RingLayout(
     val queuePitch = if (belt) pitch else insideToken * 1.1f
 
     /**
-     * Belt centre-line from the kitchen hatch to the loop's entry (belt mode), as a dense polyline: right from the
-     * hatch to above the entry and down into it; or, when one row is too short, right from the hatch, a U-turn
-     * down, back left to above the entry, then down into it, with the U-turn's x chosen so the belt holds
-     * [QUEUE_MAX] plates (capped by the screen width).
+     * Belt centre-line from the kitchen hatch to the loop's entry (belt mode), as a dense polyline: left from the
+     * hatch along the top row, a U-turn down on the left, right along the lower row (the way the loop's top runs) to
+     * above the entry, then down into it. The U-turn's x is chosen so the belt holds [QUEUE_MAX] plates (capped by
+     * the screen width).
      */
     val beltLine: List<Offset> = if (!belt) emptyList() else buildList {
         val k = kitchen!!
         val y1 = k.top + beltRow1
-        val r2 = beltDropR
-        val entryPoint = trackPoint(entryFromGate / seatCount.coerceAtLeast(1) * perimeter)
-        val cx = entryPoint.x
-        val startX = k.right - 6 * dp
-        val steps = 24
-        if (singleRow) {
-            for (i in 0..steps) add(Offset(startX + (cx - r2 - startX) * i / steps, y1))
-            for (i in 1..10) {
-                val t = (-PI / 2 + PI / 2 * i / 10).toFloat()
-                add(Offset(cx - r2 + r2 * cos(t), y1 + r2 + r2 * sin(t)))
-            }
-            val drop = (entryPoint.y - y1 - r2).coerceAtLeast(0f)
-            for (i in 1..6) add(Offset(cx, y1 + r2 + drop * i / 6))
-            return@buildList
-        }
         val turnR = beltTurnR
         val y2 = y1 + 2 * turnR
+        val r2 = beltDropR
+        val entryPoint = trackPoint(entryFromGate / seatCount.coerceAtLeast(1) * perimeter)
+        val ex = entryPoint.x
+        val startX = k.left + 6 * dp
         val drop = (entryPoint.y - y2 - r2).coerceAtLeast(0f)
         val needed = queuePitch * (QUEUE_MAX + 1.2f)
         val fixed = PI.toFloat() * turnR + PI.toFloat() / 2 * r2 + drop
-        val ux = ((needed - fixed + startX + cx + r2) / 2).coerceIn(cx + r2 + turnR, width - turnR - beltBand / 2 - 4 * dp)
+        // length = (startX - ux) + fixed + (ex - r2 - ux)
+        val ux = ((startX + ex - r2 + fixed - needed) / 2).coerceIn(turnR + beltBand / 2 + 4 * dp, ex - r2 - turnR)
+        val steps = 24
         for (i in 0..steps) add(Offset(startX + (ux - startX) * i / steps, y1))
         for (i in 1..16) {
-            val t = (-PI / 2 + PI * i / 16).toFloat()
+            val t = (-PI / 2 - PI * i / 16).toFloat()
             add(Offset(ux + turnR * cos(t), y1 + turnR + turnR * sin(t)))
         }
-        for (i in 1..steps) add(Offset(ux + (cx + r2 - ux) * i / steps, y2))
+        for (i in 1..steps) add(Offset(ux + (ex - r2 - ux) * i / steps, y2))
         for (i in 1..10) {
-            val t = (-PI / 2 - PI / 2 * i / 10).toFloat()
-            add(Offset(cx + r2 + r2 * cos(t), y2 + r2 + r2 * sin(t)))
+            val t = (-PI / 2 + PI / 2 * i / 10).toFloat()
+            add(Offset(ex - r2 + r2 * cos(t), y2 + r2 + r2 * sin(t)))
         }
-        for (i in 1..6) add(Offset(cx, y2 + r2 + drop * i / 6))
+        for (i in 1..6) add(Offset(ex, y2 + r2 + drop * i / 6))
     }
     private val beltLengths: FloatArray = FloatArray(beltLine.size).also { acc ->
         for (i in 1 until beltLine.size) acc[i] = acc[i - 1] + (beltLine[i] - beltLine[i - 1]).getDistance()

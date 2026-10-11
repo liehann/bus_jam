@@ -23,3 +23,14 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - A worried-face emoji appears over a waiting passenger (likely a waiting/crowding warning).
 - Patterns worth reusing (generic, not layouts): symmetry + central spine for early readability; short islands
   early to teach interrupted runs; a pressure warning indicator.
+
+### Level 4 (2026-10-11)
+- 5 colours (cyan, pink, green, yellow, purple); ~30 vehicles (cars + buses).
+- Board: mirror-symmetric again — two U-shaped pockets with an open centre; inner vehicles face down and are walled
+  in by a bottom row that must be removed in order.
+- Late colour as bait: purple not in the visible queue yet, but 3–4 purple cars sit free on the outer corners —
+  tapping them early parks dead weight ("plausible but poorly timed option").
+- VIP booster introduced (count 1): airlifts any bus to the VIP slot, bypassing blocking. Consumable, not a level
+  element.
+- Mood emoji on passengers (sleepy).
+- Idea for us (later): VIP as a 5th one-off dock slot, either as a booster or as a per-level planned mechanic.

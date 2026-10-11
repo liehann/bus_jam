@@ -75,6 +75,8 @@ class RingLayout(
     val seatCount: Int,
     val compact: Boolean = false,
     val style: FieldStyle = FieldStyle.FLAT,
+    /** The entry's ring position minus the gate's, in seats (where the belt drops in; default: top centre). */
+    val entryFromGate: Float = seatCount / 2f,
 ) : FieldGeometry {
     private val dp = density.density
     private val gap = (if (compact) 4 else 8) * dp
@@ -141,7 +143,7 @@ class RingLayout(
         val turnR = (beltBand + 7 * dp) / 2
         val y2 = y1 + 2 * turnR
         val r2 = 14 * dp
-        val cx = width / 2
+        val cx = trackPoint(entryFromGate / seatCount.coerceAtLeast(1) * perimeter).x
         val startX = k.right - 6 * dp
         val drop = (trackTop - y2 - r2).coerceAtLeast(0f)
         val needed = beltBand * 0.4f + queuePitch * (QUEUE_MAX + 0.4f)
@@ -221,9 +223,37 @@ class RingLayout(
     /** Point of track position [pos] (seat units, relative to [gate]). */
     fun seatPoint(pos: Float, gate: Float): Offset = trackPoint((pos - gate) / seatCount * perimeter)
 
+    /** Belt distance (upstream of the entry) of queue place [k]; fractional [k] lies between places. */
+    private fun beltDistance(k: Float) = beltBand * 0.4f + queuePitch * (k + 0.5f)
+
+    /**
+     * Queue place [k] (front = 0) of [places] at a fractional index, for plates sliding forward one place: along the
+     * belt in belt mode, else between neighbouring places (clamped to the last).
+     */
+    fun queuePoint(k: Float, places: List<Offset>): Offset {
+        if (belt) return beltPoint(beltDistance(k))
+        val i = k.toInt().coerceIn(0, places.size - 1)
+        val j = (i + 1).coerceAtMost(places.size - 1)
+        val f = (k - i).coerceIn(0f, 1f)
+        return places[i] + (places[j] - places[i]) * f
+    }
+
+    /**
+     * Where a plate stepping onto the ring is, [p] 0..1 through the seat step after it stepped on: in belt mode it
+     * runs down the belt from the front place and on along the ring to its seat (at [entryPos] + [p]) at a steady
+     * speed; inside the loop it glides straight from the front place to the seat.
+     */
+    fun enteringPoint(p: Float, entryPos: Float, gate: Float, places: List<Offset>): Offset {
+        val seat = seatPoint(entryPos + p, gate)
+        if (!belt) return places[0] + (seat - places[0]) * p
+        val d0 = beltDistance(0f)
+        val s = p * (d0 + pitch)
+        return if (s < d0) beltPoint(d0 - s) else seatPoint(entryPos + (s - d0) / pitch, gate)
+    }
+
     /** Centres of the visible queue places, front first, for an entry point at [entry]. */
     fun queuePlaces(entry: Offset): List<Offset> {
-        if (belt) return List(beltPlaces) { beltPoint(beltBand * 0.4f + queuePitch * (it + 0.5f)) }
+        if (belt) return List(beltPlaces) { beltPoint(beltDistance(it.toFloat())) }
         val out = ArrayList<Offset>()
         var x = entry.x.coerceIn(innerLeft + queuePitch / 2, innerRight - queuePitch / 2)
         while (x <= innerRight - queuePitch / 2 && out.size < QUEUE_MAX) { out += Offset(x, queueRow1Y); x += queuePitch }
@@ -247,11 +277,14 @@ class RingLayout(
             density: Density,
             seats: Int,
             style: FieldStyle = FieldStyle.FLAT,
+            entryFromGate: Float = seats / 2f,
         ): RingLayout {
-            val normal = RingLayout(width, height, levelWidth, levelHeight, density, seats, style = style)
+            val normal = RingLayout(width, height, levelWidth, levelHeight, density, seats, style = style, entryFromGate = entryFromGate)
             val target = minOf(width / levelWidth, PlayLayout.TARGET_CELL_DP * density.density)
             if (normal.cell >= target) return normal
-            val compact = RingLayout(width, height, levelWidth, levelHeight, density, seats, compact = true, style = style)
+            val compact = RingLayout(
+                width, height, levelWidth, levelHeight, density, seats, compact = true, style = style, entryFromGate = entryFromGate,
+            )
             return if (compact.cell > normal.cell) compact else normal
         }
     }
@@ -306,8 +339,9 @@ fun RingField(
     BoxWithConstraints(modifier) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
-        val lay = remember(w, h, level.width, level.height, density, view.seats.size, skin) {
-            RingLayout.fit(w, h, level.width, level.height, density, view.seats.size, skin.field)
+        val entryFromGate = view.entry - view.gate
+        val lay = remember(w, h, level.width, level.height, density, view.seats.size, skin, entryFromGate) {
+            RingLayout.fit(w, h, level.width, level.height, density, view.seats.size, skin.field, entryFromGate)
         }
         Canvas(
             Modifier
@@ -431,10 +465,16 @@ private fun DrawScope.drawCarousel(lay: RingLayout, view: RtView, fraction: Floa
     val front = places.first()
     track(lay, view, rot, entry, front)
 
-    // queue line inside the oval
+    // a plate that just stepped on glides from the front of the queue onto its seat while the queue moves up a place
+    val tps = 1f / view.rotationPerTick
+    val sinceEntry = (view.tick - view.lastEntryTick + fraction) / tps
+    val entering = if (view.lastEntryTick >= 0 && view.lastEntrySeat >= 0 && sinceEntry < 1f) view.lastEntrySeat else -1
+    val slide = if (entering >= 0) 1f - sinceEntry else 0f
+
+    // queue line (on the belt, or inside the oval)
     val queue = view.level.queue
     val shown = minOf(places.size, view.queueRemaining)
-    for (k in 0 until shown) element(queue[view.queueIndex + k], places[k], lay.queueToken)
+    for (k in 0 until shown) element(queue[view.queueIndex + k], lay.queuePoint(k + slide, places), lay.queueToken)
     val more = view.queueRemaining - shown
     val kitchen = lay.kitchen
     if (more > 0 && kitchen != null) {
@@ -458,7 +498,11 @@ private fun DrawScope.drawCarousel(lay: RingLayout, view: RtView, fraction: Floa
         val pos = (i + rot).let { it - floor(it / n) * n }
         val c = lay.seatPoint(pos, view.gate)
         seat(lay, c)
-        view.seats[i]?.let { element(it, c, lay.seatToken) }
+        if (i != entering) view.seats[i]?.let { element(it, c, lay.seatToken) }
+    }
+    if (entering >= 0) view.seats[entering]?.let { color ->
+        val p = sinceEntry.coerceIn(0f, 1f)
+        element(color, lay.enteringPoint(p, view.entry, view.gate, places), lay.queueToken + (lay.seatToken - lay.queueToken) * p)
     }
 }
 

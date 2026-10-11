@@ -58,6 +58,9 @@ class CoreRealTimeRules(
             queueIndex = state.queueIndex,
             settled = state.settled,
             status = state.status,
+            lastEntryTick = state.lastEntryTick,
+            lastEntrySeat = if (state.lastEntryTick < 0) -1 else
+                (0 until state.seatCount).firstOrNull { state.seatElement(it) == state.queueIndex - 1 } ?: -1,
         )
     }
 

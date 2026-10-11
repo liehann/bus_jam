@@ -197,6 +197,11 @@ class RealTimeState internal constructor(
     val nextBoardTick: Long,
     val settled: Boolean,
     val status: Status,
+    /**
+     * Tick of the most recent step-on from the queue, or -1 (presentation only: lets the UI glide the plate from the
+     * queue line onto its seat; not part of [equals] / [hashCode]).
+     */
+    val lastEntryTick: Long = -1L,
 ) {
     val seatCount: Int get() = seats.size
 
@@ -280,8 +285,10 @@ class RealTimeState internal constructor(
         nextBoardTick: Long = this.nextBoardTick,
         settled: Boolean = this.settled,
         status: Status = this.status,
+        lastEntryTick: Long = this.lastEntryTick,
     ) = RealTimeState(
         level, config, tick, phase, seats, ringCount, onBoard, dock, queueIndex, walkers, nextBoardTick, settled, status,
+        lastEntryTick,
     )
 }
 
@@ -434,6 +441,7 @@ object RealTime {
         var ringCount = state.ringCount
         var qi = state.queueIndex
         var nextBoard = state.nextBoardTick
+        var lastEntry = state.lastEntryTick
         val n = seats.size
         val seatStep = t % cfg.ticksPerSeat == 0L
         if (seatStep) phase = (phase + 1) % n
@@ -481,12 +489,13 @@ object RealTime {
                 ringCount++
                 emit(RtEvent.SteppedOn(qi, en))
                 qi++
+                lastEntry = t
             }
         }
 
         var next = state.copy(
             tick = t, phase = phase, seats = seats, ringCount = ringCount, dock = dock, queueIndex = qi, walkers = walkers,
-            nextBoardTick = nextBoard,
+            nextBoardTick = nextBoard, lastEntryTick = lastEntry,
         )
         val ev = events
         if (ev != null) {

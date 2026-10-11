@@ -53,6 +53,9 @@ data class RtView(
     val settled: Boolean,
     /** PLAYING until settled; then the turn-based equivalent. */
     val status: Status,
+    /** Tick of the latest step-on from the queue (-1: none) and the seat it landed on (-1: already gone). */
+    val lastEntryTick: Long = -1L,
+    val lastEntrySeat: Int = -1,
 ) {
     val queueRemaining: Int get() = level.queue.size - queueIndex
 }

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "levels": [
+    {
+      "level": {
+        "id": 1, "width": 5, "height": 5,
+        "vehicles": [
+          {"id": 0, "type": "CAR", "color": 0, "row": 1, "col": 1, "dir": "UP"},
+          {"id": 1, "type": "CAR", "color": 1, "row": 3, "col": 3, "dir": "RIGHT"}
+        ],
+        "queue": [0, 0, 0, 0, 1, 1, 1, 1]
+      },
+      "score": 0.0
+    },
+    {
+      "level": {
+        "id": 2, "width": 5, "height": 5,
+        "vehicles": [
+          {"id": 0, "type": "CAR", "color": 0, "row": 2, "col": 2, "dir": "RIGHT"},
+          {"id": 1, "type": "CAR", "color": 1, "row": 1, "col": 3, "dir": "UP"},
+          {"id": 2, "type": "VAN", "color": 2, "row": 4, "col": 0, "dir": "LEFT"}
+        ],
+        "queue": [1, 1, 1, 1, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2]
+      },
+      "score": 1.0
+    },
+    {
+      "level": {
+        "id": 3, "width": 5, "height": 5,
+        "vehicles": [
+          {"id": 0, "type": "CAR", "color": 0, "row": 0, "col": 0, "dir": "UP"},
+          {"id": 1, "type": "CAR", "color": 1, "row": 0, "col": 2, "dir": "UP"},
+          {"id": 2, "type": "CAR", "color": 2, "row": 0, "col": 4, "dir": "UP"}
+        ],
+        "queue": [0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]
+      },
+      "score": 2.0
+    }
+  ]
+}

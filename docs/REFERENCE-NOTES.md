@@ -213,3 +213,6 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
   high fan-in + colour not yet waiting = strong pinch point.
 - Level 15: "a really interesting moment where I got just enough space from red to fill enough green to also get a
   blue, and keep the level going" → just-enough cascade, DESIGN principle 13.
+- Level 15 attempt 2, near the end: dock yellow 8 | pink 16 | free | red 8; ring only green + purple; the line right
+  behind the ring holds red, pink, yellow — exactly the dummies' colours, locked out. Same "rescue just outside a full
+  ring" structure as attempt 1. Super-hard = that lock is easy to fall into; only a precise dummy/dig order avoids it.

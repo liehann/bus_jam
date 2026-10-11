@@ -13,5 +13,10 @@
   "file": "motif-preview-2.json",
   "label": "Motif preview 2",
   "description": "Chained stalls + pressure/fork scoring; dock 3+ on 10-25% of moves"
+ },
+ {
+  "file": "reverse-preview-1.json",
+  "label": "Reverse preview 1",
+  "description": "Reverse director: dock 3+ on 50-76% of moves, planted forks (likely too hard)"
  }
 ]

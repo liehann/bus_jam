@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.phloots.busjam.data.Progress
 import com.phloots.busjam.ui.GameButton
 import com.phloots.busjam.ui.LevelTileInfo
+import com.phloots.busjam.ui.PackChip
 import com.phloots.busjam.ui.StarRow
 import com.phloots.busjam.ui.theme.Palette
 
@@ -64,6 +65,8 @@ fun LevelSelectScreen(
     tileInfo: ((Int) -> LevelTileInfo?)? = null,
     /** Debug builds: "Go to level" number field. */
     showGoTo: Boolean = false,
+    /** Debug builds: pack label + chip colour shown in the title. */
+    pack: Pair<String, Color>? = null,
 ) {
     val first = progress.firstUnbeaten(count)
     val columns = if (tileInfo != null) 4 else 5
@@ -74,6 +77,9 @@ fun LevelSelectScreen(
         Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("< Home", color = Palette.ink, fontWeight = FontWeight.SemiBold) }
             Text("Levels", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Palette.ink, modifier = Modifier.padding(start = 8.dp))
+            pack?.let { (label, color) ->
+                PackChip(label, color, Modifier.padding(start = 10.dp).testTag("pack-chip"))
+            }
         }
         if (showGoTo) {
             var text by rememberSaveable { mutableStateOf("") }

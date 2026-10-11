@@ -45,7 +45,9 @@ import com.phloots.jam.core.model.Status
 import com.phloots.busjam.game.GameUiState
 import com.phloots.busjam.game.PhaseKind
 import com.phloots.busjam.game.Snapshot
+import com.phloots.busjam.ui.DebugHeader
 import com.phloots.busjam.ui.GameButton
+import com.phloots.busjam.ui.PackChip
 import com.phloots.busjam.ui.StarRow
 import com.phloots.busjam.ui.theme.Palette
 
@@ -60,8 +62,8 @@ fun GameScreen(
     onNext: () -> Unit,
     onLevels: () -> Unit,
     onHome: () -> Unit,
-    /** Debug-build only: level score and metrics shown under the title. */
-    debugInfo: String? = null,
+    /** Debug builds: pack chip, level metrics and motif tags under the title. */
+    debugHeader: DebugHeader? = null,
     /** Staging spot count; defaults to the rules' [Limits.STAGING_SPOTS] (screenshot tests may preview others). */
     stagingSpots: Int = Limits.STAGING_SPOTS,
 ) {
@@ -117,7 +119,7 @@ fun GameScreen(
 
     Box(Modifier.fillMaxSize().background(Palette.background)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
-            TopBar(ui, debugInfo, onLevels)
+            TopBar(ui, debugHeader, onLevels)
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 PlayField(
                     logical = ui.state,
@@ -168,7 +170,7 @@ fun GameScreen(
 }
 
 @Composable
-private fun TopBar(ui: GameUiState, debugInfo: String?, onLevels: () -> Unit) {
+private fun TopBar(ui: GameUiState, header: DebugHeader?, onLevels: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().height(44.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -198,14 +200,22 @@ private fun TopBar(ui: GameUiState, debugInfo: String?, onLevels: () -> Unit) {
         Spacer(Modifier.weight(1f))
         StarRow(ui.potentialStars, 18.dp, Modifier.padding(end = 12.dp))
     }
-    if (debugInfo != null) {
-        Text(
-            debugInfo,
-            fontSize = 11.sp,
-            color = Palette.ink.copy(alpha = 0.7f),
-            modifier = Modifier.fillMaxWidth().testTag("debug-info"),
-            textAlign = TextAlign.Center,
-        )
+    if (header != null) {
+        Column(
+            Modifier.fillMaxWidth().testTag("debug-header"),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            PackChip("${header.packLabel} · L${ui.levelNumber}", header.packColor, Modifier.testTag("pack-chip"))
+            header.info?.let {
+                Text(it, fontSize = 11.sp, color = Palette.ink.copy(alpha = 0.7f), textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 2.dp).testTag("debug-info"))
+            }
+            header.tags?.let {
+                Text(it, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = header.packColor,
+                    textAlign = TextAlign.Center, maxLines = 2,
+                    modifier = Modifier.testTag("debug-tags"))
+            }
+        }
     }
 }
 

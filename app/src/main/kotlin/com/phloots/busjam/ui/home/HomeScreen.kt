@@ -2,6 +2,18 @@ package com.phloots.busjam.ui.home
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
+import com.phloots.busjam.data.PackInfo
+import com.phloots.busjam.ui.packColor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +43,10 @@ fun HomeScreen(
     totalStars: Int,
     onPlay: () -> Unit,
     onLevels: () -> Unit,
+    /** Debug builds: the level packs to choose from (hidden when fewer than 2). */
+    packs: List<PackInfo> = emptyList(),
+    selectedPack: String? = null,
+    onSelectPack: (String) -> Unit = {},
 ) {
     Column(
         Modifier.fillMaxSize().background(Palette.background).padding(32.dp),
@@ -51,7 +67,13 @@ fun HomeScreen(
             if (totalLevels > 0) "$totalStars / ${totalLevels * 3} stars" else "Loading levels...",
             color = Palette.ink.copy(alpha = 0.6f),
         )
-        Spacer(Modifier.height(40.dp))
+        if (packs.size > 1) {
+            Spacer(Modifier.height(20.dp))
+            PackSelector(packs, selectedPack, onSelectPack)
+            Spacer(Modifier.height(20.dp))
+        } else {
+            Spacer(Modifier.height(40.dp))
+        }
         GameButton(
             text = if (nextLevel != null) "Play  -  Level $nextLevel" else "Play",
             onClick = onPlay,
@@ -70,5 +92,38 @@ fun HomeScreen(
             fontSize = 18,
         )
         Spacer(Modifier.size(48.dp))
+    }
+}
+
+@Composable
+private fun PackSelector(packs: List<PackInfo>, selected: String?, onSelect: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth().testTag("pack-selector"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("LEVEL PACK (debug)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Palette.ink.copy(alpha = 0.6f))
+        packs.forEachIndexed { i, p ->
+            val on = p.file == selected
+            val color = packColor(i)
+            val shape = RoundedCornerShape(12.dp)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(if (on) color.copy(alpha = 0.12f) else Color.White, shape)
+                    .border(if (on) 2.dp else 1.dp, if (on) color else Palette.slotLine, shape)
+                    .selectable(selected = on, role = Role.RadioButton, onClick = { onSelect(p.file) })
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .testTag("pack-${p.file}"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier.size(14.dp).background(if (on) color else Color.Transparent, CircleShape)
+                        .border(2.dp, color, CircleShape),
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(p.label, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = if (on) color else Palette.ink)
+                    val desc = p.description.ifBlank { p.file }
+                    Text(desc, fontSize = 12.sp, color = Palette.ink.copy(alpha = 0.65f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
     }
 }

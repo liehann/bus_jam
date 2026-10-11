@@ -28,7 +28,11 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.phloots.busjam.data.Progress
 import com.phloots.busjam.game.GameViewModel
 import com.phloots.busjam.ui.AppViewModel
+import com.phloots.busjam.data.PackInfo
+import com.phloots.busjam.ui.DebugHeader
 import com.phloots.busjam.ui.headerInfo
+import com.phloots.busjam.ui.packColor
+import com.phloots.busjam.ui.tagsLine
 import com.phloots.busjam.ui.tileInfo
 import com.phloots.busjam.ui.game.GameScreen
 import com.phloots.busjam.ui.home.HomeScreen
@@ -56,9 +60,14 @@ private const val LEVELS = -1
 fun BusJamApp() {
     val app: AppViewModel = viewModel()
     val game: GameViewModel = viewModel(
-        factory = viewModelFactory { initializer { GameViewModel(app.progressStore) } },
+        factory = viewModelFactory { initializer { GameViewModel(app.progressStore(PackInfo.CAMPAIGN)) } },
     )
-    val levels by app.levels.collectAsStateWithLifecycle()
+    val loadedPack by app.loaded.collectAsStateWithLifecycle()
+    val selectedPack by app.pack.collectAsStateWithLifecycle()
+    val levels = loadedPack?.levels?.takeIf { it.isNotEmpty() }
+    val packInfo = loadedPack?.info
+    val packIndex = app.packs.indexOfFirst { it.file == packInfo?.file }.coerceAtLeast(0)
+    val showPack = BuildConfig.DEBUG && packInfo != null
     val progressOrNull by app.progress.collectAsStateWithLifecycle()
     val progress = progressOrNull ?: Progress()
     var screen by rememberSaveable { mutableIntStateOf(HOME) }
@@ -73,7 +82,7 @@ fun BusJamApp() {
     val openLevel: (Int) -> Unit = { n ->
         levels?.let { pack ->
             val number = n.coerceIn(1, pack.size)
-            game.start(pack[number - 1].level, number, hasNext = number < pack.size, fresh = true)
+            game.start(pack[number - 1].level, number, hasNext = number < pack.size, fresh = true, sink = app.progressStore(packInfo!!))
             screen = number
         }
     }
@@ -87,6 +96,9 @@ fun BusJamApp() {
                 totalStars = progress.stars.values.sum(),
                 onPlay = { pack?.let { openLevel(progress.firstUnbeaten(it.size)) } },
                 onLevels = { screen = LEVELS },
+                packs = if (BuildConfig.DEBUG) app.packs else emptyList(),
+                selectedPack = selectedPack?.file,
+                onSelectPack = app::selectPack,
             )
             screen == LEVELS && pack != null -> LevelSelectScreen(
                 count = pack.size,
@@ -96,11 +108,15 @@ fun BusJamApp() {
                 unlockAll = BuildConfig.DEBUG,
                 tileInfo = if (BuildConfig.DEBUG) { n -> pack.getOrNull(n - 1)?.tileInfo() } else null,
                 showGoTo = BuildConfig.DEBUG,
+                pack = if (showPack) packInfo!!.label to packColor(packIndex) else null,
             )
             screen > 0 && pack != null -> {
                 val number = screen.coerceIn(1, pack.size)
                 LaunchedEffect(number, pack) {
-                    game.start(pack[number - 1].level, number, hasNext = number < pack.size, fresh = false)
+                    game.start(
+                        pack[number - 1].level, number, hasNext = number < pack.size, fresh = false,
+                        sink = app.progressStore(packInfo!!),
+                    )
                 }
                 val ui by game.ui.collectAsStateWithLifecycle()
                 val current = ui
@@ -115,7 +131,10 @@ fun BusJamApp() {
                         onNext = { openLevel(number + 1) },
                         onLevels = { game.commitPendingWin(); screen = LEVELS },
                         onHome = { game.commitPendingWin(); screen = HOME },
-                        debugInfo = if (BuildConfig.DEBUG) pack[number - 1].headerInfo() else null,
+                        debugHeader = if (showPack) {
+                            val entry = pack[number - 1]
+                            DebugHeader(packInfo!!.label, packColor(packIndex), entry.headerInfo(), entry.tagsLine())
+                        } else null,
                     )
                 }
             }

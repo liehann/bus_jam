@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -32,36 +33,60 @@ fun interface ProgressSink {
     suspend fun recordWin(levelNumber: Int, stars: Int)
 }
 
-private val Context.progressDataStore: DataStore<Preferences> by preferencesDataStore(name = "progress")
+/** The app's single preferences file (progress of every pack + the selected pack). */
+val Context.progressDataStore: DataStore<Preferences> by preferencesDataStore(name = "progress")
 
-/** DataStore Preferences backed progress: highest unlocked level and best stars per level. */
-class ProgressStore(private val dataStore: DataStore<Preferences>) : ProgressSink {
+/**
+ * DataStore Preferences backed progress of one level pack ([pack] = its asset file): highest unlocked level and best
+ * stars per level. The campaign keeps the original un-prefixed keys (existing progress stays valid); every other pack
+ * prefixes its keys with `pack[<file>]/`, so packs never collide.
+ */
+class ProgressStore(
+    private val dataStore: DataStore<Preferences>,
+    val pack: String = PackInfo.CAMPAIGN_FILE,
+) : ProgressSink {
     constructor(context: Context) : this(context.applicationContext.progressDataStore)
+
+    private val prefix = if (pack == PackInfo.CAMPAIGN_FILE) "" else "pack[$pack]/"
+    private val starsPrefix = prefix + STARS
+    private val highestUnlocked = intPreferencesKey(prefix + HIGHEST_UNLOCKED)
+    private fun starsKey(levelNumber: Int) = intPreferencesKey(starsPrefix + levelNumber)
 
     val progress: Flow<Progress> = dataStore.data.map { prefs ->
         val stars = HashMap<Int, Int>()
         for ((key, value) in prefs.asMap()) {
             val name = key.name
-            if (name.startsWith(STARS_PREFIX) && value is Int) {
-                name.removePrefix(STARS_PREFIX).toIntOrNull()?.let { stars[it] = value }
+            if (name.startsWith(starsPrefix) && value is Int) {
+                name.removePrefix(starsPrefix).toIntOrNull()?.let { stars[it] = value }
             }
         }
-        Progress(highestUnlocked = prefs[HIGHEST_UNLOCKED] ?: 1, stars = stars)
+        Progress(highestUnlocked = prefs[highestUnlocked] ?: 1, stars = stars)
     }
 
     /** Keeps the best star count and unlocks the next level. */
     override suspend fun recordWin(levelNumber: Int, stars: Int) {
         dataStore.edit { prefs ->
             val key = starsKey(levelNumber)
-            val best = maxOf(prefs[key] ?: 0, stars.coerceIn(1, 3))
-            prefs[key] = best
-            prefs[HIGHEST_UNLOCKED] = maxOf(prefs[HIGHEST_UNLOCKED] ?: 1, levelNumber + 1)
+            prefs[key] = maxOf(prefs[key] ?: 0, stars.coerceIn(1, 3))
+            prefs[highestUnlocked] = maxOf(prefs[highestUnlocked] ?: 1, levelNumber + 1)
         }
     }
 
     private companion object {
-        const val STARS_PREFIX = "stars_"
-        val HIGHEST_UNLOCKED = intPreferencesKey("highest_unlocked")
-        fun starsKey(levelNumber: Int) = intPreferencesKey(STARS_PREFIX + levelNumber)
+        const val STARS = "stars_"
+        const val HIGHEST_UNLOCKED = "highest_unlocked"
+    }
+}
+
+/** Which pack the (debug) home screen has selected; stored next to the progress. */
+class PackSelectionStore(private val dataStore: DataStore<Preferences>) {
+    val selected: Flow<String?> = dataStore.data.map { it[SELECTED] }
+
+    suspend fun select(file: String) {
+        dataStore.edit { it[SELECTED] = file }
+    }
+
+    private companion object {
+        val SELECTED = stringPreferencesKey("selected_pack")
     }
 }

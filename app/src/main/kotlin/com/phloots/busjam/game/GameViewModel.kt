@@ -97,16 +97,27 @@ class GameViewModel(
     private var hintJob: Job? = null
     private var level: Level? = null
     private var winRecorded = false
+    private var sink: ProgressSink = progress
 
     /**
      * Starts [level] as campaign level [levelNumber]. Unless [fresh], keeps an in-progress game of the same level
      * (e.g. after recomposition / configuration change).
      */
-    fun start(level: Level, levelNumber: Int, hasNext: Boolean, fresh: Boolean = true) {
+    fun start(
+        level: Level,
+        levelNumber: Int,
+        hasNext: Boolean,
+        fresh: Boolean = true,
+        /** Where this game's win is recorded (e.g. the progress of the pack it belongs to); default [progress]. */
+        sink: ProgressSink = progress,
+    ) {
         val current = _ui.value
-        if (!fresh && current != null && this.level == level && current.levelNumber == levelNumber) return
+        if (!fresh && current != null && this.level == level && current.levelNumber == levelNumber && sink == this.sink) {
+            return
+        }
+        reset() // commits a pending win to the previous game's sink
         this.level = level
-        reset()
+        this.sink = sink
         _ui.value = GameUiState(
             levelNumber = levelNumber,
             isBoss = levelNumber % 10 == 0,
@@ -125,7 +136,8 @@ class GameViewModel(
         winRecorded = true
         val n = ui.levelNumber
         val stars = ui.earnedStars
-        recordScope.launch { progress.recordWin(n, stars) }
+        val target = sink
+        recordScope.launch { target.recordWin(n, stars) }
     }
 
     override fun onCleared() {

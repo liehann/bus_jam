@@ -1,0 +1,4 @@
+[
+  {"file": "levels.json", "label": "Campaign", "description": "1000-level v2 campaign (rollout scoring, before motifs)"},
+  {"file": "motif-preview-1.json", "label": "Motif preview 1", "description": "Vault motifs: capacity choice, big unblocks, stack to unlock, dense core (no dock pressure yet)"}
+]

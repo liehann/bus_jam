@@ -14,7 +14,10 @@ import com.phloots.busjam.data.Progress
 import com.phloots.busjam.game.AnimJob
 import com.phloots.busjam.game.GameUiState
 import com.phloots.busjam.game.NO_WINNING_MOVE
+import com.phloots.busjam.data.PackInfo
+import com.phloots.busjam.ui.DebugHeader
 import com.phloots.busjam.ui.LevelTileInfo
+import com.phloots.busjam.ui.packColor
 import com.phloots.busjam.ui.game.GameScreen
 import com.phloots.busjam.ui.levels.LevelSelectScreen
 import com.phloots.jam.core.model.Bits128
@@ -104,7 +107,7 @@ class ScreenshotTest {
         )
     }
 
-    private fun show(ui: GameUiState, debugInfo: String? = null, bars: Boolean = false) {
+    private fun show(ui: GameUiState, debugHeader: DebugHeader? = null, bars: Boolean = false) {
         rule.setContent {
             // [bars]: simulate a status bar + 3-button navigation bar (Robolectric reports no insets)
             Box(if (bars) Modifier.padding(top = 24.dp, bottom = 48.dp) else Modifier) {
@@ -112,7 +115,7 @@ class ScreenshotTest {
                 ui = ui,
                 onTap = {}, onAnimationFinished = {}, onUndo = {}, onRestart = {}, onHint = {},
                 onNext = {}, onLevels = {}, onHome = {},
-                debugInfo = debugInfo,
+                debugHeader = debugHeader,
                 stagingSpots = spots,
             )
             }
@@ -127,7 +130,12 @@ class ScreenshotTest {
         rule.mainClock.autoAdvance = false
         show(
             GameUiState(10, isBoss = true, hasNext = true, state = state, hintContainerId = hint),
-            debugInfo = "score 63.2 · 8 colours · ${level.containers.size} containers · 12x14 · ${level.queue.size} elements",
+            debugHeader = DebugHeader(
+                packLabel = "Reverse preview",
+                packColor = packColor(2),
+                info = "score 63.2 · 8 colours · ${level.containers.size} containers · 12x14 · ${level.queue.size} elements",
+                tags = "CapacityChoice M6|L10 @12  ·  Fork S4 @20",
+            ),
         )
         rule.mainClock.advanceTimeBy(300)
         save("v2_game_12x14")
@@ -267,6 +275,22 @@ class ScreenshotTest {
             )
         }
         save("v2_level_select_debug")
+    }
+
+    @Test
+    fun homeScreenPackSelector() {
+        val packs = listOf(
+            PackInfo.CAMPAIGN,
+            PackInfo("packs/motif-preview.json", "Motif preview", "Hand-placed motifs: capacity choices, forks"),
+            PackInfo("packs/reverse-preview.json", "Reverse preview", "Reverse-extraction generator, v2 rules"),
+        )
+        rule.setContent {
+            com.phloots.busjam.ui.home.HomeScreen(
+                nextLevel = 7, totalLevels = 120, totalStars = 9, onPlay = {}, onLevels = {},
+                packs = packs, selectedPack = packs[2].file,
+            )
+        }
+        save("v2_home_pack_selector")
     }
 
     @Test

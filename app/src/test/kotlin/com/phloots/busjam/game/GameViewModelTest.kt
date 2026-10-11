@@ -335,4 +335,19 @@ class GameViewModelTest {
         assertNull(ui().hintMessage)
         assertEquals(3, ui().potentialStars)
     }
+
+    @Test
+    fun winsGoToTheSinkOfThePackBeingPlayed() {
+        val motif = mutableListOf<Pair<Int, Int>>()
+        vm.start(easy, 1, hasNext = true, sink = { n, st -> motif += n to st })
+        tap(0)
+        vm.onContainerTapped(1)
+        vm.start(easy, 1, hasNext = true) // back to the default (campaign) sink mid-animation: commits to the motif pack
+        assertEquals(listOf(1 to 3), motif)
+        assertTrue(wins.isEmpty())
+        tap(0)
+        tap(1)
+        assertEquals(listOf(1 to 3), wins)
+        assertEquals(1, motif.size)
+    }
 }

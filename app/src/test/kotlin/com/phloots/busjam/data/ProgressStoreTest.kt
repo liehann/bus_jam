@@ -1,6 +1,8 @@
 package com.phloots.busjam.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -111,5 +113,45 @@ class ProgressStoreTest {
         val p = again.progress.first()
         assertEquals(2, p.starsFor(1))
         assertEquals(2, p.highestUnlocked)
+    }
+
+    @Test
+    fun packsKeepSeparateProgress() = runBlocking {
+        val ds = PreferenceDataStoreFactory.create(scope = scope) { java.io.File(tmp.root, "packs.preferences_pb") }
+        val campaign = ProgressStore(ds) // default pack = levels.json
+        val motif = ProgressStore(ds, "packs/motif-preview.json")
+        val reverse = ProgressStore(ds, "packs/reverse-preview.json")
+        campaign.recordWin(1, 3)
+        campaign.recordWin(2, 2)
+        motif.recordWin(1, 1)
+        assertEquals(mapOf(1 to 3, 2 to 2), campaign.progress.first().stars)
+        assertEquals(3, campaign.progress.first().highestUnlocked)
+        assertEquals(mapOf(1 to 1), motif.progress.first().stars)
+        assertEquals(2, motif.progress.first().highestUnlocked)
+        assertTrue(reverse.progress.first().stars.isEmpty())
+        assertEquals(1, reverse.progress.first().highestUnlocked)
+    }
+
+    @Test
+    fun campaignKeepsTheOriginalKeys() = runBlocking {
+        // progress written before packs existed (un-prefixed keys) still belongs to the campaign
+        val file = java.io.File(tmp.root, "legacy.preferences_pb")
+        val ds = PreferenceDataStoreFactory.create(scope = scope) { file }
+        ds.edit {
+            it[intPreferencesKey("stars_1")] = 3
+            it[intPreferencesKey("highest_unlocked")] = 2
+        }
+        assertEquals(mapOf(1 to 3), ProgressStore(ds).progress.first().stars)
+        assertEquals(2, ProgressStore(ds).progress.first().highestUnlocked)
+        assertTrue(ProgressStore(ds, "packs/x.json").progress.first().stars.isEmpty())
+    }
+
+    @Test
+    fun selectedPackIsRemembered() = runBlocking {
+        val ds = PreferenceDataStoreFactory.create(scope = scope) { java.io.File(tmp.root, "sel.preferences_pb") }
+        val sel = PackSelectionStore(ds)
+        assertEquals(null, sel.selected.first())
+        sel.select("packs/reverse-preview.json")
+        assertEquals("packs/reverse-preview.json", PackSelectionStore(ds).selected.first())
     }
 }

@@ -1,6 +1,8 @@
 package com.phloots.busjam.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -57,4 +59,19 @@ fun GameButton(
     ) {
         Text(text, fontSize = fontSize.sp, fontWeight = FontWeight.Bold)
     }
+}
+
+/** Coloured pill naming the level pack (debug builds), e.g. "Reverse preview · L7". */
+@Composable
+fun PackChip(text: String, color: Color, modifier: Modifier = Modifier) {
+    androidx.compose.material3.Text(
+        text,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color.White,
+        maxLines = 1,
+        modifier = modifier
+            .background(color, RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+    )
 }

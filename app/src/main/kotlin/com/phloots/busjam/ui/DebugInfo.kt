@@ -20,3 +20,24 @@ fun PackedLevel.headerInfo(): String = String.format(
     "score %.1f · %d colours · %d containers · %dx%d · %d elements",
     score, colours(), level.containers.size, level.width, level.height, level.queue.size,
 )
+
+/** Motif / fork tags of the level ("CapacityChoice M6|L10 @12  ·  ..."), or null when it has none. */
+fun PackedLevel.tagsLine(): String? = motifs.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.joinToString("  ·  ")
+
+/** Debug-build game header: which pack and level this is, its metrics and what it is testing. */
+data class DebugHeader(
+    val packLabel: String,
+    val packColor: androidx.compose.ui.graphics.Color,
+    val info: String? = null,
+    val tags: String? = null,
+)
+
+/** Distinct chip colours per pack position (campaign first). */
+fun packColor(index: Int): androidx.compose.ui.graphics.Color = listOf(
+    androidx.compose.ui.graphics.Color(0xFF263238),
+    androidx.compose.ui.graphics.Color(0xFF0072B2),
+    androidx.compose.ui.graphics.Color(0xFF7B4FC8),
+    androidx.compose.ui.graphics.Color(0xFF00785A),
+    androidx.compose.ui.graphics.Color(0xFFB0301F),
+    androidx.compose.ui.graphics.Color(0xFF8A5A1E),
+)[index.mod(6)]

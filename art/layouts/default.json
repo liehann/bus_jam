@@ -1,0 +1,17 @@
+{
+  "comment": "Critter Café screen layout in dp on a Pixel 9 Pro (412 x 919 dp, 1280 x 2856 px). Theme-independent; a theme may override the loop shape later. Positions are the targets the art is painted against; tools/art/fit_zones.py (later) measures what was actually painted.",
+  "screen_dp": [412, 919],
+  "screen_px": [1280, 2856],
+  "zones": {
+    "status_bar":   {"rect": [0, 0, 412, 40]},
+    "top_bar":      {"rect": [0, 40, 412, 88]},
+    "kitchen":      {"rect": [8, 92, 60, 150]},
+    "queue_belt":   {"path": [[60, 112], [388, 112], [388, 142], [206, 142], [206, 166]], "width": 24, "round_corner": 15},
+    "loop":         {"stadium": [8, 166, 404, 292], "band": 28},
+    "counter":      {"rect": [0, 296, 412, 384]},
+    "benches":      {"rects": [[10, 334, 96, 366], [112, 334, 198, 366], [214, 334, 300, 366], [316, 334, 402, 366]]},
+    "holders":      {"rects": [[74, 300, 94, 326], [176, 300, 196, 326], [278, 300, 298, 326], [380, 300, 400, 326]]},
+    "board":        {"rect": [8, 390, 404, 851], "frame": 6},
+    "bottom_margin": {"rect": [0, 851, 412, 919]}
+  }
+}

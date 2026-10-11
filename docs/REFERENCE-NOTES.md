@@ -62,3 +62,16 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - Loose mirror layout: chevron of stacks at top, central spine (brown car on yellow bus), rows of upright vehicles
   at the bottom.
 - For us: deliberate visible stacks (same lane, same facing) whose internal colour order fights the queue.
+
+### Level 7 mid-level + user observations (2026-10-11)
+- Mid-level: one blue bus docked with a "24" badge (likely seats remaining — would imply large bus capacity; to
+  confirm). Board cleared mostly from the right; diagonal stacks untouched with brown at their bottoms; brown still
+  dominates the queue front with green/purple islands. Dock nearly empty — pressure here is route planning.
+- **Boarding takes time** (passengers circulate around the island): impatient players dock a second same-colour bus
+  before the first fills, which can wreck the level — a real-time "impatience" trap. Ours is turn-based (≤300 ms
+  animations, queued taps). Our left-slot-steal rule already makes the double-dock costly. Decision for now: stay
+  turn-based; later options: slower visible boarding as a feel setting, or a gentle warning when docking a second
+  container of a colour that's still filling.
+- **Any-angle vehicles** make "is this free?" harder to read. User: keep 4 directions for now; note angles for later
+  (8 grid directions first).
+- UI idea: a number badge of remaining capacity under each docked container (clearer than our seat grid).

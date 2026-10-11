@@ -196,3 +196,9 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - Versus attempt 1 (pink 40 in slot 1 + pink 8 in slot 3): same decision point, but now the cheap dummy is leftmost
   so it completes first when pink arrives. Attempt 1's choice lost much later → a left-slot-steal fork (catalogue e)
   with a deep horizon, observed in a real "super hard" level.
+
+### Level 15 — "great example of the puzzle aspect" (2026-10-11, user-highlighted)
+- Carousel: lots of green, orange, purple (+ red, yellow, blue). Free on the board: brown buses, pink, a small yellow
+  car (docked, filling). No green/orange/purple container reachable; no brown/pink on the carousel.
+- Waiting colours vs reachable colours barely overlap → every move is a dummy or a dig. → DESIGN principle 12.
+- Passengers visibly walk from the gate to the docked car (boarding animation).

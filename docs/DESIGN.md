@@ -148,6 +148,13 @@ colour does not matter, so staging is a count vector.
     Decision: when to spend moves/dock slots on a valve. Effective staging size becomes a per-level difficulty dial.
     Variant seen in the reference game (L14): no small valves — the squatter's containers are big and buried and the
     relief is digging them out with other colours whose elements must squeeze through the few free spots.
+12. **Waiting ≠ reachable (mismatch windows) — user's "great example of the puzzle aspect" (ref L15, 2026-10-11).**
+    At a state, W = colours on the carousel/staging, R = colours of containers releasable right now. The puzzle is
+    strongest when |W ∩ R| is 0–1 for a stretch of several moves while the containers for W are 1–3 blockers deep:
+    every move is then a dummy (release something in R \ W) or a dig towards W, and the decision is which dummies you
+    can afford before the ring jams. Metric: along the winning line and bot lines, track |W ∩ R| per state; target
+    mismatch windows of length k (ramping with difficulty), and reject levels where the overlap is usually large
+    (they play themselves). The reverse director controls both W (staged colours) and R (exposed containers).
 5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 

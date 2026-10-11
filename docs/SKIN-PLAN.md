@@ -360,9 +360,13 @@ are lighter than this; plates need the darker values for the rim to read at 18 d
   mock's "15/20" was meant to be the level number; show the level somewhere, not necessarily there.
 - **Theme selection:** per chapter (a run of levels shares one look), not per level.
 - **Palette:** the pastel palette, tweaked where needed for readability.
+- **Party size = ticket size:** an S/M/L container seats 1/2/3 animals. The container reads more like a
+  **reservation** ("party of 3") than a meal ticket.
+- **Queue preview:** about 10 upcoming plates plus "+N" (was 20; changed in `RingField.QUEUE_MAX`).
+- **Lighting and ambient animation:** wanted. Enough to make the world feel alive, never distracting.
+- **Name:** "Kitten Jumble" no longer fits (more than kittens, restaurant/food theme). New name to be chosen.
 
 ## Open questions
 
-1. Animals per table = ticket cells (S 1, M 2, L 3)?
-2. Queue: how many upcoming plates on the belt (today 20 + "+N"; the mock shows ~27 and no "+N")? Keep "+N"?
-3. Rename app id/package (`com.phloots.busjam`) and make Kitten Jumble the default: when?
+1. New game name.
+2. Rename app id/package (`com.phloots.busjam`) and make Kitten Jumble the default: when?

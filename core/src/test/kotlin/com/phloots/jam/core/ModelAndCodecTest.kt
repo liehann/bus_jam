@@ -58,7 +58,7 @@ class ModelAndCodecTest {
         val s = GameState.initial(level)
         assertEquals(Bits128.firstN(2), s.onBoard)
         assertEquals(List(Limits.DOCK_SLOTS) { null }, s.dock)
-        val k = minOf(Limits.STAGING_SPOTS, queue.size)
+        val k = minOf(Limits.MAX_STAGING_SPOTS, queue.size)
         assertEquals(queue.take(k), s.staging)
         assertEquals(k, s.queueIndex)
         assertEquals(queue.size - k, s.queueRemaining)
@@ -68,6 +68,12 @@ class ModelAndCodecTest {
         val short = GameState.initial(Level(2, 10, 12, containers.take(1), List(4) { 0 }))
         assertEquals(List(4) { 0 }, short.staging)
         assertEquals(4, short.queueIndex)
+
+        // the level's own staging size bounds the initial staging
+        val long = List(30) { 0 }
+        val twenty = GameState.initial(Level(3, 10, 12, List(7) { Container(it, ContainerSize.S, 0, 0, it, Dir.UP) } + Container(7, ContainerSize.S, 0, 2, 0, Dir.UP), long + List(2) { 0 }, stagingSpots = 20))
+        assertEquals(20, twenty.staging.size)
+        assertEquals(20, twenty.queueIndex)
     }
 
     @Test
@@ -92,6 +98,9 @@ class ModelAndCodecTest {
         val many = List(129) { Container(it, ContainerSize.S, 0, it / 12, it % 12, Dir.UP) }
         assertEquals(emptyList(), Level(1, 12, 14, many.take(128), List(128 * 4) { 0 }).validate())
         assertTrue(Level(1, 12, 14, many, List(129 * 4) { 0 }).validate().any { "too many" in it })
+        // staging size per level: 20..40
+        for (n in listOf(20, 28, 40)) assertEquals(emptyList(), Level(1, 10, 12, one, List(4) { 0 }, n).validate())
+        for (n in listOf(19, 41, 0)) assertTrue(Level(1, 10, 12, one, List(4) { 0 }, n).validate().any { "stagingSpots" in it })
     }
 
     @Test
@@ -104,6 +113,22 @@ class ModelAndCodecTest {
         assertEquals(pack, LevelPackCodec.decode(LevelPackCodec.encode(pack, prettyPrint = true)))
         assertTrue(""""containers":[{"id":0,"size":"L"""" in LevelPackCodec.encode(pack))
         assertFailsWith<IllegalArgumentException> { LevelPackCodec.decode("""{"version":99,"levels":[]}""") }
+    }
+
+    @Test
+    fun stagingSpotsFieldIsOptionalAndOnlyWrittenWhenNotDefault() {
+        val level = Level(7, 10, 12, listOf(Container(0, ContainerSize.L, 3, 3, 0, Dir.UP)), List(10) { 3 })
+        assertEquals(Limits.MAX_STAGING_SPOTS, level.stagingSpots)
+        // default (40) is never written, so existing packs re-encode byte for byte
+        val json = LevelPackCodec.encode(LevelPack(levels = listOf(PackedLevel(level))))
+        assertFalse("stagingSpots" in json)
+        // absent -> 40
+        assertEquals(40, LevelPackCodec.decode(json).levels.single().level.stagingSpots)
+        // set -> written and read back
+        val small = level.copy(stagingSpots = 20)
+        val json20 = LevelPackCodec.encode(LevelPack(levels = listOf(PackedLevel(small))))
+        assertTrue("\"stagingSpots\":20" in json20)
+        assertEquals(small, LevelPackCodec.decode(json20).levels.single().level)
     }
 
     @Test

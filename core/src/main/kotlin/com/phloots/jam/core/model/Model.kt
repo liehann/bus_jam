@@ -1,5 +1,7 @@
 package com.phloots.jam.core.model
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 /*
@@ -18,7 +20,10 @@ object Limits {
     /** onBoard is a 128-bit mask ([Bits128]), so at most 128 containers per level. */
     const val MAX_CONTAINERS = 128
     const val DOCK_SLOTS = 4
-    const val STAGING_SPOTS = 40
+    /** Staging (waiting carousel) size is per level ([Level.stagingSpots]), in [MIN_STAGING_SPOTS]..[MAX_STAGING_SPOTS]. */
+    const val MIN_STAGING_SPOTS = 20
+    /** Largest staging size, and the default when a level does not set one (every v2 pack so far). */
+    const val MAX_STAGING_SPOTS = 40
     const val MAX_COLORS = 10
 }
 
@@ -80,7 +85,11 @@ data class Container(
  * - [containers]: <= [Limits.MAX_CONTAINERS], `containers[i].id == i`, all cells in bounds, no overlaps.
  * - [queue]: element colours, FRONT FIRST (index 0 boards first).
  * - Per colour: count of that colour in [queue] == total capacity of that colour's containers.
+ * - [stagingSpots]: number of staging spots (the real-time carousel's seats), in
+ *   [Limits.MIN_STAGING_SPOTS]..[Limits.MAX_STAGING_SPOTS]. JSON field `stagingSpots`, optional: absent means
+ *   [Limits.MAX_STAGING_SPOTS] (40), and the default is never written, so packs made before it existed are unchanged.
  */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class Level(
     val id: Int,
@@ -88,6 +97,8 @@ data class Level(
     val height: Int,
     val containers: List<Container>,
     val queue: List<Int>,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val stagingSpots: Int = Limits.MAX_STAGING_SPOTS,
 ) {
     fun inBounds(row: Int, col: Int): Boolean = row in 0 until height && col in 0 until width
 
@@ -107,6 +118,9 @@ data class Level(
             errors += "height $height out of ${Limits.MIN_HEIGHT}..${Limits.MAX_HEIGHT}"
         }
         if (containers.size > Limits.MAX_CONTAINERS) errors += "too many containers: ${containers.size}"
+        if (stagingSpots !in Limits.MIN_STAGING_SPOTS..Limits.MAX_STAGING_SPOTS) {
+            errors += "stagingSpots $stagingSpots out of ${Limits.MIN_STAGING_SPOTS}..${Limits.MAX_STAGING_SPOTS}"
+        }
         val occupied = HashMap<Cell, Int>()
         containers.forEachIndexed { i, v ->
             if (v.id != i) errors += "container at index $i has id ${v.id}"
@@ -180,7 +194,7 @@ data class Bits128(val lo: Long, val hi: Long) {
  *   A released container takes the leftmost free slot. Dispatches free a slot in place (no compaction).
  *   Boarding scans slots left to right.
  * - [staging]: colours of the staged elements in age order (oldest first, index = staging spot), size <=
- *   [Limits.STAGING_SPOTS]. Compacted: when an element boards, the ones after it move one spot left.
+ *   `level.stagingSpots`. Compacted: when an element boards, the ones after it move one spot left.
  *   Always full unless the queue is exhausted.
  * - [queueIndex]: index into `level.queue` of the next element NOT yet staged; `== queue.size` when every element
  *   has been staged.
@@ -225,13 +239,13 @@ data class GameState(
 
     companion object {
         /**
-         * All containers on board, dock empty, staging filled from the queue (first min([Limits.STAGING_SPOTS], queue.size) elements),
+         * All containers on board, dock empty, staging filled from the queue (first min(`level.stagingSpots`, queue.size) elements),
          * status PLAYING. No boarding can happen yet (the dock is empty).
          */
         fun initial(level: Level): GameState {
             val n = level.containers.size
             require(n <= Limits.MAX_CONTAINERS) { "at most ${Limits.MAX_CONTAINERS} containers" }
-            val staged = minOf(Limits.STAGING_SPOTS, level.queue.size)
+            val staged = minOf(level.stagingSpots, level.queue.size)
             return GameState(
                 level = level,
                 onBoard = Bits128.firstN(n),

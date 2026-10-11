@@ -72,6 +72,8 @@ data class DirectorParams(
     val candidates: Int = 1,
     /** Node budget of each child solve when scoring candidates. */
     val candidateBudget: Long = 8_000,
+    /** Staging spots of the generated level ([com.phloots.jam.core.model.Level.stagingSpots]). */
+    val stagingSpots: Int = Limits.MAX_STAGING_SPOTS,
 ) {
     fun summary(): String = phases.joinToString(" ") { it.summary() }
 }
@@ -114,7 +116,7 @@ data class ReverseLevel(
  *    fills and dispatches (forward: docking one waiting container releases another, the dock stays full);
  *  - trigger: un-dispatch a new waiting container (forward: an instant-fill tap whose refills reveal that colour's
  *    batch, which cascades into the waiting container and dispatches it). Its colour must be absent from the staging
- *    area at that point (the invariant: a partially filled docked container's colour is absent from all 40 staged),
+ *    area at that point (the invariant: a partially filled docked container's colour is absent from the whole staging area),
  *    so the director reserves colours ahead of time and keeps them out of new batches;
  *  - instant fill: a new container whose whole capacity of its colour is staged (forward: it fills and dispatches on
  *    docking), optionally next to a planted decoy of the same colour and another size.
@@ -127,7 +129,8 @@ data class ReverseLevel(
  */
 class Director(private val p: DirectorParams, private val seed: Long) {
     private val rng = Rng(seed * 0x9E3779B97F4A7C15uL.toLong() + 17)
-    private var state = RevState.END
+    private val spots = p.stagingSpots
+    private var state = RevState.end(spots)
     private val board = Board(p.width, p.height)
     private val sizes = ArrayList<ContainerSize>()
     private val colors = ArrayList<Int>()
@@ -181,7 +184,7 @@ class Director(private val p: DirectorParams, private val seed: Long) {
         }
         if (releasedRev.size != sizes.size) { failure = "unplaced"; return null }
         val containers = (0 until sizes.size).map { board.placed[it]!! }
-        val level = Level(0, p.width, p.height, containers, state.w)
+        val level = Level(0, p.width, p.height, containers, state.w, spots)
         val n = releasedRev.size
         val line = releasedRev.reversed().map { Move(it) }
         val forks = forksRev.map { it.copy(step = n - 1 - it.step) }.sortedBy { it.step }
@@ -286,7 +289,7 @@ class Director(private val p: DirectorParams, private val seed: Long) {
             }
         }
         val before = c.built.before
-        val level = Level(0, p.width, p.height, conts, before.w)
+        val level = Level(0, p.width, p.height, conts, before.w, spots)
         var on = Bits128.EMPTY
         for (id in placed.keys) on = on.with(id)
         val dock = before.dock.map { d -> d?.let { DockedContainer(it.id, it.color, it.space) } }
@@ -362,7 +365,7 @@ class Director(private val p: DirectorParams, private val seed: Long) {
         if (swap) {
             if (jX == 0) return null
             val free = (0 until Limits.DOCK_SLOTS).firstOrNull { it != slot && state.dock[it] == null } ?: return null
-            val head = state.w.subList(0, minOf(Limits.STAGING_SPOTS - jX, state.w.size))
+            val head = state.w.subList(0, minOf(spots - jX, state.w.size))
             bump("swap.try")
             val wColor = waitingColor(state, head, d.color) ?: return null
             val wSize = pickSize()
@@ -392,7 +395,7 @@ class Director(private val p: DirectorParams, private val seed: Long) {
         if (free < 0) return null
         val xSize = pickSize()
         val wSize = pickSize()
-        val p0 = Limits.STAGING_SPOTS - xSize.capacity
+        val p0 = spots - xSize.capacity
         bump("trig.try")
         if (after.w.size < p0) { bump("trig.short"); return null }
         val head = after.w.subList(0, p0)
@@ -446,12 +449,12 @@ class Director(private val p: DirectorParams, private val seed: Long) {
         if (decoy != null) {
             xColor = decoy.color
             xSize = rng.pick(ContainerSize.entries.filter { it != decoy!!.size })
-            val p0 = Limits.STAGING_SPOTS - xSize.capacity
+            val p0 = spots - xSize.capacity
             val staged = after.w.subList(0, minOf(p0, after.w.size)).count { it == xColor } + xSize.capacity
             kind = if (decoy.size.capacity > staged) ForkKind.OVERFILL else if (decoy.size.capacity < staged) ForkKind.LEFTOVER else null
             if (kind == null) decoy = null
         } else {
-            val head = after.w.subList(0, minOf(Limits.STAGING_SPOTS - xSize.capacity, after.w.size))
+            val head = after.w.subList(0, minOf(spots - xSize.capacity, after.w.size))
             val allowed = (0 until p.colors).filter { it !in dcols && it !in reserved }
                 .ifEmpty { (0 until p.colors).filter { it !in dcols } }
             xColor = leanColor(allowed, head, xSize.capacity) ?: return null

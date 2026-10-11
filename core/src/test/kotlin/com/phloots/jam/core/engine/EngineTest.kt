@@ -99,27 +99,39 @@ class EngineTest {
     }
 
     // ---- Staging scenarios. Each is [padded]: OFF filler elements keep staging spots 0 until OFF busy, so exactly
-    // WINDOW (7) spots take part, whatever Limits.STAGING_SPOTS is. Queue indices and spots shift by OFF.
+    // WINDOW (7) spots take part, whatever the level's staging size is. Queue indices and spots shift by OFF. Each
+    // scenario runs for every staging size in TestLevels.SPOTS (20, 28, 40).
 
-    private val off = TestLevels.OFF
+    private var spots = Limits.MAX_STAGING_SPOTS
+    private val off get() = TestLevels.off(spots)
+
+    private fun eachSpots(block: () -> Unit) {
+        for (n in TestLevels.SPOTS) {
+            spots = n
+            try { block() } catch (e: AssertionError) { throw AssertionError("stagingSpots=$n: ${e.message}", e) }
+        }
+        spots = Limits.MAX_STAGING_SPOTS
+    }
+
+    private fun pad(level: Level) = TestLevels.padded(level, spots)
 
     private fun b(e: Int, spot: Int, slot: Int, id: Int) = Event.Boarded(e + off, spot + off, slot, id)
     private fun st(e: Int, spot: Int) = Event.Staged(e + off, spot + off)
-    private val fillerStaging = List(off) { TestLevels.FILLER }
+    private val fillerStaging get() = List(off) { TestLevels.FILLER }
 
     /** Releases the filler containers of a padded [level] (built from one with [n] containers) and expects a win. */
     private fun finish(state: GameState, n: Int): GameState {
         var s = state
-        for (id in TestLevels.fillerIds(n)) s = Engine.apply(s, Move(id)).state
+        for (id in TestLevels.fillerIds(n, spots)) s = Engine.apply(s, Move(id)).state
         assertEquals(Status.WON, s.status)
         return s
     }
 
     @Test
-    fun initialStagingIsFirstStagingSpotsElements() {
-        val k = Limits.STAGING_SPOTS
+    fun initialStagingIsFirstStagingSpotsElements() = eachSpots {
+        val k = spots
         val vs = (0 until 20).map { small(it, it % 5, it / 10, it % 10, Dir.UP) }
-        val level = Level(1, 10, 2, vs, vs.flatMap { c -> List(4) { c.color } }.shuffled(Random(1)))
+        val level = Level(1, 10, 2, vs, vs.flatMap { c -> List(4) { c.color } }.shuffled(Random(1)), spots)
         val s = GameState.initial(level)
         assertEquals(level.queue.take(k), s.staging)
         assertEquals(minOf(k, level.queue.size), s.queueIndex)
@@ -127,9 +139,9 @@ class EngineTest {
     }
 
     @Test
-    fun stagingRefillsInQueueOrderAndOldestMatchBoards() {
+    fun stagingRefillsInQueueOrderAndOldestMatchBoards() = eachSpots {
         // S colour 0 (id 0) and L colour 1 (id 1). Colour-0 elements at queue indices 0, 2, 4, 6.
-        val level = TestLevels.padded(
+        val level = pad(
             Level(1, 2, 3, listOf(small(0, 0, 0, 0, Dir.UP), v(1, ContainerSize.L, 1, 0, 1, Dir.UP)), listOf(0, 1, 0, 1, 0, 1, 0) + List(7) { 1 }),
         )
         val s0 = GameState.initial(level)
@@ -154,13 +166,13 @@ class EngineTest {
         val t2 = Engine.apply(s, Move(1))
         assertEquals(List(10) { 1 }, boardedTo(t2.events))
         assertEquals(listOf(1, 3, 5, 7, 8, 9, 10, 11, 12, 13).map { it + off }, t2.events.filterIsInstance<Event.Boarded>().map { it.elementIndex })
-        assertEquals(3 + TestLevels.TRAIL, t2.events.filterIsInstance<Event.Staged>().size)
+        assertEquals(3 + TestLevels.trail(spots), t2.events.filterIsInstance<Event.Staged>().size)
         finish(t2.state, 2)
     }
 
     @Test
-    fun oldestStagedElementOfTheColourBoards() {
-        val level = TestLevels.padded(
+    fun oldestStagedElementOfTheColourBoards() = eachSpots {
+        val level = pad(
             Level(1, 2, 1, listOf(small(0, 0, 0, 0, Dir.UP), small(1, 1, 0, 1, Dir.UP)), q(1 to 2, 0 to 1, 1 to 2, 0 to 3)),
         )
         // window [1,1,0,1,1,0,0]: the colour-0 element at window spot 2 (queue index 2) is the oldest and boards first.
@@ -170,10 +182,10 @@ class EngineTest {
     }
 
     @Test
-    fun leftContainerFillsBeforeRightOfSameColour() {
+    fun leftContainerFillsBeforeRightOfSameColour() = eachSpots {
         // c0 = M colour 0 (slot 0), c1 = S colour 0 (slot 1) docked while no colour 0 is staged; c2 (colour 1)
         // then lets the colour-0 elements flow: c0 takes all 6 before c1 gets any.
-        val level = TestLevels.padded(
+        val level = pad(
             Level(
                 1, 4, 2,
                 listOf(
@@ -197,9 +209,9 @@ class EngineTest {
     }
 
     @Test
-    fun laterContainerInFreedLeftSlotTakesPriorityEvenIfRightNeedsOne() {
+    fun laterContainerInFreedLeftSlotTakesPriorityEvenIfRightNeedsOne() = eachSpots {
         // c0 = S colour 2, c1 = S colour 0, c2 = M colour 0, c3 = L colour 1.
-        val level = TestLevels.padded(
+        val level = pad(
             Level(
                 1, 4, 3,
                 listOf(
@@ -242,8 +254,8 @@ class EngineTest {
     }
 
     @Test
-    fun partialBoardingKeepsContainerDocked() {
-        val level = TestLevels.padded(
+    fun partialBoardingKeepsContainerDocked() = eachSpots {
+        val level = pad(
             Level(1, 2, 2, listOf(v(0, ContainerSize.M, 0, 0, 0, Dir.UP), small(1, 1, 0, 1, Dir.UP)), q(0 to 2, 1 to 4, 0 to 4)),
         )
         val t = Engine.apply(GameState.initial(level), Move(0))
@@ -256,14 +268,16 @@ class EngineTest {
             b(7, 4, 0, 0),
         )
         // After the last real element the trailing filler elements (if any) are staged.
-        for (k in 0 until minOf(TestLevels.TRAIL, 1)) expected += st(10, 6)
+        for (k in 0 until minOf(TestLevels.trail(spots), 1)) expected += st(10, 6)
         expected += listOf(b(8, 4, 0, 0))
-        for (k in 1 until minOf(TestLevels.TRAIL, 2)) expected += st(11, 6)
+        for (k in 1 until minOf(TestLevels.trail(spots), 2)) expected += st(11, 6)
         expected += listOf(b(9, 4, 0, 0), Event.Dispatched(0, 0))
+        // a third trailing filler refills the spot freed by the last boarding (after the dispatch)
+        if (TestLevels.trail(spots) >= 3) expected += st(12, 6)
         assertEquals(expected, t.events)
 
         // Partial: the L takes the 3 staged zeros, the refills bring colour 1 only; it stays docked.
-        val lvl = TestLevels.padded(
+        val lvl = pad(
             Level(1, 2, 3, listOf(v(0, ContainerSize.L, 0, 0, 0, Dir.UP), v(1, ContainerSize.L, 1, 0, 1, Dir.UP)), q(0 to 3, 1 to 10, 0 to 7)),
         )
         val t5 = Engine.apply(GameState.initial(lvl), Move(0))
@@ -273,10 +287,10 @@ class EngineTest {
     }
 
     @Test
-    fun dispatchFreesSlotAndNextReleaseTakesLeftmostHole() {
+    fun dispatchFreesSlotAndNextReleaseTakesLeftmostHole() = eachSpots {
         // c0 (S colour 0) docks in slot 0, c1 (M colour 1) in slot 1; c1's first element uncovers c0's colour, c0
         // fills and dispatches, leaving a hole at slot 0 left of the partially filled c1.
-        val level = TestLevels.padded(
+        val level = pad(
             Level(
                 1, 4, 2,
                 listOf(small(0, 0, 0, 0, Dir.UP), v(1, ContainerSize.M, 1, 0, 1, Dir.UP), small(2, 2, 0, 2, Dir.UP), small(3, 3, 0, 3, Dir.UP)),
@@ -307,10 +321,10 @@ class EngineTest {
     }
 
     @Test
-    fun deadlockWhenDockFillsWithoutMatch() {
+    fun deadlockWhenDockFillsWithoutMatch() = eachSpots {
         // Column of S containers colours 0..3 above an L container of colour 4; the window holds only colour 4.
         val vs = (0 until 4).map { small(it, it, 2 * it, 0, Dir.UP) } + v(4, ContainerSize.L, 4, 8, 0, Dir.UP)
-        val level = TestLevels.padded(Level(1, 2, 11, vs, q(4 to 10, 0 to 4, 1 to 4, 2 to 4, 3 to 4)))
+        val level = pad(Level(1, 2, 11, vs, q(4 to 10, 0 to 4, 1 to 4, 2 to 4, 3 to 4)))
         var s = GameState.initial(level)
         for (i in 0 until 3) {
             s = Engine.apply(s, Move(i)).state
@@ -389,12 +403,16 @@ class EngineTest {
         }
     }
 
-    /** Random levels for differential tests: small padded ones (7-spot window) and large natural ones. */
-    private fun diffLevels(rnd: Random, small: Int, big: Int): List<Level> =
+    /**
+     * Random levels for differential tests: small padded ones (7-spot window) and large natural ones, for every staging
+     * size in TestLevels.SPOTS.
+     */
+    private fun diffLevels(rnd: Random, small: Int, big: Int): List<Level> = TestLevels.SPOTS.flatMap { n ->
         List(small) {
             val l = TestLevels.randomSmall(rnd, width = 6, height = 6, maxContainers = 10, colors = 4, largeOdds = 4)
-            if (rnd.nextBoolean()) TestLevels.padded(l) else l
-        } + List(big) { TestLevels.bigSolvable(seed = 7000L + it, containers = 50 + 10 * (it % 6), perturb = 150) }
+            if (rnd.nextBoolean()) TestLevels.padded(l, n) else l.copy(stagingSpots = n)
+        } + List(big) { TestLevels.bigSolvable(seed = 7000L + it, containers = 50 + 10 * (it % 6), perturb = 150, spots = n) }
+    }
 
     /** Engine vs the naive [RefEngine]: identical transitions (state, status and every event) on random taps. */
     @Test
@@ -445,6 +463,7 @@ class EngineTest {
                 val moves = Engine.legalMoves(s)
                 d.exitable(lo, hi, ex)
                 assertEquals(moves.map { it.containerId }, Bits128(ex[0], ex[1]).ids())
+                if (moves.isEmpty()) break // a random level can start with nothing exitable (initial status is PLAYING)
                 val m = moves[rnd.nextInt(moves.size)].containerId
                 s = Engine.apply(s, Move(m)).state
                 d.exitAndBoard(a, b, m, p)

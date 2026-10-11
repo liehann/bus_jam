@@ -74,7 +74,7 @@ object RefEngine {
                 staging.removeAt(spot)
                 dock[slotIdx] = if (dc.spaceLeft == 1) null else dc.copy(spaceLeft = dc.spaceLeft - 1)
                 if (dc.spaceLeft == 1) ev += Event.Dispatched(slotIdx, dc.containerId)
-                while (staging.size < Limits.STAGING_SPOTS && qi < s.level.queue.size) {
+                while (staging.size < s.level.stagingSpots && qi < s.level.queue.size) {
                     ev += Event.Staged(qi, staging.size)
                     staging += s.level.queue[qi] to qi
                     qi++

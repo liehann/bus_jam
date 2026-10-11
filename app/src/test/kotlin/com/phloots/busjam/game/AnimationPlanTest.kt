@@ -21,7 +21,7 @@ class AnimationPlanTest {
         ),
         queue = listOf(1, 0, 0, 0, 1, 0, 1, 1, 1),
     )
-    // Explicit 7-spot staging so the fixture does not depend on Limits.STAGING_SPOTS.
+    // Explicit 7-spot staging so the fixture does not depend on the staging size.
     private val initial = GameState(level, Bits128.firstN(2), List(4) { null }, level.queue.take(7), 7)
 
     // Staging [1,0,0,0,1,0,1] (queue 0..6), queueIndex 7. Container 0 (colour 0, capacity 4) docks in slot 0;

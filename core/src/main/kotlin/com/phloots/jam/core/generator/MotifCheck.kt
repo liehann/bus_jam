@@ -175,7 +175,7 @@ object MotifCheck {
         for (c in level.containers) if (reach[c.id] && c.color in ys) other += c.size.capacity
         for (dk in s.dock) if (dk != null && dk.color in ys) other += dk.spaceLeft
         trace?.append("block=$bestStart+$bestLen consumed=$consumed other=$other qi=${s.queueIndex} ")
-        if (bestLen - consumed - other < Limits.STAGING_SPOTS) return false
+        if (bestLen - consumed - other < level.stagingSpots) return false
         val avail = IntArray(Limits.MAX_COLORS)
         for (c in s.staging) avail[c]++
         for (k in s.queueIndex until end) avail[q[k]]++
@@ -217,7 +217,7 @@ object MotifCheck {
                 for (j in ml.runSpans[g]) if (ml.order[j] in v.shadow) steps += j
             }
         }
-        ml.order.forEachIndexed { j, id -> if (core[id] && states[j].queueRemaining >= Limits.STAGING_SPOTS) steps += j }
+        ml.order.forEachIndexed { j, id -> if (core[id] && states[j].queueRemaining >= ml.level.stagingSpots) steps += j }
         val list = steps.toList()
         val sample = if (list.size <= maxSamples) list else List(maxSamples) { list[it * list.size / maxSamples] }
         var sampled = 0

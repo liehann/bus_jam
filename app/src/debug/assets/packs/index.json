@@ -18,5 +18,10 @@
   "file": "hybrid-preview-4.json",
   "label": "Hybrid preview 4",
   "description": "Quality-tuned (docs/LEVEL-QUALITY.md): decisions from the first moves, climax colour heralded early so the chain can be planned (L10 hard, L19 scarce key, L20 super hard)"
+ },
+ {
+  "file": "ring-size-test.json",
+  "label": "Ring size test",
+  "description": "Per-level carousel size: levels from Hybrid preview 3/4 and Motif preview 2 replayed with 20 or 28 seats (solver-checked; the tag under the title names the source)"
  }
 ]

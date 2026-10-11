@@ -33,7 +33,7 @@ import kotlin.random.Random
  * Queue structure (DESIGN.md v2 "Queue structure"):
  * @property runs number of long single-colour runs (0..2). Each run has its own colour; the intended line digs out
  *   several containers of that colour in succession while the run is staged.
- * @property runLength run length range, in elements (kept <= [Limits.STAGING_SPOTS] so a run fits in staging).
+ * @property runLength run length range, in elements (kept <= [Limits.MAX_STAGING_SPOTS] so a run fits in staging; generated levels use 40 spots).
  * @property runMaxBlockers hard chain links per run (released without their elements being staged; they sit in the
  *   dock until after the run, so 3 = the run is played on one free slot).
  * @property buriedPreference probability (0..1) that the next run target is picked among containers whose blocking

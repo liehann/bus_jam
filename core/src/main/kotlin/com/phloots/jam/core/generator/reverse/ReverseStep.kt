@@ -9,7 +9,7 @@ import com.phloots.jam.core.model.Limits
  * The game is played backwards from the empty end state. A reverse state mirrors a STABLE forward state (one between
  * taps, after the boarding loop reached its fixpoint):
  *  - [dock]: 4 positional slots, each a docked container (id, colour, spaceLeft >= 1) or null;
- *  - [w]: the remaining elements in order, staging first: `w[0 until min(40, w.size)]` is the staging area (oldest
+ *  - [w]: the remaining elements in order, staging first: `w[0 until min(stagingSpots, w.size)]` is the staging area (oldest
  *    first) and the rest is the queue (front first). Using one list makes un-refill implicit: putting k elements
  *    back into the front part of `w` pushes the last k staged elements back to the queue front.
  *
@@ -28,12 +28,15 @@ import com.phloots.jam.core.model.Limits
 data class Docked(val id: Int, val color: Int, val space: Int)
 
 /** Mutable-by-copy reverse state. */
-data class RevState(val dock: List<Docked?>, val w: List<Int>) {
-    val staging: List<Int> get() = w.subList(0, minOf(Limits.STAGING_SPOTS, w.size))
+data class RevState(val dock: List<Docked?>, val w: List<Int>, val stagingSpots: Int = Limits.MAX_STAGING_SPOTS) {
+    val staging: List<Int> get() = w.subList(0, minOf(stagingSpots, w.size))
     val dockUsed: Int get() = dock.count { it != null }
 
     companion object {
-        val END = RevState(List(Limits.DOCK_SLOTS) { null }, emptyList())
+        val END = end(Limits.MAX_STAGING_SPOTS)
+
+        /** The empty end state of a level with [stagingSpots] staging spots. */
+        fun end(stagingSpots: Int) = RevState(List(Limits.DOCK_SLOTS) { null }, emptyList(), stagingSpots)
     }
 }
 
@@ -62,13 +65,13 @@ object ForwardSim {
                 if (j < 0) continue
                 staging.removeAt(j)
                 dock[k] = if (dc.space == 1) null else dc.copy(space = dc.space - 1)
-                while (staging.size < Limits.STAGING_SPOTS && qi < w.size) staging += w[qi++]
+                while (staging.size < s.stagingSpots && qi < w.size) staging += w[qi++]
                 boarded = true
                 break
             }
             if (!boarded) break
         }
-        return RevState(dock, staging + w.subList(qi, w.size))
+        return RevState(dock, staging + w.subList(qi, w.size), s.stagingSpots)
     }
 }
 
@@ -146,7 +149,7 @@ object ReverseStep {
         if (dockS.count { it != null } >= Limits.DOCK_SLOTS) return null
         if (sumJ > 0 && jX == 0) return null
         val w = after.w
-        val p = Limits.STAGING_SPOTS - jX
+        val p = after.stagingSpots - jX
         if (sumJ > 0 && w.size < p) return null
         val head = w.subList(0, minOf(p, w.size))
         val tail = w.subList(minOf(p, w.size), w.size)
@@ -165,7 +168,7 @@ object ReverseStep {
             val rb = orders[attempt % orders.size]
             val ws = ArrayList<Int>(w.size + jX + sumJ)
             ws += a; ws += rb; ws += tail
-            val before = RevState(dockS, ws)
+            val before = RevState(dockS, ws, after.stagingSpots)
             if (!ForwardSim.stable(before)) return@repeat
             val slot = dockS.indexOfFirst { it == null }
             val fwd = ForwardSim.tap(before, xId, xColor, xCap) ?: return@repeat

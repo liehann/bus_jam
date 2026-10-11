@@ -63,6 +63,7 @@ object Engine {
         val stagedIdx = state.stagedElementIndices().toMutableList()
         var qi = state.queueIndex
         val queue = level.queue
+        val spots = level.stagingSpots
         while (true) {
             var boarded = false
             for (s in 0 until Limits.DOCK_SLOTS) {
@@ -78,7 +79,7 @@ object Engine {
                 } else {
                     dock[s] = dc.copy(spaceLeft = dc.spaceLeft - 1)
                 }
-                while (staging.size < Limits.STAGING_SPOTS && qi < queue.size) {
+                while (staging.size < spots && qi < queue.size) {
                     events += Event.Staged(qi, staging.size)
                     staging += queue[qi]
                     stagedIdx += qi

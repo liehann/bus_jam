@@ -17,7 +17,7 @@ import java.lang.Long.numberOfTrailingZeros
  *    Positional (slot 0 = leftmost). The container id is not kept: once docked, only its colour and space matter.
  *  - a bits [32, 44): queueIndex (next element not yet staged), < 4096.
  *  - b bits [6*c, 6*c+6) for colour c (0 until [Limits.MAX_COLORS] <= 10, so <= 60 bits): number of staged elements of colour c (0..63; staging holds
- *    [Limits.STAGING_SPOTS] <= 63). Element order inside staging never matters (boarding picks by colour;
+ *    `level.stagingSpots` <= [Limits.MAX_STAGING_SPOTS] <= 63). Element order inside staging never matters (boarding picks by colour;
  *    same-colour elements are identical).
  *
  * For a balanced level b is a function of (onBoard, a), so (lo, hi, a, b) is a lossless and compact memo key.
@@ -33,6 +33,8 @@ internal class LevelData private constructor(val level: Level) {
     val allHi: Long = maskBits(n - 64)
     val queue: IntArray = level.queue.toIntArray()
     val qSize = queue.size
+    /** Staging spots of this level ([Level.stagingSpots]). */
+    val staging: Int = level.stagingSpots
 
     /** cell index (row*width+col) -> container id occupying it, or -1. */
     val occupant = IntArray(width * height) { -1 }
@@ -61,7 +63,7 @@ internal class LevelData private constructor(val level: Level) {
     init {
         require(n <= Limits.MAX_CONTAINERS) { "at most ${Limits.MAX_CONTAINERS} containers" }
         require(qSize < (1 shl 12)) { "queue too long" }
-        require(Limits.STAGING_SPOTS <= 63) { "staging counts are 6 bits" }
+        require(staging in 1..63) { "staging counts are 6 bits (stagingSpots=$staging)" }
         require(COLORS <= 10) { "staging counts: 6 bits x colours must fit a Long; dock colour is 4 bits" }
         for (v in level.containers) {
             for (c in v.cells()) {
@@ -395,7 +397,7 @@ internal class LevelData private constructor(val level: Level) {
             b -= k.toLong() shl cShift
             total -= k
             var qi = ((a ushr 32) and 0xFFFL).toInt()
-            while (total < STAGING && qi < qSize) {
+            while (total < staging && qi < qSize) {
                 b += 1L shl (6 * queue[qi])
                 qi++
                 total++
@@ -450,7 +452,6 @@ internal class LevelData private constructor(val level: Level) {
     companion object {
         const val COLORS = Limits.MAX_COLORS
         const val FAR = 1 shl 20
-        const val STAGING = Limits.STAGING_SPOTS
         const val PLAYING = 0
         const val WON = 1
         const val DEADLOCK = 2

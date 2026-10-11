@@ -67,9 +67,11 @@ class RingLayout(
     private val dp = density.density
     private val gap = (if (compact) 4 else 8) * dp
 
-    // carousel
+    // carousel. The oval's size depends only on the width (so the board keeps its size whatever the level's seat
+    // count, 20..40); a smaller ring spaces its seats further apart and draws them up to 35% larger.
     val ringH = if (compact) 84 * dp else (width * 0.32f).coerceIn(100 * dp, 130 * dp)
-    private val seatGuess = (if (compact) 8 else 11) * dp
+    private val seatScale = kotlin.math.sqrt(Limits.MAX_STAGING_SPOTS.toFloat() / seatCount.coerceAtLeast(1)).coerceIn(1f, 1.35f)
+    private val seatGuess = (if (compact) 8 else 11) * dp * seatScale
     private val top0 = 2 * dp
     val trackTop = top0 + seatGuess
     val trackBottom = top0 + ringH - seatGuess

@@ -153,7 +153,7 @@ fun main(args: Array<String>) {
         val dps = r.sl.stalls.joinToString(",") { it.dummies.size.toString() }
         val partial = r.sl.stalls.any { s -> s.dummies.any { it[3] > 0 } }
         val rolling = r.sl.stalls.any { it.rolled.isNotEmpty() && it.carried > 0 }
-        val sq = sc.squat?.let { "${r.sl.squat?.color?.let { c -> StallLevel.colorName(c) }} ${40 - it.squat}" } ?: "-"
+        val sq = sc.squat?.let { "${r.sl.squat?.color?.let { c -> StallLevel.colorName(c) }} ${sc.stagingSpots - it.squat}" } ?: "-"
         val top = forkTags.sortedByDescending { it.b * it.h }.take(3).joinToString(" ") { "${it.b}/${it.w}/${it.h}" }.ifEmpty { "-" }
         val bots = r.e.bots.joinToString(",") { "${it.name}${if (it.won) "W" else ""}(${it.moves})" }
         rows += "| $id | ${lv.colors().size} | ${lv.containers.size} | ${lv.width}x${lv.height} | ${sc.stalls.joinToString(" ") { it.summary() }} | $dps | " +

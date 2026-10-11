@@ -46,6 +46,9 @@ data class LevelMetrics(
         const val KEYSTONE_FANIN = 8
         const val MAX_WINDOW_DEPTH = 3
 
+        /** Staged count at which a colour "floods" the carousel: 15 of 40, scaled to the level's staging size. */
+        fun floodThreshold(level: Level): Int = (15 * level.stagingSpots + Limits.MAX_STAGING_SPOTS / 2) / Limits.MAX_STAGING_SPOTS
+
         /**
          * Dig depth per on-board container in [s]: the number of on-board containers in its transitive blocker set
          * (0 = releasable now); -1 for containers off the board.
@@ -341,11 +344,11 @@ data class ScarceMetrics(
             var s = GameState.initial(level)
             for (m in line) { if (s.status != Status.PLAYING) break; states += s; s = Engine.apply(s, m).state }
             val col = line.map { level.containers[it.containerId].color }
-            // The chain: the colour that floods the carousel most (its run block), from the first state with >= 15 of it
+            // The chain: the colour that floods the carousel most (its run block), from the first state with >= 15 (of 40) of it
             // staged; its length = taps of that colour until its staged count falls below 4.
             var chainColor = -1; var peak = 0
             for (st in states) for (c in st.staging.toSet()) { val n = st.staging.count { it == c }; if (n > peak) { peak = n; chainColor = c } }
-            val flood = minOf(15, peak)
+            val flood = minOf(LevelMetrics.floodThreshold(level), peak)
             val chainAt = states.indexOfFirst { st -> st.staging.count { it == chainColor } >= flood }
             var chainLen = 0
             if (chainAt >= 0) for (i in chainAt until states.size) {

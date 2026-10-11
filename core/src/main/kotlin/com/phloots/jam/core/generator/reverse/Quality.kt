@@ -168,8 +168,9 @@ object Quality {
         var chainColor = -1
         var top = 0
         for (st in gs) for (c in st.staging.toSet()) { val k = st.staging.count { it == c }; if (k > top) { top = k; chainColor = c } }
-        // Flood threshold: 15 staged, or 60% of the peak when a herald / squatter keeps more than 15 waiting early.
-        val flood = maxOf(minOf(15, top), (top * 3) / 5)
+        // Flood threshold: 15 staged (of 40; scaled to the level's staging size), or 60% of the peak when a herald /
+        // squatter keeps more than that waiting early.
+        val flood = maxOf(minOf(LevelMetrics.floodThreshold(level), top), (top * 3) / 5)
         val chainAt = gs.indexOfFirst { st -> st.staging.count { it == chainColor } >= flood }
         var chainEnd = chainAt
         var chainLen = 0

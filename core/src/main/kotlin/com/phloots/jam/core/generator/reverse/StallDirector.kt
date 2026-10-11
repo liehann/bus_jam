@@ -159,6 +159,8 @@ data class StallScript(
     val openCandidates: Int = 0,
     /** Fraction of the line from which taps count as the climax (deep forks favoured); 0 = none. */
     val climaxAt: Double = 0.0,
+    /** Staging spots of the generated level ([com.phloots.jam.core.model.Level.stagingSpots]). */
+    val stagingSpots: Int = Limits.MAX_STAGING_SPOTS,
 ) {
     fun summary(): String = "L$lead " + stalls.joinToString(" ") { it.summary() } + " X$exitFill" +
         (squat?.let { " Q(${it.squat}/${it.bigs}L v${it.valves.size})" } ?: "") +
@@ -168,7 +170,7 @@ data class StallScript(
 /**
  * Squatter colour + relief valves (DESIGN.md v2 principle 11): colour Q whose elements arrive early (ramping up over
  * [rampTaps] taps to [squat] staged) and stay, because its [bigs] L containers are released last (buried deepest), so
- * the effective staging window is 40 - [squat]. [valves]: small Q containers (sizes) released mid-level, each placed
+ * the effective staging window is stagingSpots - [squat]. [valves]: small Q containers (sizes) released mid-level, each placed
  * right before the given segment index starts, freeing their capacity of staging spots; each is buried behind
  * [valveCover] later releases.
  */
@@ -248,7 +250,7 @@ data class StallLevel(
         squat?.let { sq ->
             val total = level.containers.filter { it.color == sq.color }.sumOf { it.size.capacity }
             val peak = script.squat?.squat ?: 0
-            out += "Squatter ${colorName(sq.color)} $total -> eff ${Limits.STAGING_SPOTS - peak}, valves " +
+            out += "Squatter ${colorName(sq.color)} $total -> eff ${level.stagingSpots - peak}, valves " +
                 sq.valves.joinToString(" ") { v -> "${level.containers[v[0]].size}${v[1]}@${v[2]}" }.ifEmpty { "none" }
         }
         return out
@@ -277,7 +279,8 @@ data class StallLevel(
  */
 class StallDirector(private val sc: StallScript, private val seed: Long) {
     private val rng = Rng(seed * -0x61c8864680b583ebL + 0x51ED)
-    private var state = RevState.END
+    private val spots = sc.stagingSpots
+    private var state = RevState.end(spots)
     private val board = Board(sc.width, sc.height)
     private val sizes = ArrayList<ContainerSize>()
     private val colors = ArrayList<Int>()
@@ -584,7 +587,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         }
         if (state.dockUsed != 0 || releasedRev.size != sizes.size) { failure = "unfinished"; return null }
         val containers = (0 until sizes.size).map { board.placed[it]!! }
-        val level = Level(0, sc.width, sc.height, containers, state.w)
+        val level = Level(0, sc.width, sc.height, containers, state.w, spots)
         val line = releasedRev.reversed().map { Move(it) }
         // Slack of each island: staging spots not taken by the run colour just before the island target.
         val infos = groups.indices.map { g ->
@@ -595,7 +598,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 var st = GameState.initial(level)
                 for (m in line.take(gr.islandStep)) st = Engine.apply(st, m).state
                 val a = runColors[gr.islandOf]?.firstOrNull() ?: -1
-                slack = Limits.STAGING_SPOTS - st.staging.count { it == a } - (if (q >= 0) st.staging.count { it == q } else 0)
+                slack = spots - st.staging.count { it == a } - (if (q >= 0) st.staging.count { it == q } else 0)
             }
             val kind = (when {
                 gr.cascade -> "cascade"; gr.steal -> "steal"; gr.islandOf >= 0 -> "irun-B"
@@ -702,14 +705,14 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 val d = after.dock[slot] ?: return why("dummy not docked")
                 if (d.id != di.id) return why("slot mismatch")
                 val jX = cap(d.id) - d.space
-                val head = after.w.subList(0, minOf(Limits.STAGING_SPOTS - jX, after.w.size))
+                val head = after.w.subList(0, minOf(spots - jX, after.w.size))
                 val gr = groups[di.group]
                 // Juggle hand-over: this docking's boardings reveal the elements that complete older containers.
                 val specs = ArrayList<Pair<ContainerSize, Int>>()
                 val ids = HashMap<Int, Pair<Int, Int>>()
                 val rec = if (tap.completes.isEmpty()) emptyList() else {
                     if (jX == 0) return why("juggle preload 0")
-                    if (after.w.size < Limits.STAGING_SPOTS - jX) return why("short w (juggle)")
+                    if (after.w.size < spots - jX) return why("short w (juggle)")
                     completions(tap, fwd, head, d.color, jX, base, specs, ids) ?: return why("juggle colour" + if (System.getenv("HDEBUG") != null) " head=${head.groupingBy { it }.eachCount()} dock=${after.dock.map { it?.color }} pal=${palette()} res=${reservedFor[fwd]}" else "")
                 }
                 // Juggle preloads arrive just before docking (newest staged), so the carousel holds few colours at once
@@ -740,7 +743,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 val g = tap.group
                 val gr = groups[g]
                 val size = if (tap.kind == PK.TARGET) ContainerSize.L else pick(sc.runSizeWeights)
-                val p0 = Limits.STAGING_SPOTS - size.capacity
+                val p0 = spots - size.capacity
                 val head = after.w.subList(0, minOf(p0, after.w.size))
                 val specs = ArrayList<Pair<ContainerSize, Int>>()
                 val ids = HashMap<Int, Pair<Int, Int>>()
@@ -799,7 +802,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
             }
             PK.FILLER -> {
                 val size = pick(sc.sizeWeights)
-                val p0 = Limits.STAGING_SPOTS - size.capacity
+                val p0 = spots - size.capacity
                 val head = after.w.subList(0, minOf(p0, after.w.size))
                 val res = reservedAt[fwd].orEmpty()
                 val allowed = palette().filter { it !in dcols }.let { l -> l.filter { it !in res }.ifEmpty { l } }
@@ -968,7 +971,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
             }
         }
         val before = c.built.before
-        val level = Level(0, sc.width, sc.height, conts, before.w)
+        val level = Level(0, sc.width, sc.height, conts, before.w, spots)
         var on = Bits128.EMPTY
         for (id in placed.keys) on = on.with(id)
         val dock = before.dock.map { d -> d?.let { DockedContainer(it.id, it.color, it.space) } }

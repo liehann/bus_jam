@@ -14,7 +14,7 @@
 | seats / seatsLeft | capacity / spaceLeft |
 | Passenger | Element |
 | Parking slot(s) | Dock / DockSlot (4 slots) |
-| (new) | Staging area (40 spots) |
+| (new) | Staging area (20–40 spots, per level) |
 | Queue | Queue |
 | Exit / park | Release (leaves board, docks) |
 | Depart | Dispatch (full container leaves dock) |
@@ -29,8 +29,10 @@ A length-1 container still faces a direction.
 (onBoard bitmask = two Longs). Any edge is an exit.
 
 **Staging area (replaces "front of queue only"):**
-- **40** staging spots (was 7; changed after playtest comparison with Bus Fever Party — ~40 waiting, ~50 vehicles).
-  Keep it a single constant so it can be tuned. Whenever a spot is free and the queue is non-empty, the next queue element moves into staging
+- **20–40** staging spots, **per level** (`Level.stagingSpots`, JSON field `stagingSpots`, optional, default 40;
+  validated to `Limits.MIN_STAGING_SPOTS`..`Limits.MAX_STAGING_SPOTS`). History: 7, then 40 (playtest comparison
+  with Bus Fever Party — ~40 waiting, ~50 vehicles), then per level 20–40 (user decision 2026-10-11; the generators
+  still produce 40 until the size becomes a level-design dial). Whenever a spot is free and the queue is non-empty, the next queue element moves into staging
   (auto-refill, in queue order). Staging is therefore always full unless the queue is exhausted.
 - Boarding loop, run after every state change until nothing changes:
   1. Scan dock slots **left to right** (positional, slot 0 first). For the leftmost docked container that has free
@@ -59,7 +61,9 @@ colour does not matter, so staging is a count vector.
   over greedy-match scores at several temperatures + epsilon-random) play the level through Engine; loss rate is
   the main difficulty signal ("how easy is it to blunder into a jam"). One-deviation trap metrics read ~0 at 40
   staging, so T/D/O get low weight. Floor from level 2: naive bots lose and rollout loss rate ≥ X.
-- Staging stays at 40 (user confirmed after preview).
+- Staging size is a per-level property, 20–40 (user decision 2026-10-11; replaces "staging stays at 40"). The rules,
+  solver, scoring, metrics and real-time carousel all read `level.stagingSpots`; the generators keep producing 40
+  for now.
 - Replace P (it saturated at 1.0 in v1): P = mean over solution-path states of occupied dock slots / 4.
 - S normalisation: colours 4→8, containers 30→110, cells 120→168.
 - Campaign: fix the v1 boss bug — bosses must score meaningfully above level 9 of their cycle (target ≈ +6–10
@@ -194,23 +198,25 @@ colour does not matter, so staging is a count vector.
 5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 
-**Real-time carousel (v3, user decision 2026-10-11).** The waiting area is a rotating ring of 40 seats
-(~4 s per rotation, ~0.1 s per seat). The boarding gate is a window of `RtConfig.gateWidth` (default 6) consecutive
+**Real-time carousel (v3, user decision 2026-10-11).** The waiting area is a rotating ring of N = `level.stagingSpots`
+seats (20–40; ~0.1 s per seat, so ~4 s per rotation at 40 and ~2 s at 20). The entry point defaults to half-way round
+the ring from the gate (`RtConfig.entryPosition` = half ring, i.e. position N/2), so the 6-seat window and the entry
+fit every size. The boarding gate is a window of `RtConfig.gateWidth` (default 6) consecutive
 seats next to the dock: matching elements inside it board one after another, the most downstream first, at most one
 start per `boardStaggerTicks` (default 75 ms), so a burst rolls down the window as a wave; elements entering the
 window later board as they arrive (leftmost same-colour container with space first). The vacated seat travels on; an
 element from the queue line can only step on when an empty seat passes the entry point. A level starts with every
-element in the queue line and an empty ring, which fills through the entry (~4 s). The player may tap at any time,
+element in the queue line and an empty ring, which fills through the entry (one seat step per element). The player may tap at any time,
 including during the fill and while boarding/refill is still in progress (impatience can lose a level).
 - **Patient play is the reference:** if the carousel runs undisturbed after a tap, it must converge to exactly
   `Engine.apply`'s settled state (same-colour elements are interchangeable; everything boardable boards; leftmost
   same-colour container first). Solver, generator and scoring keep operating on settled states; "solvable" means
-  solvable by patient play. The initial fill ends in Engine's initial state (first 40 staged); a single tap during
+  solvable by patient play. The initial fill ends in Engine's initial state (first N staged); a single tap during
   the fill also converges to `Engine.apply` from that state.
 - Undo = rewind to just before the last tap, including carousel phase. Deterministic: real-time state is advanced
   by integer ticks; the UI maps wall-clock time to ticks.
 
-**UI (v2):** board, then a staging area of 40 spots (compact multi-row grid) between the dock and the two-lane queue preview
+**UI (v2):** board, then a staging area of the level's 20–40 spots (compact multi-row grid) between the dock and the two-lane queue preview
 (left lane = next ~12 after staging, right lane = ~12 from the halfway point). Keep current car art for now.
 
 **Reviewer fixes to include:** record a win only when the WON animation finishes (undo mid-animation must not keep

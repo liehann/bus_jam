@@ -29,10 +29,11 @@ internal object LineSim {
         val occ = IntArray(w * level.height) { -1 }
         for (v in level.containers) for (c in v.cells()) occ[c.row * w + c.col] = v.id
         val slots = arrayOfNulls<Docked>(Limits.DOCK_SLOTS)
-        val staging = ArrayList<Int>(Limits.STAGING_SPOTS)
+        val spots = level.stagingSpots
+        val staging = ArrayList<Int>(spots)
         var q = 0
         fun refill() {
-            while (staging.size < Limits.STAGING_SPOTS && q < level.queue.size) staging += level.queue[q++]
+            while (staging.size < spots && q < level.queue.size) staging += level.queue[q++]
         }
         fun boardLoop() {
             refill()

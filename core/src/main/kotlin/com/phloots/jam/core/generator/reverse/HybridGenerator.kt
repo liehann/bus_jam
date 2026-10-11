@@ -162,7 +162,7 @@ object HybridGenerator {
             val m = bot.choose(s) ?: break
             s = Engine.apply(s, m).state
         }
-        if (s.status != Status.DEADLOCK || s.staging.size < com.phloots.jam.core.model.Limits.STAGING_SPOTS) return false
+        if (s.status != Status.DEADLOCK || s.staging.size < s.level.stagingSpots) return false
         val docked = s.dock.filterNotNull().map { it.color }.toSet()
         return s.level.queue.drop(s.queueIndex).take(12).any { it in docked }
     }

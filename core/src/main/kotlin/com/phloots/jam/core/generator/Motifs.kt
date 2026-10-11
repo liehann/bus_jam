@@ -138,6 +138,8 @@ data class MotifParams(
     /** Run (block) length of a mixed (DenseCore) vault. */
     val coreRunLength: IntRange = 78..92,
     val coreDigLinks: IntRange = 2..3,
+    /** Staging spots of the generated level ([Level.stagingSpots]). */
+    val stagingSpots: Int = Limits.MAX_STAGING_SPOTS,
 )
 
 /**
@@ -584,7 +586,7 @@ class MotifGenerator(private val seed: Long) {
                 // Release filler until about a staging window of elements lies between the two batches.
                 var gap = 0
                 var steps = 0
-                while (gap < Limits.STAGING_SPOTS + 4 || steps < p.midGap) {
+                while (gap < p.stagingSpots + 4 || steps < p.midGap) {
                     if (!fillerStep()) { lastFailure = "filler midGap"; return false }
                     gap += shapes[order.last()].size.capacity; steps++
                     if (steps > 3 * p.midGap) break
@@ -644,7 +646,7 @@ class MotifGenerator(private val seed: Long) {
                 // B's elements must lie beyond the staging window when C is next.
                 val early = casc.take(5).filter { c ->
                     c != b && shapes[c].size.capacity < shapes[b].size.capacity &&
-                        casc.subList(casc.indexOf(c), ib).sumOf { shapes[it].size.capacity } >= Limits.STAGING_SPOTS + shapes[c].size.capacity + 2
+                        casc.subList(casc.indexOf(c), ib).sumOf { shapes[it].size.capacity } >= p.stagingSpots + shapes[c].size.capacity + 2
                 }
                 if (early.isEmpty()) {
                     lastFailure = "core pair"
@@ -657,7 +659,7 @@ class MotifGenerator(private val seed: Long) {
             }
             val cap = g.members.sumOf { shapes[it].size.capacity }
             val shortcut = g.members.filter { clo[it] }.sumOf { shapes[it].size.capacity }
-            if (cap - shortcut < Limits.STAGING_SPOTS + 1) { lastFailure = "shortcut"; return false }
+            if (cap - shortcut < p.stagingSpots + 1) { lastFailure = "shortcut"; return false }
             g.runEnd = order.size - 1
             // Post-run releases of the pinned motif containers.
             val post = listOf(g.decoy, g.ccB, g.buS).filter { it >= 0 }.shuffled(rng)
@@ -896,7 +898,7 @@ class MotifGenerator(private val seed: Long) {
                 val mids = sorted.filter { it.first == midKey && it.second == x }
                 if (mids.isEmpty()) return fail("bu batches")
                 val midStart = sorted.indexOfFirst { it.first == midKey && it.second == x }
-                var st = com.phloots.jam.core.model.GameState.initial(Level(p.levelId, w, h, containers, sorted.map { it.second }))
+                var st = com.phloots.jam.core.model.GameState.initial(Level(p.levelId, w, h, containers, sorted.map { it.second }, p.stagingSpots))
                 for (k in 0 until g.pBU) st = com.phloots.jam.core.engine.Engine.apply(st, Move(order[k])).state
                 if (midStart >= st.queueIndex) { ok = true; break }
                 sorted.removeAll(mids.toSet())
@@ -908,7 +910,7 @@ class MotifGenerator(private val seed: Long) {
             if (!ok) return fail("bu window")
         }
         val queue = sorted.map { it.second }
-        val level = Level(p.levelId, w, h, containers, queue)
+        val level = Level(p.levelId, w, h, containers, queue, p.stagingSpots)
         check(level.validate().isEmpty()) { "motif generator produced invalid level: ${level.validate()}" }
         if (LineSim.run(level, order) == null && (p.requireIntendedLine || groups.isNotEmpty())) return fail("LineSim")
 

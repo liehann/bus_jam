@@ -54,7 +54,7 @@ class CoreRealTimeRules(
             rotationPerTick = 1f / config.ticksPerSeat,
             gate = config.gatePosition + (config.gateWidth - 1) / 2f,
             gateWidth = config.gateWidth,
-            entry = config.entryPosition.toFloat(),
+            entry = state.entryPosition.toFloat(),
             queueIndex = state.queueIndex,
             settled = state.settled,
             status = state.status,

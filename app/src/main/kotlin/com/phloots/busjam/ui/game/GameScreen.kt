@@ -40,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.phloots.jam.core.model.Limits
 import com.phloots.jam.core.model.Status
 import com.phloots.busjam.game.GameUiState
 import com.phloots.busjam.game.PhaseKind
@@ -64,8 +63,8 @@ fun GameScreen(
     onHome: () -> Unit,
     /** Debug builds: pack chip, level metrics and motif tags under the title. */
     debugHeader: DebugHeader? = null,
-    /** Staging spot count; defaults to the rules' [Limits.STAGING_SPOTS] (screenshot tests may preview others). */
-    stagingSpots: Int = Limits.STAGING_SPOTS,
+    /** Staging spot count; defaults to the level's [com.phloots.jam.core.model.Level.stagingSpots]. */
+    stagingSpots: Int = ui.state.level.stagingSpots,
 ) {
     val haptic = LocalHapticFeedback.current
     val anim = ui.anim

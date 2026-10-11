@@ -21,14 +21,20 @@ object TestLevels {
     /** Staging spots left free by [padded]. */
     const val WINDOW = 7
 
-    /** Filler elements [padded] puts in front of the queue: they occupy staging spots 0 until OFF. */
-    val OFF = maxOf(0, Limits.STAGING_SPOTS - WINDOW)
+    /** Staging sizes the parameterised tests run over (min, a middle value, max). */
+    val SPOTS = listOf(Limits.MIN_STAGING_SPOTS, 28, Limits.MAX_STAGING_SPOTS)
+
+    /** Filler elements [padded] puts in front of the queue: they occupy staging spots 0 until off(spots). */
+    fun off(spots: Int = Limits.MAX_STAGING_SPOTS) = maxOf(0, spots - WINDOW)
+
+    /** [off] for 40 staging spots. */
+    val OFF = off()
 
     /** Filler colour used by [padded]. */
     const val FILLER = 7
 
-    private val fillerSizes: List<ContainerSize> = buildList {
-        var r = OFF
+    private fun fillerSizes(spots: Int): List<ContainerSize> = buildList {
+        var r = off(spots)
         while (r > 10) { add(ContainerSize.L); r -= 10 }
         when {
             r == 0 -> {}
@@ -38,37 +44,41 @@ object TestLevels {
         }
     }
 
-    /** Filler elements appended at the very end of a padded queue (filler capacity - OFF). */
-    val TRAIL = fillerSizes.sumOf { it.capacity } - OFF
+    /** Filler elements appended at the very end of a padded queue (filler capacity - off). */
+    fun trail(spots: Int = Limits.MAX_STAGING_SPOTS) = fillerSizes(spots).sumOf { it.capacity } - off(spots)
+
+    /** [trail] for 40 staging spots. */
+    val TRAIL = trail()
 
     /**
-     * Makes a scenario independent of [Limits.STAGING_SPOTS]: prepends [OFF] elements of colour [FILLER] (they stay
-     * staged in spots 0 until OFF, leaving exactly [WINDOW] spots for the scenario), appends [TRAIL] more, and adds
-     * filler containers (ids after the level's own, one per extra bottom row, facing RIGHT) holding them. Queue
-     * indices and staging spots of the original scenario shift by [OFF].
+     * Makes a scenario independent of the staging size [spots] (the result's [Level.stagingSpots]): prepends
+     * off(spots) elements of colour [FILLER] (they stay staged in spots 0 until off, leaving exactly [WINDOW] spots
+     * for the scenario), appends trail(spots) more, and adds filler containers (ids after the level's own, one per
+     * extra bottom row, facing RIGHT) holding them. Queue indices and staging spots of the original scenario shift by
+     * off(spots).
      */
-    fun padded(level: Level): Level {
+    fun padded(level: Level, spots: Int = Limits.MAX_STAGING_SPOTS): Level {
         val w = maxOf(3, level.width)
-        val fill = fillerSizes.mapIndexed { i, size ->
+        val fill = fillerSizes(spots).mapIndexed { i, size ->
             Container(level.containers.size + i, size, FILLER, level.height + i, size.length - 1, Dir.RIGHT)
         }
         return Level(
             level.id, w, level.height + fill.size, level.containers + fill,
-            List(OFF) { FILLER } + level.queue + List(TRAIL) { FILLER },
+            List(off(spots)) { FILLER } + level.queue + List(trail(spots)) { FILLER }, spots,
         )
     }
 
     /** Ids of the filler containers of a [padded] level built from a level with [n] containers. */
-    fun fillerIds(n: Int): List<Int> = List(fillerSizes.size) { n + it }
+    fun fillerIds(n: Int, spots: Int = Limits.MAX_STAGING_SPOTS): List<Int> = List(fillerSizes(spots).size) { n + it }
 
     /**
      * Small trap-rich level for any staging size: column 0 holds k S containers (colours 0..3) above enough L
      * containers of colour 4 to fill staging, whose elements come first; columns 2-3 hold free decoy S/M containers
      * whose elements come later. Releasing decoys before the column is dug out clogs the dock (traps).
      */
-    fun trapSmall(rnd: Random): Level {
+    fun trapSmall(rnd: Random, spots: Int = Limits.MAX_STAGING_SPOTS): Level {
         val k = 1 + rnd.nextInt(3)
-        val ls = (Limits.STAGING_SPOTS + 9) / 10
+        val ls = (spots + 9) / 10
         val vs = ArrayList<Container>()
         for (i in 0 until k) vs += small(vs.size, rnd.nextInt(4), 2 * i, 0, Dir.UP)
         for (j in 0 until ls) vs += v(vs.size, ContainerSize.L, 4, 2 * k + 3 * j, 0, Dir.UP)
@@ -88,7 +98,7 @@ object TestLevels {
         }
         val four = kept.filter { it.color == 4 }.sumOf { it.size.capacity }
         val rest = kept.filter { it.color != 4 }.flatMap { c -> List(c.size.capacity) { c.color } }.shuffled(rnd)
-        return Level(1, 4, 2 * k + 3 * ls, kept, List(four) { 4 } + rest)
+        return Level(1, 4, 2 * k + 3 * ls, kept, List(four) { 4 } + rest, spots)
     }
 
     /** Plays [moves] through the Engine; returns the final state. Fails if any move is not a release. */
@@ -160,17 +170,18 @@ object TestLevels {
         containers: Int = 80,
         colors: Int = 8,
         perturb: Int = 300,
+        spots: Int = Limits.MAX_STAGING_SPOTS,
     ): Level {
         var s = seed
         while (true) {
             val rnd = Random(s++)
-            val lvl = tryBig(rnd, width, height, containers, colors, perturb) ?: continue
+            val lvl = tryBig(rnd, width, height, containers, colors, perturb, spots) ?: continue
             if (lvl.containers.size < containers * 9 / 10) continue
             return lvl
         }
     }
 
-    private fun tryBig(rnd: Random, width: Int, height: Int, target: Int, colors: Int, perturb: Int): Level? {
+    private fun tryBig(rnd: Random, width: Int, height: Int, target: Int, colors: Int, perturb: Int, spots: Int): Level? {
         val occ = IntArray(width * height) { -1 }
         val placed = ArrayList<Container>()
         var attempts = 0
@@ -210,7 +221,7 @@ object TestLevels {
         val queue = order.flatMap { id -> List(placed[id].size.capacity) { placed[id].color } }.toMutableList()
         val moves = order.map { Move(it) }
         fun wins(q: List<Int>): Boolean {
-            val l = Level(1, width, height, placed, q)
+            val l = Level(1, width, height, placed, q, spots)
             return runCatching { play(l, moves).status == Status.WON }.getOrDefault(false)
         }
         check(wins(queue))
@@ -224,7 +235,7 @@ object TestLevels {
                 queue.clear(); queue.addAll(cand)
             }
         }
-        val level = Level(1, width, height, placed, queue)
+        val level = Level(1, width, height, placed, queue, spots)
         return if (level.validate().isEmpty()) level else null
     }
 }

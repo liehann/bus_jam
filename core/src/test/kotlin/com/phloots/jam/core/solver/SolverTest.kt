@@ -23,8 +23,8 @@ import kotlin.test.assertTrue
 class SolverTest {
     private fun q(vararg runs: Pair<Int, Int>) = runs.flatMap { (c, k) -> List(k) { c } }
 
-    /** L containers of colour 4 needed so that their elements fill the whole staging area. */
-    private val ls = (Limits.STAGING_SPOTS + 9) / 10
+    /** L containers of colour 4 needed so that their elements fill the whole staging area (40 spots). */
+    private val ls = (Limits.MAX_STAGING_SPOTS + 9) / 10
 
     /**
      * Column of [k] S containers (colours 0 until k, top first) above [ls] L containers of colour 4 whose elements
@@ -39,10 +39,16 @@ class SolverTest {
     /** Needs a 5th dock slot: unsolvable. */
     private val deadLevel = column(4)
 
-    /** Random small level; every other one padded so the staging window is 7 spots. */
+    private var spotsCycle = 0
+
+    /** Next staging size of TestLevels.SPOTS (20, 28, 40 in turn), so every random-level test covers each size. */
+    private fun nextSpots(): Int = TestLevels.SPOTS[spotsCycle++ % TestLevels.SPOTS.size]
+
+    /** Random small level; every other one padded so the staging window is 7 spots. Staging sizes cycle 20/28/40. */
     private fun rs(rnd: Random, w: Int, h: Int, n: Int, colors: Int, largeOdds: Int = 6): Level {
         val l = TestLevels.randomSmall(rnd, w, h, n, colors, largeOdds)
-        return if (rnd.nextBoolean()) TestLevels.padded(l) else l
+        val spots = nextSpots()
+        return if (rnd.nextBoolean()) TestLevels.padded(l, spots) else l.copy(stagingSpots = spots)
     }
 
     @Test
@@ -175,7 +181,7 @@ class SolverTest {
         val cols = level.width
         val dummies = (0 until shift).map { small(it, 0, level.height + it / cols, it % cols, Dir.UP) }
         val real = level.containers.map { it.copy(id = it.id + shift) }
-        val big = Level(level.id, level.width, level.height + (shift + cols - 1) / cols, dummies + real, level.queue)
+        val big = Level(level.id, level.width, level.height + (shift + cols - 1) / cols, dummies + real, level.queue, level.stagingSpots)
         val start = GameState.initial(big)
         var onBoard = start.onBoard
         for (i in 0 until shift) onBoard = onBoard.without(i)
@@ -351,7 +357,7 @@ class SolverTest {
         var withTraps = 0
         repeat(600) {
             // Dense 5x5 boards with many colours: small levels need dock pressure to have traps under v2 staging.
-            val level = if (rnd.nextInt(3) == 0) rs(rnd, 5, 5, 8, 4) else TestLevels.trapSmall(rnd)
+            val level = if (rnd.nextInt(3) == 0) rs(rnd, 5, 5, 8, 4) else TestLevels.trapSmall(rnd, nextSpots())
             val a = Solver.analyze(level)
             if (!a.solvable) return@repeat
             val b = bruteMetrics(level, a.solution)
@@ -373,7 +379,7 @@ class SolverTest {
         var withTraps = 0
         var sameLine = 0
         repeat(600) {
-            val level = if (rnd.nextInt(3) == 0) rs(rnd, 5, 5, 8, 4) else TestLevels.trapSmall(rnd)
+            val level = if (rnd.nextInt(3) == 0) rs(rnd, 5, 5, 8, 4) else TestLevels.trapSmall(rnd, nextSpots())
             val b = Solver.analyzeBounded(level)
             val a = Solver.analyze(level)
             assertEquals(a.solvable, b.solvable)

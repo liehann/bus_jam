@@ -72,7 +72,8 @@ Invariants:
 
 - **Coordinates**: `(row, col)`, row 0 = top, col 0 = left. `UP = row-1`, `DOWN = row+1`, `LEFT = col-1`, `RIGHT = col+1` (`Dir.dRow/dCol`).
 - **Limits**: width 10..12 (`MIN_WIDTH`/`MAX_WIDTH`), height 12..14 (`MIN_HEIGHT`/`MAX_HEIGHT`), `MAX_CONTAINERS = 128`,
-  `DOCK_SLOTS = 4`, `STAGING_SPOTS = 40`, `MAX_COLORS = 10`.
+  `DOCK_SLOTS = 4`, `MIN_STAGING_SPOTS = 20`, `MAX_STAGING_SPOTS = 40`, `MAX_COLORS = 10`. The staging size is per
+  level: `Level.stagingSpots` (default 40).
 - **ContainerSize**: `S(length 1, capacity 4)`, `M(2, 6)`, `L(3, 10)`. A length-1 container still faces a direction.
 - **Container**: `(row, col)` is the **front** cell; the body extends behind it (`dir.opposite`) for `size.length`
   cells. `cells()` returns front first. The exit ray is the cells from front+dir to the board edge.
@@ -85,12 +86,12 @@ Invariants:
   - `dock` has exactly 4 positional entries (index 0 = leftmost; null = free). Release takes the leftmost free slot;
     dispatches leave a hole (no compaction). Boarding scans slots left to right.
   - `DockedContainer(containerId, color, spaceLeft)` — no arrival stamp any more (priority is positional).
-  - `staging` = colours of the staged elements in age order (oldest first, list index = staging spot), size <= `STAGING_SPOTS` (40),
+  - `staging` = colours of the staged elements in age order (oldest first, list index = staging spot), size <= `level.stagingSpots` (20..40),
     compacted (after a boarding the later elements shift one spot left). Full unless the queue is exhausted.
   - `queueIndex` = next queue element **not yet staged** (`== queue.size` once everything is staged).
   - `stagedElementIndices()` = queue indices parallel to `staging` (derived; boarding always takes the oldest staged
     element of a colour). `queueRemaining` = unstaged count. `dockUsed`.
-  - `GameState.initial(level)` = all on board, empty dock, staging filled with the first min(STAGING_SPOTS, queue.size) elements,
+  - `GameState.initial(level)` = all on board, empty dock, staging filled with the first min(level.stagingSpots, queue.size) elements,
     `queueIndex` = that count, PLAYING. (Implemented.)
   - `status` is set by the Engine (WON > DEADLOCK > STUCK > PLAYING, see `Engine` KDoc).
 - **Events** (chronological, for animation):
@@ -371,3 +372,18 @@ Gotchas:
   `levelgen`: `QualityReport.kt` (labelled levels + packs -> TSV, optional per-state dump), `HybridPreview4.kt`,
   `Calibrate.kt` prints fit4. Debug packs: Hybrid preview 2 moved to `levelgen/calibration/`; switcher = Campaign,
   Motif preview 2, Hybrid preview 3, Hybrid preview 4.
+- 2026-10-11 (lead): **per-level staging size** (user decision: the waiting carousel is 20–40 seats per level).
+  `Limits.STAGING_SPOTS` is replaced by `Limits.MIN_STAGING_SPOTS` (20) and `Limits.MAX_STAGING_SPOTS` (40).
+  `Level` gained a trailing field `stagingSpots: Int = 40` (JSON `stagingSpots`, `@EncodeDefault(NEVER)`: omitted
+  when 40, so every existing pack and the campaign re-encode byte for byte); `Level.validate()` checks 20..40.
+  `GameState.initial`, `Engine.apply`, `LevelData` (packed boarding refill; `LevelData.STAGING` removed), and so
+  `Solver.solve/hint/analyze/analyzeBounded` and scoring, read `level.stagingSpots`. Real-time: the ring has
+  `level.stagingSpots` seats; `RtConfig.entryPosition` defaults to `RtConfig.ENTRY_HALF_RING` (-1 = N/2, resolved by
+  `RtConfig.entryFor(n)` / `RealTimeState.entryPosition`); geometry is checked per ring by `RtConfig.validateFor(n)`
+  in `RealTime.initial` / `fromGameState`. Generators: `MotifParams`, `DirectorParams`, `StallScript` gained
+  `stagingSpots = 40`; `RevState` gained `stagingSpots = 40` (`RevState.end(n)`); `LineSim`, `MotifCheck`,
+  `HybridGenerator.rescueLocked` read the level's size; `LevelMetrics.floodThreshold(level)` scales the chain flood
+  threshold (15 of 40). App: `PlayField`/`GameScreen` default to the level's size; `RingLayout` spaces N seats on
+  the same oval (board size unchanged) and draws them up to 35% larger on small rings. Tests run the engine,
+  solver and carousel suites over N in {20, 28, 40}. Debug pack `ring-size-test.json` ("Ring size test",
+  `levelgen/.../reverse/RingSizePack.kt`).

@@ -13,7 +13,7 @@ import com.phloots.jam.core.model.Status
 /*
  * Deterministic real-time layer (DESIGN.md "Real-time carousel (v3)"). Owner: gamestate agent.
  *
- * The waiting area is a ring of [Limits.STAGING_SPOTS] seats. Seats are fixed to the ring and the ring turns:
+ * The waiting area is a ring of N = [Level.stagingSpots] seats (20..40, per level). Seats are fixed to the ring and the ring turns:
  * seat `s` stands at ring POSITION `(s + phase) mod N`; positions are fixed places on screen, numbered in the
  * direction of travel. Every [RtConfig.ticksPerSeat] ticks the phase advances by one (each seat moves to the next
  * position). Two places are special:
@@ -22,11 +22,11 @@ import com.phloots.jam.core.model.Status
  *    (at most one boarding per [RtConfig.boardStaggerTicks] ticks), the most DOWNSTREAM element in the window whose
  *    colour has a docked (arrived) container with unreserved space leaves its seat and walks to the LEFTMOST such
  *    container. A burst of matching elements therefore boards as a wave rolling down the window, front first;
- *  - the ENTRY ([RtConfig.entryPosition], default N/2 = 20, outside the window): when a seat arrives there empty
+ *  - the ENTRY ([RtConfig.entryPosition], default N/2 (20 for 40 seats, 10 for 20), outside the window): when a seat arrives there empty
  *    and the queue is not exhausted, the next queue element steps on.
  * The gate is checked on every tick (after the rotation on a seat-step tick); the entry only on seat steps, after the
  * gate. A level starts with an EMPTY ring: every element waits in the queue line and the ring fills through the entry
- * (one element per seat step, ~4 s for 40), during which the player may already tap.
+ * (one element per seat step, ~4 s for 40 seats), during which the player may already tap.
  *
  * Patient play converges to Engine.apply's settled state (see RealTimeTest): boarding fills same-colour containers
  * left to right (space is reserved at the gate, so a container stops being a target the moment its last space is
@@ -49,21 +49,36 @@ data class RtConfig(
     val gateWidth: Int = 6,
     /** Minimum ticks between two boarding starts (the "wave" spacing; 3 ticks = 75 ms at 0.1 s per seat). */
     val boardStaggerTicks: Int = 3,
-    /** Ring position where queue elements step onto empty seats. */
-    val entryPosition: Int = Limits.STAGING_SPOTS / 2,
+    /**
+     * Ring position where queue elements step onto empty seats; [ENTRY_HALF_RING] (the default) = half the ring
+     * (N / 2), resolved per level by [entryFor].
+     */
+    val entryPosition: Int = ENTRY_HALF_RING,
 ) {
     init {
         require(ticksPerSeat >= 1 && releaseTicks >= 1 && boardTicks >= 1 && dispatchTicks >= 1) { "durations must be >= 1" }
-        require(gatePosition in 0 until Limits.STAGING_SPOTS && entryPosition in 0 until Limits.STAGING_SPOTS)
-        require(gateWidth in 1..Limits.STAGING_SPOTS / 2) { "gateWidth out of range" }
+        require(gatePosition >= 0 && (entryPosition >= 0 || entryPosition == ENTRY_HALF_RING)) { "negative position" }
+        require(gateWidth >= 1) { "gateWidth out of range" }
         require(boardStaggerTicks >= 1) { "boardStaggerTicks must be >= 1" }
-        require(Math.floorMod(entryPosition - gatePosition, Limits.STAGING_SPOTS) >= gateWidth) { "entry inside the gate window" }
+    }
+
+    /** The entry position on a ring of [seats] seats. */
+    fun entryFor(seats: Int): Int = if (entryPosition == ENTRY_HALF_RING) seats / 2 else entryPosition
+
+    /** Checks the gate window and entry fit a ring of [seats] seats (any size 20..40 with the defaults). */
+    fun validateFor(seats: Int) {
+        val entry = entryFor(seats)
+        require(gatePosition in 0 until seats && entry in 0 until seats) { "gate/entry outside a ring of $seats" }
+        require(gateWidth in 1..seats / 2) { "gateWidth out of range for a ring of $seats" }
+        require(Math.floorMod(entry - gatePosition, seats) >= gateWidth) { "entry inside the gate window" }
     }
 
     /** Seconds per tick when one seat step takes [seatSeconds]. */
     fun secondsPerTick(seatSeconds: Double = 0.1): Double = seatSeconds / ticksPerSeat
 
     companion object {
+        /** [entryPosition] value meaning "half the ring". */
+        const val ENTRY_HALF_RING = -1
         val DEFAULT = RtConfig()
     }
 }
@@ -185,6 +200,9 @@ class RealTimeState internal constructor(
 ) {
     val seatCount: Int get() = seats.size
 
+    /** Ring position of the entry on this ring ([RtConfig.entryFor]). */
+    val entryPosition: Int get() = config.entryFor(seats.size)
+
     /** Queue index of the element on [seat], or -1 if empty. */
     fun seatElement(seat: Int): Int = seats[seat]
 
@@ -269,17 +287,17 @@ class RealTimeState internal constructor(
 
 /** Real-time rules. Pure functions over [RealTimeState]. */
 object RealTime {
-    private const val N = Limits.STAGING_SPOTS
-
     /**
      * Start of a level: tick 0, phase 0, dock empty, EMPTY ring, every element in the queue line (queueIndex 0).
      * The ring fills through the entry, one element per seat step, so element k steps on at seat step k+1 and the
      * oldest reaches the gate window first. Not settled until the ring is full (or the queue is exhausted); patient
-     * play from then on matches Engine from GameState.initial (first 40 staged). Taps during the fill are legal.
+     * play from then on matches Engine from GameState.initial (first N staged). Taps during the fill are legal.
      */
     fun initial(level: Level, config: RtConfig = RtConfig.DEFAULT): RealTimeState {
+        val n = level.stagingSpots
+        config.validateFor(n)
         val s = RealTimeState(
-            level, config, 0L, 0, IntArray(N) { -1 }, 0, GameState.initial(level).onBoard,
+            level, config, 0L, 0, IntArray(n) { -1 }, 0, GameState.initial(level).onBoard,
             List(Limits.DOCK_SLOTS) { null }, 0, emptyList(), 0L, settled = false, status = Status.PLAYING,
         )
         return if (isSettled(s)) s.copy(settled = true, status = settledStatus(s)) else s
@@ -291,9 +309,11 @@ object RealTime {
      * window (element k at position `gate - 1 - k`); docked containers already arrived.
      */
     fun fromGameState(state: GameState, config: RtConfig = RtConfig.DEFAULT): RealTimeState {
-        val seats = IntArray(N) { -1 }
+        val n = state.level.stagingSpots
+        config.validateFor(n)
+        val seats = IntArray(n) { -1 }
         val idx = state.stagedElementIndices()
-        for ((k, qi) in idx.withIndex()) seats[Math.floorMod(config.gatePosition - 1 - k, N)] = qi
+        for ((k, qi) in idx.withIndex()) seats[Math.floorMod(config.gatePosition - 1 - k, n)] = qi
         val dock = state.dock.map { dc ->
             dc?.let { RtSlot(it.containerId, it.color, state.level.containers[it.containerId].size.capacity, it.spaceLeft, -config.releaseTicks.toLong(), 0L) }
         }
@@ -318,7 +338,7 @@ object RealTime {
             if (s.tick < slot.dockedAt || slot.fullAt >= 0) return false
             colorMask = colorMask or (1 shl slot.color)
         }
-        if (s.ringCount < N && s.queueIndex < s.level.queue.size) return false
+        if (s.ringCount < s.seatCount && s.queueIndex < s.level.queue.size) return false
         if (colorMask == 0) return true
         val seats = s.seatsRef()
         val q = s.level.queue
@@ -414,8 +434,9 @@ object RealTime {
         var ringCount = state.ringCount
         var qi = state.queueIndex
         var nextBoard = state.nextBoardTick
+        val n = seats.size
         val seatStep = t % cfg.ticksPerSeat == 0L
-        if (seatStep) phase = (phase + 1) % N
+        if (seatStep) phase = (phase + 1) % n
         val queue = state.level.queue
         if (t >= nextBoard && ringCount > 0) {
             var accepting = 0 // colour mask of docked containers with unreserved space
@@ -426,8 +447,8 @@ object RealTime {
             if (accepting != 0) {
                 // most downstream first: the wave rolls from the window's exit back towards its entrance
                 for (k in cfg.gateWidth - 1 downTo 0) {
-                    val pos = (cfg.gatePosition + k) % N
-                    val g = Math.floorMod(pos - phase, N)
+                    val pos = (cfg.gatePosition + k) % n
+                    val g = Math.floorMod(pos - phase, n)
                     val e = seats[g]
                     if (e < 0) continue
                     val c = queue[e]
@@ -453,7 +474,7 @@ object RealTime {
             }
         }
         if (seatStep) {
-            val en = Math.floorMod(cfg.entryPosition - phase, N)
+            val en = Math.floorMod(cfg.entryFor(n) - phase, n)
             if (seats[en] < 0 && qi < queue.size) {
                 if (seats === state.seatsRef()) seats = seats.copyOf()
                 seats[en] = qi

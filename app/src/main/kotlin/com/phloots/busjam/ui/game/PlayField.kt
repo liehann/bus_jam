@@ -85,8 +85,8 @@ class PlayLayout(
     levelWidth: Int,
     levelHeight: Int,
     density: Density,
-    /** Number of staging spots ([Limits.STAGING_SPOTS]). */
-    val stagingSpots: Int = Limits.STAGING_SPOTS,
+    /** Number of staging spots (the level's [com.phloots.jam.core.model.Level.stagingSpots], 20..40). */
+    val stagingSpots: Int = Limits.MAX_STAGING_SPOTS,
     val compact: Boolean = false,
 ) : FieldGeometry {
     private val dp = density.density
@@ -149,7 +149,7 @@ class PlayLayout(
         /** The regular layout, or the compact one when that is what keeps the board near [TARGET_CELL_DP]. */
         fun fit(
             width: Float, height: Float, levelWidth: Int, levelHeight: Int, density: Density,
-            stagingSpots: Int = Limits.STAGING_SPOTS,
+            stagingSpots: Int = Limits.MAX_STAGING_SPOTS,
         ): PlayLayout {
             val normal = PlayLayout(width, height, levelWidth, levelHeight, density, stagingSpots)
             val target = minOf(width / levelWidth, TARGET_CELL_DP * density.density)
@@ -198,7 +198,7 @@ fun PlayField(
     shakeProgress: () -> Float,
     onTap: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    stagingSpots: Int = Limits.STAGING_SPOTS,
+    stagingSpots: Int = logical.level.stagingSpots,
 ) {
     val level = logical.level
     val density = LocalDensity.current

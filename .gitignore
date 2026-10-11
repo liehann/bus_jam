@@ -10,3 +10,4 @@ captures/
 .externalNativeBuild/
 *.apk
 *.aab
+.claude/HANDOVER.md

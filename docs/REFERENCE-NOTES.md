@@ -75,3 +75,8 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - **Any-angle vehicles** make "is this free?" harder to read. User: keep 4 directions for now; note angles for later
   (8 grid directions first).
 - UI idea: a number badge of remaining capacity under each docked container (clearer than our seat grid).
+
+### Level 8 (2026-10-11)
+- Back to 4 directions, axis-aligned (slight perspective only); dense asymmetric cluster, ~30 vehicles.
+- 7 colours (yellow, cyan, orange, blue, red, pink, green); queue more mixed, shorter blocks, a large red block.
+- New booster "Arrange" (count 1) — likely reorders/sorts the waiting passengers. Boosters so far: VIP, Arrange.

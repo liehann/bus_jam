@@ -149,6 +149,18 @@ colour does not matter, so staging is a count vector.
 5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 
+**Real-time carousel (v3, user decision 2026-10-11).** The waiting area is a rotating ring of 40 seats
+(~4 s per rotation, ~0.1 s per seat). One boarding gate for the dock: when an occupied seat passes the gate and a
+docked container of that colour has space, that element boards (leftmost such container first). The vacated seat
+travels on; an element from the queue line can only step on when an empty seat passes the entry point. The player may
+tap at any time, including while boarding/refill is still in progress (impatience can lose a level).
+- **Patient play is the reference:** if the carousel runs undisturbed after a tap, it must converge to exactly
+  `Engine.apply`'s settled state (same-colour elements are interchangeable; everything boardable boards; leftmost
+  same-colour container first). Solver, generator and scoring keep operating on settled states; "solvable" means
+  solvable by patient play.
+- Undo = rewind to just before the last tap, including carousel phase. Deterministic: real-time state is advanced
+  by integer ticks; the UI maps wall-clock time to ticks.
+
 **UI (v2):** board, then a staging area of 40 spots (compact multi-row grid) between the dock and the two-lane queue preview
 (left lane = next ~12 after staging, right lane = ~12 from the halfway point). Keep current car art for now.
 

@@ -90,3 +90,14 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - Mirror symmetry; angled cars in side pockets.
 - Calibration point: "hard" here = more colours + short mixed queue blocks + mostly large vehicles + dense core —
   not special mechanics.
+
+### Level 9 mid-level — "the next move isn't obvious" (2026-10-11) — reference decision moment
+- Dock: one pink bus, badge "8" = seats remaining (badge counts seats left; buses hold more than our 10 — the
+  earlier "24" suggests large capacities).
+- Waiting ring dominated by yellow (+ some cyan/red/blue/green); pink far back in the line → pink bus is dead weight
+  for a long time.
+- Yellow options: a small angled yellow car in the right pocket (cheap, absorbs few) vs two big yellow buses buried in
+  the central core (absorb many, but require docking off-colour dummies to dig out). Most reachable vehicles are
+  off-colour (orange/red/blue buses at the top) = more dead weight beside the pink.
+- Decision structure = big-vs-small + stall (how many dummies can you afford with one slot already dead) + a
+  squatter-like yellow surge. Target feel for our hybrid generator.

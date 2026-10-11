@@ -124,6 +124,28 @@ colour does not matter, so staging is a count vector.
        elements; the fork is which slot will be free (controlled by dispatch order);
    (f) timing window: right container now vs later; too early sits empty, too late misses its colour's batch;
    (g) exact colour budget: colour batches 4 then 10 require S4 then L10; M6 first orphans 4.
+9. **Rolling dummies (user, after playtest 2026-10-11).** Calibration: Motif preview 2 L18 felt hard and good
+   (restarted twice) — "play 3 other colours into docks to unblock pink/green, and later brown"; Reverse preview
+   1 L19/L20 felt "better but still kinda easy" despite much higher pressure metrics. So the liked structure is the
+   deliberate *dummy* stall (dock off-colour containers to dig out a buried run container), not raw dock occupancy.
+   Variation to build: dummies are often **partially filled** (some of their colour staged, not enough to fill),
+   and dummies **roll**: mid-stall one dummy gets completed by a third-colour arrival pattern and dispatches, freeing a
+   slot exactly when a second dummy of another colour must be docked to reach the next blocker — overlapping stalls
+   instead of stall-then-relief. Decisions: which dummy you can afford now, which will be completed soon enough,
+   whether one more dummy strands you when the next run starts.
+10. **Interrupted runs / multi-dummy unlock — the waiting area is a resource (user, 2026-10-11).** A long run of
+    colour A (e.g. brown) has an island of colour B (e.g. red) in the middle; A's container is buried. Correct
+    plan: dummy to unblock B's container first → two dummies working towards A (not finishing) → play other colours
+    so the queue advances and A accumulates in staging (the 40 spots absorb the A run) until B arrives and clears →
+    final dummy unblocks A → A boards from staging. Failure modes: digging towards A too early leaves no slot for B
+    (fail the red); waiting too long overflows staging with A before B arrives (stuck). Staging capacity (40) and
+    dock slots (4) are both resources. Levels should interleave several such chains ("absorb run 1 with other
+    colours to reach a break that unblocks colour 2, which ultimately unblocks colour 1").
+11. **Squatter colour + relief valves (user, 2026-10-11).** A colour whose elements arrive early but whose
+    containers are all deeply buried until the endgame: its elements occupy staging, shrinking the effective waiting
+    area for that level (e.g. 25 squatters → ~15 usable spots). Relief valves: a few small (S/M) containers of that
+    colour, moderately buried, which can be dug out at a cost to free some spots "just enough to get through".
+    Decision: when to spend moves/dock slots on a valve. Effective staging size becomes a per-level difficulty dial.
 5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 

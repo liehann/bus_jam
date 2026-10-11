@@ -18,5 +18,10 @@
   "file": "reverse-preview-1.json",
   "label": "Reverse preview 1",
   "description": "Reverse director: dock 3+ on 50-76% of moves, planted forks (likely too hard)"
+ },
+ {
+  "file": "hybrid-preview-1.json",
+  "label": "Hybrid preview 1",
+  "description": "L18-style stalls, rolling/partial dummies, interrupted runs, squatter colour"
  }
 ]

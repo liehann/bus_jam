@@ -94,7 +94,8 @@ data class BuiltStep(val before: RevState, val xId: Int, val xColor: Int, val xC
 object ReverseStep {
     /**
      * Builds S from [after] for the given X and recipients, trying several element orders; returns the first
-     * candidate that reproduces [after] exactly under [ForwardSim.tap] and is stable, or null.
+     * candidate that reproduces [after] exactly under [ForwardSim.tap] and is stable, or null. [insertAt] puts X's
+     * elements at that staging index (capped at the first element of X's colour) instead of near the front.
      */
     fun build(
         after: RevState,
@@ -104,6 +105,7 @@ object ReverseStep {
         capacityOf: (Int) -> Int,
         spread: Int = 4,
         tries: Int = 6,
+        insertAt: Int? = null,
     ): BuiltStep? {
         val dockS = after.dock.toMutableList()
         val xId: Int
@@ -154,7 +156,7 @@ object ReverseStep {
             // X's elements: the oldest of colour xColor, so inserted at or before the first xColor of the head; near
             // the front ([spread]) so staging behaves like a sliding window over the consumption order.
             val a = ArrayList<Int>(head.size + jX)
-            val picks = IntArray(jX) { rng.nextInt(minOf(firstC, spread) + 1) }.sorted()
+            val picks = if (insertAt != null) List(jX) { minOf(insertAt, firstC) } else IntArray(jX) { rng.nextInt(minOf(firstC, spread) + 1) }.sorted()
             var pi = 0
             for (i in 0..head.size) {
                 while (pi < jX && picks[pi] == i) { a += xColor; pi++ }
@@ -208,4 +210,11 @@ class Rng(seed: Long) {
     fun chance(p: Double): Boolean = nextDouble() < p
 
     fun <T> pick(xs: List<T>): T = xs[nextInt(xs.size)]
+
+    /** Fisher-Yates shuffle (copy). */
+    fun <T> shuffle(xs: List<T>): List<T> {
+        val a = xs.toMutableList()
+        for (i in a.size - 1 downTo 1) { val j = nextInt(i + 1); val t = a[i]; a[i] = a[j]; a[j] = t }
+        return a
+    }
 }

@@ -5,6 +5,8 @@ import com.phloots.jam.core.model.Level
 import com.phloots.jam.core.model.Limits
 
 /**
+ * v1 internals (64-bit masks, arrival-ordered boarding); to be rewritten for v2 by the gamestate agent.
+ *
  * Per-level precomputed data plus a packed, allocation-free state representation used by the solver hot path.
  *
  * Packed state = (onBoard: Long, aux: Long):
@@ -313,15 +315,8 @@ internal class LevelData private constructor(val level: Level) {
     }
 
     fun toPacked(state: GameState): Long {
-        var aux = 0L
-        val docked = state.dock.withIndex().filter { it.value != null && it.value!!.spaceLeft > 0 }
-        val byArrival = docked.sortedBy { it.value!!.arrival }
-        byArrival.forEachIndexed { rank, (s, pv) ->
-            val field = pv!!.spaceLeft or (pv.color shl 4) or (rank shl 7)
-            aux = aux or (field.toLong() shl (13 * s))
-        }
-        return aux or (state.queueIndex.toLong() shl 52)
-    }
+    TODO("v2")
+}
 
     companion object {
         const val COLORS = 8

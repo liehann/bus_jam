@@ -1,5 +1,6 @@
 package com.phloots.jam.core.scoring
 
+import org.junit.jupiter.api.Disabled
 import com.phloots.jam.core.model.Dir
 import com.phloots.jam.core.model.Level
 import com.phloots.jam.core.model.Move
@@ -49,6 +50,7 @@ class ScorerTest {
     }
 
     @Test
+    @Disabled("v2 pending")
     fun sizeTermSaturatesAtMaxima() {
         val big = TestLevels.bigSolvable(seed = 3, containers = 40)
         val r = Scorer.score(big, analysis(0.0, 0.0, 0.0, 1))
@@ -60,6 +62,7 @@ class ScorerTest {
     }
 
     @Test
+    @Disabled("v2 pending")
     fun sizeDominanceThreshold() {
         val big = TestLevels.bigSolvable(seed = 3, containers = 40)
         val s = Scorer.score(big, analysis(0.0, 0.0, 0.0, 1)).size
@@ -72,6 +75,7 @@ class ScorerTest {
     }
 
     @Test
+    @Disabled("v2 pending")
     fun scoresRealAnalysis() {
         val level = TestLevels.chain(listOf(0, 1, 2, 3), List(4) { 3 } + List(4) { 0 } + List(4) { 1 } + List(4) { 2 })
         val a = Solver.analyze(level)

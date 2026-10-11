@@ -68,17 +68,7 @@ object Solver {
 
     /** Finds one winning line from [state]. */
     fun solve(state: GameState): SolveResult {
-        when (state.status) {
-            Status.WON -> return SolveResult(true, emptyList(), SolveStats(0, 0))
-            Status.DEADLOCK, Status.STUCK -> return SolveResult(false, emptyList(), SolveStats(0, 0))
-            Status.PLAYING -> {}
-        }
-        val d = LevelData.of(state.level)
-        val ctx = SolveCtx(d)
-        val ob = state.onBoard and d.allMask
-        val ok = ctx.dfs(ob, d.toPacked(state), d.exitableMask(ob), 0)
-        val sol = if (ok) List(ctx.solLen) { Move(ctx.path[it]) } else emptyList()
-        return SolveResult(ok, sol, SolveStats(ctx.nodes, ctx.visited.size.toLong()))
+        TODO("v2")
     }
 
     fun solve(level: Level): SolveResult = solve(GameState.initial(level))
@@ -98,90 +88,8 @@ object Solver {
      * `FullAnalysis(solvable = false, capped = true, reachableStates = maxStates, ...)`.
      */
     fun analyze(level: Level, maxStates: Int): FullAnalysis {
-        val d = LevelData.of(level)
-        val ctx = AnalyzeCtx(d, maxStates)
-        val start = GameState.initial(level)
-        val ob0 = start.onBoard
-        val aux0 = d.toPacked(start)
-        val root = try {
-            ctx.eval(ob0, aux0)
-        } catch (e: CapExceeded) {
-            return FullAnalysis(false, emptyList(), 0.0, 0.0, 0.0, 0, 0, 0, maxStates.toLong(), capped = true)
-        }
-        val reachable = ctx.map.size.toLong()
-        if (root and 1 == 0) return FullAnalysis(false, emptyList(), 0.0, 0.0, 0.0, 0, 0, 0, reachable)
-
-        // Walk the min-pressure winning line, collecting metrics.
-        val solution = ArrayList<Move>()
-        var ob = ob0
-        var aux = aux0
-        var info = root
-        var pathStates = 0
-        var trapSum = 0.0
-        var depthSum = 0L
-        var trapMoves = 0
-        var decision = 0
-        var singleWin = 0
-        var sharp = 0
-        while (d.status(ob, aux) == LevelData.PLAYING) {
-            val ex = d.exitableMask(ob)
-            var m = ex
-            var legal = 0
-            var wins = 0
-            var seenGroups = 0
-            var best = -1
-            var bestPeak = Int.MAX_VALUE
-            while (m != 0L) {
-                val v = java.lang.Long.numberOfTrailingZeros(m)
-                m = m and (m - 1)
-                // Interchangeable free leaves (see SolveCtx) have identical values: evaluate one, count all.
-                var mult = 1
-                if (d.blocks[v] and ob == 0L) {
-                    val g = 1 shl d.group[v]
-                    if (seenGroups and g != 0) continue
-                    seenGroups = seenGroups or g
-                    mult = countLeavesInGroup(d, ob, ex, d.group[v])
-                }
-                val cob = ob and (1L shl v).inv()
-                val ci = ctx.eval(cob, d.exitAndBoard(ob, aux, v))
-                legal += mult
-                if (ci and 1 == 1) {
-                    wins += mult
-                    // Memo hits may come from equivalent states, so pick the line's move here, not from the memo.
-                    val peak = maxOf(LevelData.dockUsed(aux) + 1, minPeak(ci))
-                    if (peak < bestPeak) {
-                        bestPeak = peak; best = v
-                    }
-                } else {
-                    trapMoves += mult
-                    depthSum += lossDepth(ci).toLong() * mult
-                }
-            }
-            pathStates++
-            trapSum += (legal - wins).toDouble() / legal
-            if (legal >= 2) {
-                decision++
-                if (wins == 1) singleWin++
-            }
-            if (wins.toDouble() / legal <= 0.5) sharp++
-            check(best >= 0 && bestPeak <= minPeak(info))
-            solution += Move(best)
-            aux = d.exitAndBoard(ob, aux, best)
-            ob = ob and (1L shl best).inv()
-            info = ctx.eval(ob, aux)
-        }
-        return FullAnalysis(
-            solvable = true,
-            solution = solution,
-            trapRatio = if (pathStates == 0) 0.0 else trapSum / pathStates,
-            meanTrapDepth = if (trapMoves == 0) 0.0 else depthSum.toDouble() / trapMoves,
-            ordering = if (decision == 0) 0.0 else singleWin.toDouble() / decision,
-            peakSlots = minPeak(root),
-            sharpDecisions = sharp,
-            decisionStates = decision,
-            reachableStates = reachable,
-        )
-    }
+         TODO("v2")
+     }
 
     /** Number of exitable containers in [group] that block no on-board container. */
     private fun countLeavesInGroup(d: LevelData, onBoard: Long, exitable: Long, group: Int): Int {

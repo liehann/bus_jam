@@ -35,6 +35,7 @@ data class Snapshot(
         )
         is Event.Dispatched -> copy(slots = slots.toMutableList().also { it[e.slot] = null })
         is Event.Blocked, is Event.Ignored -> this
+        is Event.Staged -> this // TODO("v2"): staging row (UI agent)
     }
 
     companion object {
@@ -84,6 +85,7 @@ fun planPhases(from: GameState, events: List<Event>): List<Phase> {
             is Event.Boarded -> PhaseKind.BOARD
             is Event.Dispatched -> PhaseKind.DISPATCH
             is Event.Ignored -> null
+            is Event.Staged -> null // TODO("v2"): staging animation (UI agent)
         }
         if (kind == null) { i++; continue }
         val group = mutableListOf(e)

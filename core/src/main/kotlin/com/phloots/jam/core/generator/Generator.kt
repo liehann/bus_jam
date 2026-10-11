@@ -89,15 +89,7 @@ class Generator(private val seed: Long) {
 
     /** Like [generate] but also returns the analysis and score. */
     fun generateScored(params: GenParams, config: DifficultyConfig = DifficultyConfig.DEFAULT): GeneratedLevel? {
-        repeat(params.maxAttempts) {
-            val level = construct(params) ?: return@repeat
-            if (!Solver.solve(level).solvable) return@repeat
-            val analysis = Solver.analyze(level, params.analyzeMaxStates)
-            if (!analysis.solvable) return@repeat
-            val report = Scorer.score(level, analysis, config)
-            if (accept(params, analysis, report)) return GeneratedLevel(level, analysis, report)
-        }
-        return null
+        TODO("v2")
     }
 
     private fun accept(p: GenParams, a: FullAnalysis, r: DifficultyReport): Boolean =
@@ -114,27 +106,7 @@ class Generator(private val seed: Long) {
 
     /** [construct] plus the intended extraction order (container ids). */
     fun constructWithOrder(params: GenParams): Pair<Level, List<Int>>? {
-        require(params.width in 1..Limits.MAX_WIDTH && params.height in 1..Limits.MAX_HEIGHT)
-        require(params.colors in 1..Limits.MAX_COLORS)
-        val w = params.width
-        val h = params.height
-        val placed = place(params)
-        if (placed.size < maxOf(params.minContainers, params.colors)) return null
-
-        // Renumber containers in reading order of their front cell so ids leak nothing about the order.
-        val sortedIdx = placed.indices.sortedWith(compareBy({ placed[it].row }, { placed[it].col }))
-        val oldToNew = IntArray(placed.size)
-        sortedIdx.forEachIndexed { newId, old -> oldToNew[old] = newId }
-        var containers = sortedIdx.mapIndexed { newId, old -> placed[old].copy(id = newId) }
-
-        val order = extractionOrder(containers, w, h, params.decoyFraction)
-        val colors = assignColors(containers.size, params.colors)
-        containers = containers.mapIndexed { i, v -> v.copy(color = colors[i]) }
-        val queue = buildQueue(containers, order, params.maxIntendedSlots.coerceIn(1, Limits.DOCK_SLOTS), params.interleave, params.skipAhead, params.crunches, params.crunchLength)
-        val level = Level(params.levelId, w, h, containers, queue)
-        check(level.validate().isEmpty()) { "generator produced invalid level: ${level.validate()}" }
-        checkNotNull(LineSim.peakSlotsIfWins(level, order)) { "intended line does not win" }
-        return level to order
+        TODO("v2")
     }
 
     // ---------------------------------------------------------------- placement

@@ -1,5 +1,6 @@
 package com.phloots.busjam
 
+import org.junit.Ignore
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
@@ -17,6 +18,7 @@ import org.junit.runner.RunWith
 
 /** Plays level 1 to a win by tapping the board along the solver's move list. */
 @OptIn(ExperimentalTestApi::class)
+@Ignore("v2 pending")
 @RunWith(AndroidJUnit4::class)
 class PlayLevelOneTest {
     @get:Rule

@@ -27,20 +27,22 @@ All versions live in `gradle/libs.versions.toml`. `local.properties` (gitignored
 :app       Android, Compose, single MainActivity (portrait). Depends on :core. No game logic.
 ```
 
-Package root `com.phloots.jam.core`:
+Packages: `:core` = `com.phloots.jam.core.*`, `:levelgen` = `com.phloots.jam.levelgen`. `:app` keeps namespace,
+packages and applicationId `com.phloots.busjam` until the re-skin.
 
 ```
 core/src/main/kotlin/com/phloots/jam/core/
   model/Model.kt                 Limits, Dir, ContainerSize, Cell, Container, Level, DockedContainer, Status,
-                                 GameState, Move, IgnoreReason, Event, Transition        (frozen, architect)
-  engine/Engine.kt               Engine.apply / legalMoves / isTappable                  (gamestate)
+                                 Bits128, GameState, Move, IgnoreReason, Event, Transition (frozen, architect)
+  engine/Engine.kt               Engine.apply / legalMoves / isTappable / computeStatus  (gamestate)
+  engine/LevelData.kt            internal precompute + packed state (v1, to be rewritten) (gamestate)
   solver/Solver.kt               Solver.solve / hint / analyze, SolveResult, SolveStats,
                                  FullAnalysis                                            (gamestate)
   scoring/DifficultyConfig.kt    weights + thresholds, the single tuning file            (gamestate)
   scoring/Scorer.kt              Scorer.score, DifficultyReport                          (gamestate)
   generator/Generator.kt         Generator(seed).generate(GenParams), GenParams          (generator)
-  io/LevelPackCodec.kt           LevelPack, PackedLevel, LevelPackCodec                  (frozen, implemented)
-levelgen/src/main/kotlin/com/phloots/jam/levelgen/Main.kt                             (generator)
+  io/LevelPackCodec.kt           LevelPack, PackedLevel, LevelPackCodec                  (frozen, architect)
+levelgen/src/main/kotlin/com/phloots/jam/levelgen/*.kt                                   (generator)
 app/src/main/kotlin/com/phloots/busjam/...                                               (UI)
 ```
 
@@ -48,65 +50,104 @@ app/src/main/kotlin/com/phloots/busjam/...                                      
 
 | Agent | Owns |
 |---|---|
-| gamestate/solver | `core/.../engine/**`, `core/.../solver/**`, `core/.../scoring/**`, their tests under `core/src/test/.../{engine,solver,scoring}` |
-| generator/levelgen | `core/.../generator/**`, `:levelgen/**`, `app/src/main/assets/levels.json` (regenerated output), campaign tests |
+| gamestate | engine, solver, scoring: `core/.../{engine,solver,scoring}/**` and their tests `core/src/test/.../{engine,solver,scoring}/**` (incl. `solver/TestLevels.kt`) |
+| generator | generator, levelgen, pack: `core/.../generator/**`, `:levelgen/**`, `app/src/main/assets/levels.json` (regenerated output), `core/src/test/.../{generator,campaign}/**` |
 | UI | `:app/**` except `assets/levels.json` |
-| architect | `core/.../model/**`, `core/.../io/**`, Gradle files, this document |
+| architect | `core/.../model/**`, `core/.../io/**`, `core/src/test/.../ModelAndCodecTest.kt`, Gradle files, this document |
 
 Do not edit another agent's files; ask, or record a minimal change in the change log below.
 
-## Frozen API (summary)
+## Frozen API v2 (summary)
+
+Rules: `docs/DESIGN.md` "v2 changes". Shape only is frozen here; v2 behaviour bodies that are not implemented yet
+throw `TODO("v2")` and the tests that depend on them are `@Disabled("v2 pending")` (JUnit 5, `:core`) or
+`@Ignore("v2 pending")` (JUnit 4, `:app`). Whoever implements a body re-enables the matching tests.
 
 Invariants:
 
 - **Coordinates**: `(row, col)`, row 0 = top, col 0 = left. `UP = row-1`, `DOWN = row+1`, `LEFT = col-1`, `RIGHT = col+1` (`Dir.dRow/dCol`).
-- **Container**: `(row, col)` is the **front** cell; the body extends behind it (`dir.opposite`) for `size.length` cells.
-  `cells()` returns front first. The exit ray is the cells from front+dir to the board edge.
-- **Level**: `containers[i].id == i`, `n <= 64`, width <= 10, height <= 12, in bounds, no overlap, per-colour
-  elements == capacity. `Level.validate()` checks these structurally (not solvability). `queue` is front-first.
-- **GameState**: `onBoard` bit `i` = container `i` on board (64-bit, hence <= 64 containers). `slots` has exactly 4
-  positional entries (index 0 = leftmost; null = free; exits take the leftmost free slot; dispatches leave a hole,
-  no compaction). `queueIndex` = front element index (== `queue.size` when empty). `arrivalCounter` = next arrival
-  stamp; boarding goes to the matching docked container with the lowest `arrival`. `status` is set by the Engine.
-  `GameState.initial(level)` = all on board, empty slots, PLAYING.
-- **Events** (chronological, for animation): `Released(containerId, slot)`, `Blocked(containerId, stopRow, stopCol, blockerId)`
-  (stop = front-cell position at the block, i.e. the cell just before the blocker), `Boarded(elementIndex, slot, containerId)`,
-  `Dispatched(slot, containerId)`, `Ignored(containerId, IgnoreReason)`.
+- **Limits**: width 10..12 (`MIN_WIDTH`/`MAX_WIDTH`), height 12..14 (`MIN_HEIGHT`/`MAX_HEIGHT`), `MAX_CONTAINERS = 128`,
+  `DOCK_SLOTS = 4`, `STAGING_SPOTS = 7`, `MAX_COLORS = 8`.
+- **ContainerSize**: `S(length 1, capacity 4)`, `M(2, 6)`, `L(3, 10)`. A length-1 container still faces a direction.
+- **Container**: `(row, col)` is the **front** cell; the body extends behind it (`dir.opposite`) for `size.length`
+  cells. `cells()` returns front first. The exit ray is the cells from front+dir to the board edge.
+- **Level**: `containers[i].id == i`, `n <= 128`, size within the limits, in bounds, no overlap, queue colours in
+  range, per-colour elements == capacity. `Level.validate()` checks these structurally (not solvability). `queue` is
+  front-first. Engine/Solver do **not** call `validate()`, so tests may use small hand-built boards.
+- **Bits128**: immutable 128-bit id set (`lo` = ids 0..63, `hi` = 64..127); `get`, `with`, `without`, `and`, `or`,
+  `andNot`, `count`, `isEmpty`, `ids`, `Bits128.firstN(n)`, `EMPTY`. Hot paths may use `lo`/`hi` directly.
+- **GameState** `(level, onBoard: Bits128, dock: List<DockedContainer?>, staging: List<Int>, queueIndex, status)`:
+  - `dock` has exactly 4 positional entries (index 0 = leftmost; null = free). Release takes the leftmost free slot;
+    dispatches leave a hole (no compaction). Boarding scans slots left to right.
+  - `DockedContainer(containerId, color, spaceLeft)` — no arrival stamp any more (priority is positional).
+  - `staging` = colours of the staged elements in age order (oldest first, list index = staging spot), size <= 7,
+    compacted (after a boarding the later elements shift one spot left). Full unless the queue is exhausted.
+  - `queueIndex` = next queue element **not yet staged** (`== queue.size` once everything is staged).
+  - `stagedElementIndices()` = queue indices parallel to `staging` (derived; boarding always takes the oldest staged
+    element of a colour). `queueRemaining` = unstaged count. `dockUsed`.
+  - `GameState.initial(level)` = all on board, empty dock, staging filled with the first min(7, queue.size) elements,
+    `queueIndex` = that count, PLAYING. (Implemented.)
+  - `status` is set by the Engine (WON > DEADLOCK > STUCK > PLAYING, see `Engine` KDoc).
+- **Events** (chronological, for animation):
+  `Released(containerId, slot)`,
+  `Blocked(containerId, stopRow, stopCol, blockerId)` (stop = front-cell position at the block, i.e. the cell just
+  before the blocker; no state change),
+  `Staged(elementIndex, stagingSpot)` (queue -> staging; spot = list index it takes),
+  `Boarded(elementIndex, fromStagingSpot, slot, containerId)` (spot index at that moment, before compaction),
+  `Dispatched(slot, containerId)`,
+  `Ignored(containerId, IgnoreReason)` with `IgnoreReason { NOT_ON_BOARD, DOCK_FULL, GAME_OVER, INVALID_ID }`.
+  A successful tap emits `Released`, then the boarding loop's `Boarded` / `Dispatched` / `Staged` events in the order
+  they happen. `GameState.initial` emits nothing (the UI shows the initial staging statically).
 
-Signatures:
+Signatures (unchanged from v1 except where noted):
 
 ```kotlin
 object Engine {
-    fun apply(state: GameState, move: Move): Transition      // pure
-    fun legalMoves(state: GameState): List<Move>             // ascending id; empty unless PLAYING
-    fun isTappable(state: GameState, containerId: Int): Boolean
+    fun apply(state: GameState, move: Move): Transition      // pure                         TODO("v2")
+    fun legalMoves(state: GameState): List<Move>             // ascending id; empty unless PLAYING  TODO("v2")
+    fun isTappable(state: GameState, containerId: Int): Boolean                            // TODO("v2")
+    fun computeStatus(state: GameState): Status                                             // TODO("v2")
 }
 object Solver {
-    fun solve(state: GameState): SolveResult                 // SolveResult(solvable, solution: List<Move>, stats)
+    const val DEFAULT_MAX_STATES: Int
+    fun solve(state: GameState): SolveResult                 // SolveResult(solvable, solution, stats)  TODO("v2")
     fun solve(level: Level): SolveResult
     fun hint(state: GameState): Move?
-    fun analyze(level: Level): FullAnalysis                  // raw T, D(moves), O, peakSlots, sharpDecisions, ...
+    fun analyze(level: Level): FullAnalysis
+    fun analyze(level: Level, maxStates: Int): FullAnalysis                                // TODO("v2")
 }
-object Scorer { fun score(level, analysis, config = DifficultyConfig.DEFAULT): DifficultyReport }
-class Generator(seed: Long) { fun generate(params: GenParams): Level? }
+object Scorer { fun score(level, analysis, config = DifficultyConfig.DEFAULT): DifficultyReport }  // formula v1; P/S v2 pending
+class Generator(seed: Long) {
+    fun generate(params: GenParams): Level?
+    fun generateScored(params: GenParams, config: DifficultyConfig = DifficultyConfig.DEFAULT): GeneratedLevel?  // TODO("v2")
+    fun construct(params: GenParams): Level?
+    fun constructWithOrder(params: GenParams): Pair<Level, List<Int>>?                     // TODO("v2")
+}
 object LevelPackCodec {
+    const val CURRENT_VERSION = 2
     fun encode(pack: LevelPack, prettyPrint: Boolean = false): String
-    fun decode(json: String): LevelPack                      // IllegalArgumentException on bad input/version
+    fun decode(json: String): LevelPack                      // accepts versions 1..2; IllegalArgumentException otherwise
 }
-@Serializable data class LevelPack(val version: Int = 1, val levels: List<PackedLevel>)
+@Serializable data class LevelPack(val version: Int = LevelPackCodec.CURRENT_VERSION, val levels: List<PackedLevel>)
 @Serializable data class PackedLevel(val level: Level, val score: Double = 0.0, val metrics: DifficultyReport? = null)
 ```
+
+Solver memo key (v2, DESIGN.md): onBoard (2 Longs) + dock slots positional (container id + spaceLeft per slot) +
+staging as per-colour counts + queueIndex, packed compactly (e.g. 4 Longs). Internal to the gamestate agent.
 
 `levels.json` format (campaign order == list order, `levels[0]` is level 1):
 
 ```json
-{"version":1,"levels":[{"level":{"id":1,"width":5,"height":5,
+{"version":2,"levels":[{"level":{"id":1,"width":10,"height":12,
   "containers":[{"id":0,"size":"S","color":0,"row":1,"col":1,"dir":"UP"}],
   "queue":[0,0,0,0]},"score":0.0}]}
 ```
 
-`app/src/main/assets/levels.json` currently holds 3 hand-written trivial levels so the UI can be built before the
-generator exists; the generator agent overwrites it.
+Pack versions: **1** = v1 rules (current shipped file, keys already renamed to `containers`/`size`; it decodes, but
+its levels do not meet v2 limits and the sizes now mean different lengths). **2** = v2 rules. Until the generator
+ships a version-2 pack: `CampaignPackTest` skips itself (JUnit assumption on `version >= 2`), `ModelAndCodecTest`
+validates the asset only when `version >= 2`, and the app still loads the v1 file (the board renders; taps hit
+`TODO("v2")` until the engine lands).
 
 ## Build & test
 
@@ -156,3 +197,25 @@ Gotchas:
   Memo key deviation: DESIGN.md's sorted (colour, spaceLeft) multiset is not lossless when two untouched
   same-colour containers of different sizes are both docked (arrival order decides which fills first), so the key
   sorts slots by (colour, arrival) and keeps (colour, spaceLeft) in that order. Still compact: two Longs.
+- 2026-10-10 (architect): **v2 rename** (behaviour-preserving, commit "Rename game model to neutral
+  container/element terms"). Vehicle->Container, VehicleType CAR/VAN/BUS->ContainerSize S/M/L (field `type`->`size`),
+  seats/seatsLeft->capacity/spaceLeft, Passenger->Element (`passengerIndex`->`elementIndex`, `frontPassenger`->
+  `frontElement`), ParkedVehicle->DockedContainer, `GameState.slots`->`dock`, `SLOT_COUNT`->`DOCK_SLOTS`,
+  `SLOTS_FULL`->`DOCK_FULL`, `slotsUsed`->`dockUsed`, Exited->Released, Departed->Dispatched, Bumped->Blocked.
+  JSON keys `vehicles`->`containers`, `type`->`size`, values CAR/VAN/BUS->S/M/L. Packages `com.phloots.busjam.core`
+  -> `com.phloots.jam.core`, `com.phloots.busjam.levelgen` -> `com.phloots.jam.levelgen` (`:app` unchanged).
+- 2026-10-10 (architect): **v2 API freeze** (staging area, S/M/L sizes, 128 containers). Breaking:
+  `ContainerSize` lengths S1/M2/L3 (capacities 4/6/10); `Limits` gained `MIN_WIDTH` 10, `MIN_HEIGHT` 12,
+  `STAGING_SPOTS` 7, `MAX_WIDTH` 12, `MAX_HEIGHT` 14, `MAX_CONTAINERS` 128; `Level.validate` enforces them plus queue
+  colour range. New `Bits128`; `GameState.onBoard` is `Bits128`; `GameState` gained `staging: List<Int>` and
+  `stagedElementIndices()`, lost `arrivalCounter` and `frontElement`; `queueIndex` now means "next element not yet
+  staged"; `GameState.initial` fills staging. `DockedContainer` lost `arrival`. Events: new `Staged(elementIndex,
+  stagingSpot)`; `Boarded` gained `fromStagingSpot` (now `Boarded(elementIndex, fromStagingSpot, slot,
+  containerId)`). `LevelPackCodec.CURRENT_VERSION` = 2 (decode accepts 1..2). Engine/Solver/Generator signatures
+  unchanged; bodies `TODO("v2")`: `Engine.*`, `Solver.solve(state)`, `Solver.analyze(level, maxStates)`,
+  `Generator.generateScored`, `Generator.constructWithOrder`, internal `LevelData.toPacked`. `Scorer` and
+  `DifficultyConfig` unchanged (v2 P and S normalisation pending, gamestate). Disabled pending v2: `EngineTest`,
+  `SolverTest`, `GeneratorTest`, 3 `ScorerTest` methods, `CampaignPackTest` (assumption), app `GameViewModelTest`,
+  `PlayLevelOneTest`, `ScreenshotTest.animationFramesAndWinDialog`. Minimal edits in other agents' files to keep
+  the build compiling: v1 tests (`EngineTest`, `TestLevels`) adapted to the new constructors; `AnimationPlan` treats
+  `Event.Staged` as a no-op; `ScreenshotTest` builds a v2 `GameState`.

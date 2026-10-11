@@ -20,9 +20,12 @@ data class LevelPack(
     val levels: List<PackedLevel>,
 )
 
-/** JSON codec for `app/src/main/assets/levels.json`. Unknown keys are ignored on decode. */
+/**
+ * JSON codec for `app/src/main/assets/levels.json`. Unknown keys are ignored on decode.
+ * Versions: 1 = v1 rules (still decodable), 2 = v2 rules (staging area, S/M/L = 1/2/3 cells). Encode writes [CURRENT_VERSION].
+ */
 object LevelPackCodec {
-    const val CURRENT_VERSION = 1
+    const val CURRENT_VERSION = 2
 
     private val compact = Json {
         ignoreUnknownKeys = true

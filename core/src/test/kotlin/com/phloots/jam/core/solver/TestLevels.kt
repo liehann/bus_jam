@@ -6,6 +6,7 @@ import com.phloots.jam.core.model.GameState
 import com.phloots.jam.core.model.Level
 import com.phloots.jam.core.model.Move
 import com.phloots.jam.core.model.Status
+import com.phloots.jam.core.model.Bits128
 import com.phloots.jam.core.model.Container
 import com.phloots.jam.core.model.ContainerSize
 import kotlin.random.Random
@@ -109,12 +110,12 @@ object TestLevels {
 
         // Build the queue by simulating an adaptive extraction line.
         class P(val id: Int, val color: Int, var left: Int, val arrival: Int)
-        var onBoard = GameState.initial(provisional).onBoard
+        var onBoard = GameState.initial(provisional).onBoard.lo
         val docked = ArrayList<P>()
         val queue = ArrayList<Int>()
         val order = ArrayList<Int>()
         var arrival = 0
-        val probe = { ob: Long -> GameState(provisional, ob, List(4) { null }, 0, 0) }
+        val probe = { ob: Long -> GameState(provisional, Bits128(ob, 0L), List(4) { null }, emptyList(), 0) }
         fun emit(color: Int) {
             queue += color
             val p = docked.filter { it.color == color }.minBy { it.arrival }

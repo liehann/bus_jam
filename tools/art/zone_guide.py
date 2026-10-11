@@ -39,6 +39,8 @@ def render(layout):
         return [round(v * s) for v in r]
 
     d.rectangle(box(z["top_bar"]["rect"]), fill=COLOURS["top_bar"])
+    if "status_bar" in z:
+        d.rectangle(box(z["status_bar"]["rect"]), fill=COLOURS["top_bar"])
     d.rectangle(box(z["counter"]["rect"]), fill=COLOURS["counter"])
     for r in z["benches"]["rects"]:
         d.rounded_rectangle(box(r), radius=round(6 * s), fill=COLOURS["bench"])
@@ -77,6 +79,13 @@ def main(argv):
     out.mkdir(parents=True, exist_ok=True)
     img.save(out / f"{lid}_zones.png")
     img.resize((img.width // 2, img.height // 2), Image.NEAREST).save(out / f"{lid}_zones_small.png")
+    # The painted part only: everything above the board. The board, the floor around it and the bottom margin
+    # are assembled by the app from tiled textures (v1-v3 kept inventing a second room in that big empty area).
+    if "paint_region" in layout:
+        s = layout["screen_px"][0] / layout["screen_dp"][0]
+        x0, y0, x1, y1 = [round(v * s) for v in layout["paint_region"]]
+        top = img.crop((x0, y0, x1, y1))
+        top.save(out / f"{lid}_zones_top.png")
     print(out / f"{lid}_zones.png")
 
 

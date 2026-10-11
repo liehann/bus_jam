@@ -10,7 +10,33 @@ benches and ticket stands kept their red and purple label colours. v2 drops the 
 board), states that zone colours are labels only, and asks for a flat top-down view. After v2 the scenery
 label changed from grey to olive: Gemini left the grey areas unpainted in both runs, reading grey as empty.
 
-## Prompt 1: paint the backdrop
+## Status (paused 2026-10-11)
+
+v3 (edit of v2 against the v3 layout) kept v2's invented second room and still left the olive edges unpainted.
+Next idea, not yet tried: paint only the part above the board (`art/guides/default_zones_top.png`, from
+`paint_region` in the layout) and let the app fill the board area from the kit textures. Score each attempt with
+`python3 tools/art/fit_zones.py <painting> <zone-map>` (v2 baseline: mean IoU 0.47).
+
+## Prompt 1: paint the backdrop (v3: edit the previous attempt)
+
+Attach for v3: `art/guides/default_zones_small.png` (image 1) and `art/raw/sushi/backdrop_v2.jpeg` (image 2).
+
+Image 1 is a colour-coded layout map of a portrait mobile game screen. Image 2 is an earlier painting of this screen: keep its art style, its materials and its look (pale wood, cream paper screens, thick dark brown outlines, flat 2D, soft cel shading). Repaint it so that its layout matches image 1 exactly, zone by zone, with the same position, size and shape for every zone.
+
+The colours in image 1 are only labels. None of these label colours may appear in the painting:
+- Magenta: empty conveyor belts of pale wooden slats with a light wooden rim, exactly along the magenta shapes: one thin incoming belt that leaves the kitchen hatch, runs right, turns, runs back left and drops into the top of the loop, and one closed loop. No plates.
+- Orange: the kitchen hatch with a short cream noren curtain, exactly in the orange square.
+- Cyan: inside of the loop, a plain light wooden surface.
+- Yellow: a light wooden counter strip running the full width of the screen.
+- Purple: four small empty wooden ticket stands standing on that counter.
+- Red: four short empty light-wood benches, directly below the counter.
+- Green: a plain, flat, pale wooden floor that starts directly under the benches and fills the whole green area to its edges. Nothing between the benches and the floor: no wall, no window, no lanterns, no second room. No frame, no border, no grid, no objects.
+- White: a plain pale cream wall with nothing on it.
+- Olive: quiet background scenery around the edges of the screen (cream paper screens, light natural wood, a few small paper lanterns). Olive areas must be painted, never left plain or grey.
+
+Flat view straight down like a floor plan, no perspective: rectangles stay rectangles. Same portrait aspect ratio as image 1. No plates, no food, no animals, no cards, no buttons, no text.
+
+## Previous Prompt 1 (v2)
 
 Image 1 is a colour-coded layout map of a portrait mobile game screen. Image 2 shows the art style and setting. Paint the empty background scene for this game screen in exactly the art style of image 2: a cozy Japanese sushi bar for cute animals, flat 2D illustration, soft cel shading, thick dark brown outlines, warm pastel palette.
 
@@ -34,6 +60,6 @@ Same portrait aspect ratio as image 1. No plates, no food, no animals, no ticket
 Now convert the image you just made into a flat colour map with exactly the same layout as image 1. Fill every area with one solid colour, no shading, no outlines, no texture: conveyor belts magenta (#FF00FF), kitchen hatch orange (#FF8C00), inside of the loop cyan (#00C8FF), counter yellow (#FFD700), benches red (#E0002A), ticket stands purple (#8000FF), the plain floor area at the bottom green (#00B050), the plain wall at the top white (#FFFFFF), and everything else olive (#808000). Trace the shapes exactly where they are in your painting, even where they differ from image 1.
 
 ## Save as
-- Painting: `art/raw/sushi/backdrop_v2.jpeg`
-- Zone map from prompt 2: `art/raw/sushi/backdrop_v2_zones.jpeg`
+- Painting: `art/raw/sushi/backdrop_v3.jpeg`
+- Zone map from prompt 2: `art/raw/sushi/backdrop_v3_zones.jpeg`
 (or just leave them in ~/Downloads and tell me)

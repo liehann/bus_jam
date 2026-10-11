@@ -149,3 +149,23 @@ Calibration (fitness4, solver lines): Motif preview 2 L18 45.2 vs the Hybrid pre
 14.7 overall but high on the axes the user praised (info 0.59 against <= 0.34 for every disliked level, readable
 1.00, slack 1.00) and 0 on the opening it was criticised for; HP3 L10 scores 83.5 (info, opening and slack 1.00,
 readable 0.18: the comment it got).
+
+## 8. Ring size as a difficulty lever (playtest 2026-10-11)
+
+Ring size test L2 is Hybrid preview 4 L5 (an early juggle level) replayed with 28 seats instead of 40. Label:
+"+ hard, good balance: a few attempts, doable". Same layout and queue, solver lines (`QualityReport`, labelled set):
+
+| | 40 seats (HP4 L5, not played) | 28 seats (liked) |
+|---|---|---|
+| hidden bits (all in the first third) | 3.9 | 11.0 |
+| all bits | 19.0 | 39.8 |
+| hard decisions | 1 | 7 |
+| 2^-hidden (random line survives the hidden losses) | 7e-2 | 5e-4 |
+| free docks (mean) | 2.14 | 2.03 |
+| fitness4 | 13.4 | 27.9 |
+
+The smaller ring nearly triples the hidden bits of a 37-move level without changing the layout: with 12 fewer seats
+a wrong release fills the carousel sooner, so more early choices become losses beyond the next move. Per move it
+sits with the liked HP2 L19 (0.30 vs 0.31 hidden bits per move) though its total is the lowest of the liked levels:
+a short level can be "hard but doable" at ~11 hidden bits. Proposal, not built: let the generator choose the ring
+size per level (20-40) as a dial towards a tier's hidden-bit target, after the layout is fixed.

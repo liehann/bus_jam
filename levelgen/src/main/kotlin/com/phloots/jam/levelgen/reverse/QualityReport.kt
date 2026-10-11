@@ -25,6 +25,8 @@ private val LABELLED = listOf(
     Triple("app/src/debug/assets/packs/motif-preview-2.json", 18, "+ hard, good (restarted twice)"),
     Triple("levelgen/calibration/hybrid-preview-2.json", 19, "+ stumped twice; weak opening"),
     Triple("app/src/debug/assets/packs/hybrid-preview-3.json", 10, "+ failed once; chain seen too late"),
+    Triple("app/src/debug/assets/packs/ring-size-test.json", 2, "+ hard, good balance: a few attempts (HP4 L5 at 28 seats)"),
+    Triple("app/src/debug/assets/packs/hybrid-preview-4.json", 5, "(same layout at 40 seats, not played)"),
     Triple("levelgen/calibration/reverse-preview-1.json", 19, "- easy despite pressure"),
     Triple("levelgen/calibration/reverse-preview-1.json", 20, "- easy despite pressure"),
     Triple("levelgen/calibration/motif-preview-1.json", 2, "- filled up immediately"),

@@ -10,7 +10,7 @@ import com.phloots.jam.core.realtime.RtEvent as CoreEvent
 /** [RealTimeRules] over core's [RealTime] (pure mapping, no rules). One seat step takes [seatSeconds]. */
 class CoreRealTimeRules(
     private val config: RtConfig = RtConfig.DEFAULT,
-    seatSeconds: Double = 0.1,
+    seatSeconds: Double = 0.2,
 ) : RealTimeRules<RealTimeState> {
     override val tickMs: Double = config.secondsPerTick(seatSeconds) * 1000.0
 

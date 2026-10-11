@@ -17,7 +17,7 @@ import com.phloots.jam.core.model.Status
  * seat `s` stands at ring POSITION `(s + phase) mod N`; positions are fixed places on screen, numbered in the
  * direction of travel. Every [RtConfig.ticksPerSeat] ticks the phase advances by one (each seat moves to the next
  * position). Two places are special:
- *  - the GATE WINDOW: [RtConfig.gateWidth] consecutive positions starting at [RtConfig.gatePosition] (default 0..5;
+ *  - the GATE WINDOW: [RtConfig.gateWidth] consecutive positions starting at [RtConfig.gatePosition] (default 0..7;
  *    elements enter it at gatePosition and leave it after gatePosition + gateWidth - 1). Whenever the stagger allows
  *    (at most one boarding per [RtConfig.boardStaggerTicks] ticks), the most DOWNSTREAM element in the window whose
  *    colour has a docked (arrived) container with unreserved space leaves its seat and walks to the LEFTMOST such
@@ -35,8 +35,8 @@ import com.phloots.jam.core.model.Status
 
 /** Timing configuration. All durations are in ticks and must be >= 1. */
 data class RtConfig(
-    /** Ticks per one-seat rotation step. The UI targets ~0.1 s per seat (~4 s per rotation). */
-    val ticksPerSeat: Int = 4,
+    /** Ticks per one-seat rotation step. At 25 ms per tick that is 0.2 s per seat (~8 s per rotation at 40). */
+    val ticksPerSeat: Int = 8,
     /** Container drive from the board into its dock slot; it can't receive elements before it arrives. */
     val releaseTicks: Int = 12,
     /** Element walk from the gate into its container. */
@@ -46,8 +46,8 @@ data class RtConfig(
     /** Ring position of the boarding window's upstream end (where elements enter the window). */
     val gatePosition: Int = 0,
     /** Number of consecutive ring positions in the boarding window. */
-    val gateWidth: Int = 6,
-    /** Minimum ticks between two boarding starts (the "wave" spacing; 3 ticks = 75 ms at 0.1 s per seat). */
+    val gateWidth: Int = 8,
+    /** Minimum ticks between two boarding starts (the "wave" spacing; 3 ticks = 75 ms). */
     val boardStaggerTicks: Int = 3,
     /**
      * Ring position where queue elements step onto empty seats; [ENTRY_HALF_RING] (the default) = half the ring
@@ -74,7 +74,7 @@ data class RtConfig(
     }
 
     /** Seconds per tick when one seat step takes [seatSeconds]. */
-    fun secondsPerTick(seatSeconds: Double = 0.1): Double = seatSeconds / ticksPerSeat
+    fun secondsPerTick(seatSeconds: Double = 0.2): Double = seatSeconds / ticksPerSeat
 
     companion object {
         /** [entryPosition] value meaning "half the ring". */

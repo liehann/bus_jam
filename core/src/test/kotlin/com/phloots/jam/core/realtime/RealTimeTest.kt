@@ -409,7 +409,7 @@ class RealTimeTest {
     private fun shift(spots: Int) = spots / 2 - 20
 
     /** Default timing (4 ticks per seat, stagger 3, width 6) with a short release drive. */
-    private val windowCfg = RtConfig(releaseTicks = 2)
+    private val windowCfg = RtConfig(ticksPerSeat = 4, releaseTicks = 2, gateWidth = 6) // the window fixtures assume a 6-seat window at 4 ticks per seat
 
     private fun windowElements(rt: RealTimeState, cfg: RtConfig) =
         (0 until cfg.gateWidth).map { rt.seatElement(rt.seatAt(cfg.gatePosition + it)) }

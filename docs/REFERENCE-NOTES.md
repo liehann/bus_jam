@@ -202,3 +202,12 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
   car (docked, filling). No green/orange/purple container reachable; no brown/pink on the carousel.
 - Waiting colours vs reachable colours barely overlap → every move is a dummy or a dig. → DESIGN principle 12.
 - Passengers visibly walk from the gate to the docked car (boarding animation).
+
+### Level 15 — keystone cluster (2026-10-11)
+- User: "through the double pink dummy, but so many cars chain to the orange/pink/blue/yellow in bottom left, and
+  those can't clear right now." → a keystone cluster with high fan-in: many vehicles' exit chains pass through it,
+  so the board is frozen until it clears; if its colours aren't on the carousel the player is forced into dummies.
+- Screenshot moments later: dock empty, bottom-left reduced to pink bus + orange van (+ blue/yellow bus pair) — the
+  bottleneck was opening.
+- Generator metric: per container, fan-in = number of containers whose exit chains pass through it; keystone with
+  high fan-in + colour not yet waiting = strong pinch point.

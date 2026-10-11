@@ -1,14 +1,15 @@
 package com.phloots.jam.core.solver
 
-import org.junit.jupiter.api.Disabled
 import com.phloots.jam.core.engine.Engine
+import com.phloots.jam.core.model.ContainerSize
 import com.phloots.jam.core.model.Dir
 import com.phloots.jam.core.model.Event
 import com.phloots.jam.core.model.GameState
 import com.phloots.jam.core.model.Level
+import com.phloots.jam.core.model.Limits
 import com.phloots.jam.core.model.Move
 import com.phloots.jam.core.model.Status
-import com.phloots.jam.core.model.ContainerSize
+import com.phloots.jam.core.scoring.DifficultyConfig
 import com.phloots.jam.core.solver.TestLevels.small
 import com.phloots.jam.core.solver.TestLevels.v
 import kotlin.random.Random
@@ -19,15 +20,29 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-@Disabled("v2 pending")
 class SolverTest {
     private fun q(vararg runs: Pair<Int, Int>) = runs.flatMap { (c, k) -> List(k) { c } }
 
-    /** Exhaustive search through the public Engine only, no memo. Ground truth for small levels. */
-    private fun bruteForceWins(s: GameState): Boolean {
-        if (s.status == Status.WON) return true
-        if (s.status != Status.PLAYING) return false
-        return Engine.legalMoves(s).any { bruteForceWins(Engine.apply(s, it).state) }
+    /** L containers of colour 4 needed so that their elements fill the whole staging area. */
+    private val ls = (Limits.STAGING_SPOTS + 9) / 10
+
+    /**
+     * Column of [k] S containers (colours 0 until k, top first) above [ls] L containers of colour 4 whose elements
+     * come first and fill staging: the S containers must all dock before anything boards.
+     */
+    private fun column(k: Int): Level {
+        val vs = (0 until k).map { small(it, it, 2 * it, 0, Dir.UP) } +
+            (0 until ls).map { v(k + it, ContainerSize.L, 4, 2 * k + 3 * it, 0, Dir.UP) }
+        return Level(1, 2, 2 * k + 3 * ls, vs, q(4 to 10 * ls) + (0 until k).flatMap { c -> List(4) { c } })
+    }
+
+    /** Needs a 5th dock slot: unsolvable. */
+    private val deadLevel = column(4)
+
+    /** Random small level; every other one padded so the staging window is 7 spots. */
+    private fun rs(rnd: Random, w: Int, h: Int, n: Int, colors: Int, largeOdds: Int = 6): Level {
+        val l = TestLevels.randomSmall(rnd, w, h, n, colors, largeOdds)
+        return if (rnd.nextBoolean()) TestLevels.padded(l) else l
     }
 
     @Test
@@ -40,28 +55,25 @@ class SolverTest {
     }
 
     @Test
-    fun chainNeedingFifthSlotIsUnsolvable() {
-        // Balanced, but colour 4's S container is at the bottom and its elements come first: needs a 5th slot.
-        val level = TestLevels.chain(listOf(0, 1, 2, 3, 4), q(4 to 4, 0 to 4, 1 to 4, 2 to 4, 3 to 4))
-        assertTrue(level.validate().isEmpty())
-        val r = Solver.solve(level)
+    fun levelNeedingFifthSlotIsUnsolvable() {
+        val r = Solver.solve(deadLevel)
         assertFalse(r.solvable)
         assertEquals(emptyList(), r.solution)
-        assertNull(Solver.hint(GameState.initial(level)))
-        val a = Solver.analyze(level)
+        assertNull(Solver.hint(GameState.initial(deadLevel)))
+        val a = Solver.analyze(deadLevel)
         assertFalse(a.solvable)
         assertFalse(a.capped)
+        assertFalse(Solver.analyzeBounded(deadLevel).solvable)
     }
 
     @Test
-    fun chainWithFourthSlotIsSolvable() {
-        // Same idea with colour 3 at depth 4: exactly 4 slots suffice.
-        val level = TestLevels.chain(listOf(0, 1, 2, 3), q(3 to 4, 0 to 4, 1 to 4, 2 to 4))
-        val r = Solver.solve(level)
-        assertTrue(r.solvable)
+    fun levelNeedingExactlyFourSlotsIsSolvable() {
+        val level = column(3)
+        assertTrue(Solver.solve(level).solvable)
         val a = Solver.analyze(level)
         assertTrue(a.solvable)
         assertEquals(4, a.peakSlots)
+        assertEquals(listOf(0, 1, 2, 3), a.solution.take(4).map { it.containerId })
     }
 
     @Test
@@ -76,24 +88,17 @@ class SolverTest {
     }
 
     @Test
-    fun keyDistinguishesArrivalOrderOfUntouchedSameColourContainers() {
-        // Colour-0 S container (id0) and colour-0 L container (id1) are both docked untouched before colour-0 elements come.
-        // Which one fills first decides whether a slot frees in time.
-        val level = Level(
-            1, 4, 5,
-            listOf(
-                small(0, 0, 0, 0, Dir.UP),
-                v(1, ContainerSize.L, 0, 0, 1, Dir.UP),
-                small(2, 1, 0, 2, Dir.UP),
-                small(3, 2, 0, 3, Dir.UP),
-                small(4, 3, 2, 3, Dir.UP),
-            ),
-            q(1 to 4, 0 to 4, 3 to 4, 0 to 10, 2 to 4),
-        )
-        assertTrue(level.validate().isEmpty(), level.validate().toString())
-        val truth = bruteForceWins(GameState.initial(level))
-        assertEquals(truth, Solver.solve(level).solvable)
-        assertEquals(truth, Solver.analyze(level).solvable)
+    fun positionalDockMattersForSameColourContainers() {
+        // Two colour-0 containers of different sizes; which one sits left decides which fills first.
+        val rnd = Random(31)
+        var checked = 0
+        repeat(300) {
+            val level = rs(rnd, 5, 5, 7, 2, largeOdds = 3)
+            val truth = Brute().wins(GameState.initial(level))
+            assertEquals(truth, Solver.solve(level).solvable, "level $level")
+            checked++
+        }
+        assertEquals(300, checked)
     }
 
     @Test
@@ -101,9 +106,9 @@ class SolverTest {
         val rnd = Random(1234)
         var solvable = 0
         repeat(400) {
-            val level = TestLevels.randomSmall(rnd, width = 5, height = 5, maxContainers = 7, colors = 3)
-            val s0 = GameState.initial(level)
-            val truth = bruteForceWins(s0)
+            val level = rs(rnd, 5, 5, 7, 3)
+            val brute = Brute()
+            val truth = brute.wins(GameState.initial(level))
             val r = Solver.solve(level)
             assertEquals(truth, r.solvable, "level $level")
             val a = Solver.analyze(level)
@@ -112,40 +117,78 @@ class SolverTest {
                 solvable++
                 assertEquals(Status.WON, TestLevels.play(level, r.solution).status)
                 assertEquals(Status.WON, TestLevels.play(level, a.solution).status)
-                assertEquals(a.peakSlots, replayPeak(level, a.solution))
-                assertTrue(a.trapRatio in 0.0..1.0)
-                assertTrue(a.ordering in 0.0..1.0)
-                assertTrue(a.peakSlots in 1..4)
-                assertTrue(a.sharpDecisions <= a.solution.size)
-                assertTrue(a.decisionStates <= a.solution.size)
+                assertEquals(replayPeak(level, a.solution), a.peakSlots)
+                assertEquals(brute.minOcc(GameState.initial(level)).toDouble() / level.containers.size, a.meanDockUsed, 1e-9)
             }
         }
         assertTrue(solvable in 20..380, "solvable=$solvable")
     }
 
+    /**
+     * Off-path states (reviewer gap): random play with deliberate random mistakes; at every state reached, solve and
+     * hint must agree with brute force, and a hint must lead to a state brute force still wins.
+     */
+    @Test
+    fun solveAndHintMatchBruteForceOffPath() {
+        val rnd = Random(777)
+        var states = 0
+        var lostPlaying = 0
+        var winnableMid = 0
+        repeat(250) {
+            val level = rs(rnd, 6, 6, 9, 4, largeOdds = 4)
+            val brute = Brute()
+            var s = GameState.initial(level)
+            while (true) {
+                val truth = brute.wins(s)
+                val r = Solver.solve(s)
+                assertEquals(truth, r.solvable, "state $s")
+                val h = Solver.hint(s)
+                if (s.status == Status.PLAYING && truth) {
+                    winnableMid++
+                    assertNotNull(h)
+                    val t = Engine.apply(s, h)
+                    assertTrue(t.events.first() is Event.Released)
+                    assertTrue(brute.wins(t.state))
+                    assertEquals(Status.WON, TestLevels.play(s, r.solution).status)
+                } else {
+                    assertNull(h)
+                    if (s.status == Status.PLAYING) lostPlaying++
+                }
+                states++
+                if (s.status != Status.PLAYING) break
+                val legal = Engine.legalMoves(s)
+                // Mostly random moves (mistakes), sometimes the hint.
+                val m = if (h != null && rnd.nextInt(3) == 0) h else legal[rnd.nextInt(legal.size)]
+                s = Engine.apply(s, m).state
+            }
+        }
+        assertTrue(states > 1000, "states=$states")
+        assertTrue(lostPlaying > 100, "lostPlaying=$lostPlaying")
+        assertTrue(winnableMid > 100, "winnableMid=$winnableMid")
+    }
+
     @Test
     fun solveAndAnalyzeAgreeOnMediumLevels() {
-        // solve (front-colour pruning + move symmetry) and analyze (canonical leaf key + closed-form losses) use
-        // different reductions; they must agree, and both lines must replay to a win.
         val rnd = Random(77)
         var solvable = 0
         repeat(150) {
-            val level = TestLevels.randomSmall(rnd, width = 7, height = 7, maxContainers = 14, colors = 5)
+            val level = rs(rnd, 7, 7, 14, 5)
             val r = Solver.solve(level)
             val a = Solver.analyze(level)
             assertFalse(a.capped)
             assertEquals(r.solvable, a.solvable, "level $level")
+            assertEquals(r.solvable, Solver.analyzeBounded(level).solvable)
             if (r.solvable) {
                 solvable++
                 assertEquals(Status.WON, TestLevels.play(level, r.solution).status)
                 assertEquals(Status.WON, TestLevels.play(level, a.solution).status)
-                assertEquals(a.peakSlots, replayPeak(level, a.solution))
+                assertEquals(replayPeak(level, a.solution), a.peakSlots)
             }
         }
         assertTrue(solvable > 5, "solvable=$solvable")
     }
 
-    /** Peak slots right after each exit, along [moves]. */
+    /** Peak slots right after each release, along [moves]. */
     private fun replayPeak(level: Level, moves: List<Move>): Int {
         var s = GameState.initial(level)
         var peak = 0
@@ -156,67 +199,140 @@ class SolverTest {
         return peak
     }
 
-    @Test
-    fun minPressureLineIsBestOverAllWinningLines() {
-        val rnd = Random(99)
-        repeat(150) {
-            val level = TestLevels.randomSmall(rnd, width = 5, height = 5, maxContainers = 6, colors = 3)
-            val a = Solver.analyze(level)
-            if (!a.solvable) return@repeat
-            assertEquals(bruteMinPeak(GameState.initial(level)), a.peakSlots)
+    private data class PathMetrics(
+        val trap: Double, val depth: Double, val decisions: Int, val ordering: Double, val sharp: Int, val occ: Double,
+    )
+
+    /** Metrics along [line] computed by brute force (trap depths capped at [depthCap]). */
+    private fun bruteMetrics(level: Level, line: List<Move>, depthCap: Int = Int.MAX_VALUE): PathMetrics {
+        val brute = Brute()
+        var s = GameState.initial(level)
+        var trapSum = 0.0
+        var depthSum = 0.0
+        var traps = 0
+        var decisions = 0
+        var single = 0
+        var sharp = 0
+        var occ = 0
+        for (m in line) {
+            val children = brute.children(s).map { it.second }
+            val wins = children.count { brute.wins(it) }
+            trapSum += (children.size - wins).toDouble() / children.size
+            children.filter { !brute.wins(it) }.forEach { traps++; depthSum += minOf(depthCap, brute.lossDepth(it)) }
+            if (children.size >= 2) { decisions++; if (wins == 1) single++ }
+            if (wins.toDouble() / children.size <= 0.5) sharp++
+            occ += s.dockUsed
+            s = Engine.apply(s, m).state
         }
-    }
-
-    private fun bruteMinPeak(s: GameState): Int {
-        if (s.status == Status.WON) return 0
-        if (s.status != Status.PLAYING) return Int.MAX_VALUE
-        var best = Int.MAX_VALUE
-        for (m in Engine.legalMoves(s)) {
-            val sub = bruteMinPeak(Engine.apply(s, m).state)
-            if (sub != Int.MAX_VALUE) best = minOf(best, maxOf(s.dockUsed + 1, sub))
-        }
-        return best
-    }
-
-    private fun bruteLossDepth(s: GameState): Int {
-        if (s.status != Status.PLAYING) return 0
-        return Engine.legalMoves(s).maxOf { 1 + bruteLossDepth(Engine.apply(s, it).state) }
+        val n = line.size
+        return PathMetrics(
+            trapSum / n, if (traps == 0) 0.0 else depthSum / traps, decisions,
+            if (decisions == 0) 0.0 else single.toDouble() / decisions, sharp, occ.toDouble() / n,
+        )
     }
 
     @Test
-    fun pathMetricsMatchBruteForce() {
+    fun exhaustivePathMetricsMatchBruteForce() {
         val rnd = Random(2024)
         var withTraps = 0
-        repeat(500) {
-            val level = TestLevels.randomSmall(rnd, width = 5, height = 6, maxContainers = 8, colors = 4)
+        repeat(600) {
+            // Dense 5x5 boards with many colours: small levels need dock pressure to have traps under v2 staging.
+            val level = if (rnd.nextInt(3) == 0) rs(rnd, 5, 5, 8, 4) else TestLevels.trapSmall(rnd)
             val a = Solver.analyze(level)
             if (!a.solvable) return@repeat
-            var s = GameState.initial(level)
-            var trapSum = 0.0
-            var depthSum = 0.0
-            var traps = 0
-            var decisions = 0
-            var single = 0
-            var sharp = 0
-            for (m in a.solution) {
-                val legal = Engine.legalMoves(s)
-                val children = legal.map { Engine.apply(s, it).state }
-                val wins = children.count { bruteForceWins(it) }
-                trapSum += (legal.size - wins).toDouble() / legal.size
-                children.filter { !bruteForceWins(it) }.forEach { traps++; depthSum += bruteLossDepth(it) }
-                if (legal.size >= 2) { decisions++; if (wins == 1) single++ }
-                if (wins.toDouble() / legal.size <= 0.5) sharp++
-                s = Engine.apply(s, m).state
-            }
-            if (traps > 0) withTraps++
-            val n = a.solution.size
-            assertEquals(trapSum / n, a.trapRatio, 1e-9)
-            assertEquals(if (traps == 0) 0.0 else depthSum / traps, a.meanTrapDepth, 1e-9)
-            assertEquals(decisions, a.decisionStates)
-            assertEquals(if (decisions == 0) 0.0 else single.toDouble() / decisions, a.ordering, 1e-9)
-            assertEquals(sharp, a.sharpDecisions)
+            val b = bruteMetrics(level, a.solution)
+            if (b.trap > 0) withTraps++
+            assertEquals(b.trap, a.trapRatio, 1e-9)
+            assertEquals(b.depth, a.meanTrapDepth, 1e-9)
+            assertEquals(b.decisions, a.decisionStates)
+            assertEquals(b.ordering, a.ordering, 1e-9)
+            assertEquals(b.sharp, a.sharpDecisions)
+            assertEquals(b.occ, a.meanDockUsed, 1e-9)
         }
         assertTrue(withTraps >= 10, "withTraps=$withTraps")
+    }
+
+    /** With budgets large enough, the bounded analysis is exact along its own (solve) line. */
+    @Test
+    fun boundedAnalysisMatchesBruteForceOnSmallLevels() {
+        val rnd = Random(5150)
+        var withTraps = 0
+        var sameLine = 0
+        repeat(600) {
+            val level = if (rnd.nextInt(3) == 0) rs(rnd, 5, 5, 8, 4) else TestLevels.trapSmall(rnd)
+            val b = Solver.analyzeBounded(level)
+            val a = Solver.analyze(level)
+            assertEquals(a.solvable, b.solvable)
+            assertFalse(b.capped)
+            if (!b.solvable) return@repeat
+            assertTrue(b.bounded)
+            assertEquals(0, b.unknownChildren)
+            assertEquals(Status.WON, TestLevels.play(level, b.solution).status)
+            val m = bruteMetrics(level, b.solution, depthCap = 8)
+            if (m.trap > 0) withTraps++
+            assertEquals(m.trap, b.trapRatio, 1e-9)
+            assertEquals(m.depth, b.meanTrapDepth, 1e-9)
+            assertEquals(m.decisions, b.decisionStates)
+            assertEquals(m.ordering, b.ordering, 1e-9)
+            assertEquals(m.sharp, b.sharpDecisions)
+            assertEquals(m.occ, b.meanDockUsed, 1e-9)
+            assertEquals(replayPeak(level, b.solution), b.peakSlots)
+            // Same line => same metrics as the exhaustive analysis (trap depths here are far below the cap).
+            if (a.solution == b.solution) {
+                sameLine++
+                assertEquals(a.trapRatio, b.trapRatio, 1e-9)
+                assertEquals(a.meanTrapDepth, b.meanTrapDepth, 1e-9)
+                assertEquals(a.ordering, b.ordering, 1e-9)
+                assertEquals(a.sharpDecisions, b.sharpDecisions)
+                assertEquals(a.meanDockUsed, b.meanDockUsed, 1e-9)
+            }
+        }
+        assertTrue(withTraps >= 10, "withTraps=$withTraps")
+        assertTrue(sameLine >= 20, "sameLine=$sameLine")
+    }
+
+    @Test
+    fun boundedAnalysisReportsUnknownsUnderTinyBudget() {
+        val level = TestLevels.bigSolvable(seed = 21, containers = 70, perturb = 400)
+        val tiny = DifficultyConfig(childSolveNodeBudget = 1, trapDepthNodeBudget = 1)
+        val b = Solver.analyzeBounded(level, tiny)
+        assertTrue(b.solvable)
+        assertTrue(b.unknownChildren > 0)
+        assertTrue(b.trapRatio in 0.0..1.0)
+        val capped = Solver.analyzeBounded(level, DifficultyConfig(rootSolveNodeBudget = 3))
+        assertTrue(capped.capped)
+        assertFalse(capped.solvable)
+    }
+
+    @Test
+    fun blockingChainMetrics() {
+        // column(3): three S containers (colours 0..2) above `ls` L containers of colour 4, whose elements fill
+        // staging from the start. Colour 4 waits from state 0; the j-th L release digs 3 + j containers deep
+        // (measured on the board where the wait began). The S containers dock as dead weight (up to 3).
+        val level = column(3)
+        for (a in listOf(Solver.analyze(level), Solver.analyzeBounded(level))) {
+            assertTrue(a.solvable)
+            assertEquals(3 + ls - 1, a.digDepthMax)
+            assertEquals(3 + (ls - 1) / 2.0, a.digDepthMean, 1e-9)
+            assertEquals(3, a.peakDeadWeight)
+        }
+        val easy = Level(1, 3, 1, listOf(small(0, 0, 0, 0, Dir.UP), small(1, 1, 0, 1, Dir.UP), small(2, 2, 0, 2, Dir.UP)), q(0 to 4, 1 to 4, 2 to 4))
+        val e = Solver.analyzeBounded(easy)
+        assertEquals(0, e.digDepthMax)
+        assertEquals(0.0, e.digDepthMean)
+        assertEquals(0, e.peakDeadWeight)
+    }
+
+    @Test
+    fun minOccupancyLineIsBestOverAllWinningLines() {
+        val rnd = Random(99)
+        repeat(150) {
+            val level = rs(rnd, 5, 5, 6, 3)
+            val a = Solver.analyze(level)
+            if (!a.solvable) return@repeat
+            val best = Brute().minOcc(GameState.initial(level))
+            assertEquals(best.toDouble() / level.containers.size, a.meanDockUsed, 1e-9)
+        }
     }
 
     @Test
@@ -224,7 +340,7 @@ class SolverTest {
         val rnd = Random(5)
         var checked = 0
         repeat(100) {
-            val level = TestLevels.randomSmall(rnd, width = 6, height = 6, maxContainers = 9, colors = 4)
+            val level = rs(rnd, 6, 6, 9, 4)
             if (!Solver.solve(level).solvable) return@repeat
             var s = GameState.initial(level)
             while (s.status == Status.PLAYING) {
@@ -240,53 +356,17 @@ class SolverTest {
         assertTrue(checked > 10)
     }
 
-    /**
-     * Chain of 4 S containers (ids 0..3, colours 3..6, top first) in column 0 whose elements come first, deepest first,
-     * plus free S containers 4..6 (colours 0..2). Tapping a free S container before the chain is cleared is a trap.
-     */
-    private val trapLevel = Level(
-        1, 4, 8,
-        listOf(
-            small(0, 3, 0, 0, Dir.UP), small(1, 4, 2, 0, Dir.UP), small(2, 5, 4, 0, Dir.UP), small(3, 6, 6, 0, Dir.UP),
-            small(4, 0, 0, 1, Dir.UP), small(5, 1, 0, 2, Dir.UP), small(6, 2, 0, 3, Dir.UP),
-        ),
-        q(6 to 4, 5 to 4, 4 to 4, 3 to 4, 0 to 4, 1 to 4, 2 to 4),
-    )
-
     @Test
-    fun trapLevelMetrics() {
-        assertTrue(trapLevel.validate().isEmpty())
-        val a = Solver.analyze(trapLevel)
-        assertTrue(a.solvable)
-        assertEquals((0..6).map { Move(it) }, a.solution)
-        assertEquals(4, a.peakSlots)
-        // Path states: 4 chain states with 3/4 losing moves, then 3 states with none.
-        assertEquals(3.0 / 7.0, a.trapRatio, 1e-9)
-        // Decision states: 4 chain states (1 winning move) + 2 tail states (all winning).
-        assertEquals(6, a.decisionStates)
-        assertEquals(4.0 / 6.0, a.ordering, 1e-9)
-        assertEquals(4, a.sharpDecisions)
-        // Trap depths: 3 traps each at depth 3, 2, 1, 0 moves after the mistake.
-        assertEquals(1.5, a.meanTrapDepth, 1e-9)
-        assertEquals(Move(0), Solver.hint(GameState.initial(trapLevel)))
-    }
-
-    @Test
-    fun hintIsNullFromLostStates() {
-        var s = GameState.initial(trapLevel)
-        s = Engine.apply(s, Move(4)).state // mistake: still PLAYING but lost
-        assertEquals(Status.PLAYING, s.status)
-        assertNull(Solver.hint(s))
-        assertFalse(Solver.solve(s).solvable)
-
-        val dead = TestLevels.chain(listOf(0, 1, 2, 3, 4), q(4 to 4, 0 to 4, 1 to 4, 2 to 4, 3 to 4))
-        var d = GameState.initial(dead)
+    fun hintIsNullFromLostAndFinishedStates() {
+        var d = GameState.initial(deadLevel)
         assertNull(Solver.hint(d))
         repeat(4) { d = Engine.apply(d, Move(it)).state }
         assertEquals(Status.DEADLOCK, d.status)
         assertNull(Solver.hint(d))
+        assertFalse(Solver.solve(d).solvable)
 
-        val won = TestLevels.play(trapLevel, (0..6).map { Move(it) })
+        val level = TestLevels.chain(listOf(0, 1, 2), q(0 to 4, 1 to 4, 2 to 4))
+        val won = TestLevels.play(level, (0..2).map { Move(it) })
         assertEquals(Status.WON, won.status)
         assertNull(Solver.hint(won))
         assertTrue(Solver.solve(won).solvable)
@@ -294,7 +374,7 @@ class SolverTest {
 
     @Test
     fun analyzeCapReportsFailure() {
-        val level = TestLevels.bigSolvable(seed = 11, containers = 30)
+        val level = TestLevels.bigSolvable(seed = 11, containers = 40)
         val a = Solver.analyze(level, maxStates = 50)
         assertTrue(a.capped)
         assertFalse(a.solvable)
@@ -308,20 +388,21 @@ class SolverTest {
             listOf(small(0, 0, 0, 0, Dir.UP), small(1, 1, 0, 1, Dir.UP), small(2, 2, 0, 2, Dir.UP)),
             q(0 to 4, 1 to 4, 2 to 4),
         )
-        val a = Solver.analyze(level)
-        assertTrue(a.solvable)
-        assertEquals((0..2).map { Move(it) }, a.solution)
-        assertEquals(1, a.peakSlots)
-        assertEquals(0.0, a.trapRatio)
-        assertEquals(0.0, a.ordering)
-        assertEquals(0, a.sharpDecisions)
-        assertEquals(2, a.decisionStates)
+        for (a in listOf(Solver.analyze(level), Solver.analyzeBounded(level))) {
+            assertTrue(a.solvable)
+            assertEquals(1, a.peakSlots)
+            assertEquals(0.0, a.trapRatio)
+            assertEquals(0.0, a.meanDockUsed)
+            assertEquals(0, a.sharpDecisions)
+            assertEquals(2, a.decisionStates)
+        }
     }
 
     @Test
     fun solvesLargeLevelsFast() {
-        val levels = (0 until 12).map { TestLevels.bigSolvable(seed = 1000L + it * 7919L) }
-        // Warm up the JIT.
+        val levels = (0 until 12).map {
+            TestLevels.bigSolvable(seed = 1000L + it * 7919L, containers = 60 + it * 4, perturb = 300)
+        }
         repeat(3) { levels.forEach { Solver.solve(it) } }
         val times = levels.map { level ->
             val t0 = System.nanoTime()

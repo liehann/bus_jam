@@ -18,8 +18,8 @@ object Limits {
     /** onBoard is a 128-bit mask ([Bits128]), so at most 128 containers per level. */
     const val MAX_CONTAINERS = 128
     const val DOCK_SLOTS = 4
-    const val STAGING_SPOTS = 7
-    const val MAX_COLORS = 8
+    const val STAGING_SPOTS = 40
+    const val MAX_COLORS = 10
 }
 
 /** Facing / driving direction. [dRow]/[dCol] is the unit step in that direction. */

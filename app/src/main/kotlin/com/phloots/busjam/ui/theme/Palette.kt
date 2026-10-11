@@ -5,13 +5,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.luminance
+import com.phloots.jam.core.model.Limits
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
 /** Shape icon paired with each colour so the game is playable without colour vision. */
-enum class IconShape { CIRCLE, SQUARE, TRIANGLE, DIAMOND, STAR, HEART, HEXAGON, CROSS }
+enum class IconShape { CIRCLE, SQUARE, TRIANGLE, DIAMOND, STAR, HEART, HEXAGON, CROSS, CRESCENT, BOLT }
 
 /** Okabe-Ito based palette. Index == core colour index. */
 object Palette {
@@ -24,9 +26,19 @@ object Palette {
         Color(0xFF56B4E9), // sky blue
         Color(0xFFE69F00), // orange
         Color(0xFFEDEDED), // "black" swapped for white so it reads on dark asphalt
+        Color(0xFFA2652F), // brown: darker / less saturated than orange and vermillion
+        Color(0xFF8A63D2), // violet: bluer than pink, lighter and redder than blue
     )
-    val names = listOf("red", "blue", "yellow", "green", "pink", "sky", "orange", "white")
+    val names = listOf("red", "blue", "yellow", "green", "pink", "sky", "orange", "white", "brown", "violet")
     val shapes = IconShape.entries
+
+    init {
+        // One colour + name + shape per core colour index; fails loudly if Limits.MAX_COLORS outgrows the palette.
+        require(colors.size >= Limits.MAX_COLORS && names.size == colors.size && shapes.size == colors.size) {
+            "palette has ${colors.size} colours / ${names.size} names / ${shapes.size} shapes, " +
+                "Limits.MAX_COLORS = ${Limits.MAX_COLORS}"
+        }
+    }
 
     fun color(index: Int): Color = colors[index.mod(colors.size)]
     fun shape(index: Int): IconShape = shapes[index.mod(shapes.size)]
@@ -110,6 +122,24 @@ private fun shapePath(shape: IconShape, center: Offset, size: Float): Path {
             p.lineTo(center.x - a, center.y + b)
             p.lineTo(center.x - a, center.y - b)
             p.lineTo(center.x - b, center.y - b)
+            p.close()
+        }
+        IconShape.CRESCENT -> {
+            val outer = Path().apply { addOval(androidx.compose.ui.geometry.Rect(center, r * 0.95f)) }
+            val bite = Path().apply {
+                addOval(androidx.compose.ui.geometry.Rect(center + Offset(r * 0.48f, -r * 0.3f), r * 0.78f))
+            }
+            p.op(outer, bite, PathOperation.Difference)
+        }
+        IconShape.BOLT -> {
+            val x = center.x
+            val y = center.y
+            p.moveTo(x + r * 0.25f, y - r)
+            p.lineTo(x - r * 0.65f, y + r * 0.15f)
+            p.lineTo(x - r * 0.02f, y + r * 0.15f)
+            p.lineTo(x - r * 0.3f, y + r)
+            p.lineTo(x + r * 0.68f, y - r * 0.22f)
+            p.lineTo(x + r * 0.05f, y - r * 0.22f)
             p.close()
         }
     }

@@ -35,9 +35,10 @@ core/src/main/kotlin/com/phloots/jam/core/
   model/Model.kt                 Limits, Dir, ContainerSize, Cell, Container, Level, DockedContainer, Status,
                                  Bits128, GameState, Move, IgnoreReason, Event, Transition (frozen, architect)
   engine/Engine.kt               Engine.apply / legalMoves / isTappable / computeStatus  (gamestate)
-  engine/LevelData.kt            internal precompute + packed state (v1, to be rewritten) (gamestate)
-  solver/Solver.kt               Solver.solve / hint / analyze, SolveResult, SolveStats,
-                                 FullAnalysis                                            (gamestate)
+  engine/LevelData.kt            internal precompute + packed 4-Long state (v2)          (gamestate)
+  solver/Solver.kt               Solver.solve / hint / analyze / analyzeBounded, SolveResult,
+                                 SolveStats, FullAnalysis                                (gamestate)
+  solver/StateMap.kt             internal 4-Long-key open-addressing memo                (gamestate)
   scoring/DifficultyConfig.kt    weights + thresholds, the single tuning file            (gamestate)
   scoring/Scorer.kt              Scorer.score, DifficultyReport                          (gamestate)
   generator/Generator.kt         Generator(seed).generate(GenParams), GenParams          (generator)
@@ -219,3 +220,31 @@ Gotchas:
   `PlayLevelOneTest`, `ScreenshotTest.animationFramesAndWinDialog`. Minimal edits in other agents' files to keep
   the build compiling: v1 tests (`EngineTest`, `TestLevels`) adapted to the new constructors; `AnimationPlan` treats
   `Event.Staged` as a no-op; `ScreenshotTest` builds a v2 `GameState`.
+- 2026-10-10 (gamestate): **v2 engine/solver/scorer implemented.** All additive / source-compatible unless noted.
+  - Constants (on lead request, in the architect's Model.kt): `Limits.STAGING_SPOTS` 7 -> **40**, `Limits.MAX_COLORS`
+    8 -> **10**. Minimal edit to `ModelAndCodecTest` (it hard-coded 7 staging spots and colour 9 as out of range).
+  - `Solver`: new `solve(state, maxNodes: Long): SolveResult?` and `solve(level, maxNodes)` (null = budget exceeded,
+    otherwise exact); `HINT_MAX_NODES = 500_000`, and `hint()` is bounded by it (null on budget exhaustion as well as
+    on lost states); new `analyzeBounded(level, config = DifficultyConfig.DEFAULT): FullAnalysis` (budgeted,
+    deterministic: solve line, each path child classified WIN/LOSS/UNKNOWN by a budgeted solve, UNKNOWN excluded
+    from T/sharp denominators and O, depth-limited trap depth). The exhaustive `analyze` is kept for small levels.
+  - `FullAnalysis` gained trailing defaulted fields: `meanDockUsed`, `unknownChildren`, `bounded`, `digDepthMax`,
+    `digDepthMean`, `peakDeadWeight`, `meanDeadWeight` (KDoc defines them). `analyze` now picks the
+    min-occupancy line (min summed dockUsed over path states) instead of min-peak; `peakSlots` is still reported.
+  - `Scorer.score(level, analysis, config, rolloutLossRate: Double? = null)`; new `Scorer.isTooEasy(level, report,
+    config)`. `DifficultyReport` gained defaulted `rollout`, `chain`, `deadWeight`. Formula (DifficultyConfig KDoc):
+    100 × (0.45 R + 0.20 C + 0.10 W + 0.10 S + 0.05 T + 0.04 D + 0.03 O + 0.03 P); P = meanDockUsed / 4;
+    S colours 4→10, containers 30→110, cells 120→168.
+  - `DifficultyConfig`: new weights `wRollout`, `wChain`, `wDeadWeight`, `digMeanNorm`, `digMaxNorm`; floor
+    `floorMinContainers`, `floorMinScore` (0), `floorMinSharpDecisions` (0), `floorMinColors`; budgets
+    `rootSolveNodeBudget`, `childSolveNodeBudget`, `trapDepthNodeBudget`, `maxUnknownChildren`; naive-bot
+    toggles `botOneOfEach`, `botGreedyMatch`, `botFirstFree`; rollout block `rolloutCount`, `rolloutTemperatures`,
+    `rolloutEpsilon`, `rolloutCarelessEvery`, `rolloutCarelessEpsilon`, `rolloutStarvePenalty`,
+    `floorMinRolloutLoss` (fields requested by the generator agent).
+  - Internal: memo key = 4 Longs (onBoard lo/hi canonicalised over interchangeable free leaves; a = 4 dock slots ×
+    (spaceLeft 4b, colour 4b) + queueIndex 12b; b = 10 staging counts × 6b). The dock stores colour, not container
+    id (lossless once docked, so a coarser key than DESIGN's id + spaceLeft). Exact prunings: release lookahead
+    (a staged-colour container plus its blockers must fit the free slots), a relaxed game with blocking ignored
+    (memoised; a relaxed loss proves a real loss), last-slot non-matching skip, free-leaf symmetry. `LongPairMap`
+    was replaced by `StateMap`. `LevelData.toPacked` now writes (a, b) into an out array.
+

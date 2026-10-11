@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,12 +34,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phloots.jam.core.model.Limits
 import com.phloots.jam.core.model.Status
 import com.phloots.busjam.game.GameUiState
 import com.phloots.busjam.game.PhaseKind
@@ -60,6 +60,10 @@ fun GameScreen(
     onNext: () -> Unit,
     onLevels: () -> Unit,
     onHome: () -> Unit,
+    /** Debug-build only: level score and metrics shown under the title. */
+    debugInfo: String? = null,
+    /** Staging spot count; defaults to the rules' [Limits.STAGING_SPOTS] (screenshot tests may preview others). */
+    stagingSpots: Int = Limits.STAGING_SPOTS,
 ) {
     val haptic = LocalHapticFeedback.current
     val anim = ui.anim
@@ -76,7 +80,9 @@ fun GameScreen(
             playingSeq = anim.seq
             when (ph.kind) {
                 PhaseKind.BLOCK -> haptic.performHapticFeedback(HapticFeedbackType.Reject)
-                PhaseKind.BOARD -> haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                PhaseKind.FLOW -> if (ph.boardings.isNotEmpty()) {
+                    haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                }
                 else -> Unit
             }
             progress.animateTo(1f, tween(ph.durationMs, easing = LinearEasing))
@@ -85,13 +91,14 @@ fun GameScreen(
     }
     val phase = anim?.phases?.getOrNull(if (playingSeq == anim.seq) phaseIndex else 0)
     val playing = anim != null && playingSeq == anim.seq
-    val snapshot = phase?.before ?: Snapshot.of(ui.state)
+    val idle = remember(ui.state) { Snapshot.of(ui.state) }
+    val snapshot = phase?.before ?: idle
     val tProvider = { if (playing) progress.value else 0f }
 
     // ---- slots-full shake ----
     val shakeAnim = remember { Animatable(1f) }
-    LaunchedEffect(ui.slotsFullSignal) {
-        if (ui.slotsFullSignal > 0) {
+    LaunchedEffect(ui.dockFullSignal) {
+        if (ui.dockFullSignal > 0) {
             haptic.performHapticFeedback(HapticFeedbackType.Reject)
             shakeAnim.snapTo(0f)
             shakeAnim.animateTo(1f, tween(280, easing = LinearEasing))
@@ -110,40 +117,32 @@ fun GameScreen(
 
     Box(Modifier.fillMaxSize().background(Palette.background)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
-            TopBar(ui, onLevels)
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
-                val density = LocalDensity.current
-                val layout = remember(constraints.maxWidth, density) {
-                    DockLayout(constraints.maxWidth.toFloat(), density)
+            TopBar(ui, debugInfo, onLevels)
+            PlayField(
+                logical = ui.state,
+                snapshot = snapshot,
+                phase = phase.takeIf { playing },
+                progress = tProvider,
+                hintContainerId = ui.hintContainerId,
+                hintPulse = { pulse?.value ?: 0f },
+                shakeProgress = { shakeAnim.value },
+                onTap = onTap,
+                stagingSpots = stagingSpots,
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 4.dp),
+            )
+            Box(Modifier.fillMaxWidth().height(22.dp), contentAlignment = Alignment.Center) {
+                ui.hintMessage?.let {
+                    Text(
+                        it,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Palette.boss,
+                        modifier = Modifier.testTag("hint-message"),
+                    )
                 }
-                Dock(
-                    layout = layout,
-                    snapshot = snapshot,
-                    phase = phase.takeIf { playing },
-                    progress = tProvider,
-                    shakeProgress = { shakeAnim.value },
-                    modifier = Modifier.fillMaxWidth().height(with(density) { layout.height.toDp() }),
-                )
-            }
-            BoxWithConstraints(
-                Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                val level = ui.state.level
-                val cell = minOf(maxWidth / level.width, maxHeight / level.height)
-                Board(
-                    logical = ui.state,
-                    snapshot = snapshot,
-                    phase = phase.takeIf { playing },
-                    progress = tProvider,
-                    hintContainerId = ui.hintContainerId,
-                    hintPulse = { pulse?.value ?: 0f },
-                    cellSize = cell,
-                    onTap = onTap,
-                )
             }
             Row(
-                Modifier.fillMaxWidth().padding(bottom = 10.dp, top = 2.dp),
+                Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 GameButton("Restart", onRestart, Modifier.weight(1f).testTag("restart"))
@@ -163,9 +162,9 @@ fun GameScreen(
 }
 
 @Composable
-private fun TopBar(ui: GameUiState, onLevels: () -> Unit) {
+private fun TopBar(ui: GameUiState, debugInfo: String?, onLevels: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().height(48.dp),
+        Modifier.fillMaxWidth().height(44.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TextButton(onClick = onLevels, modifier = Modifier.testTag("to-levels")) {
@@ -192,6 +191,15 @@ private fun TopBar(ui: GameUiState, onLevels: () -> Unit) {
         }
         Spacer(Modifier.weight(1f))
         StarRow(ui.potentialStars, 18.dp, Modifier.padding(end = 12.dp))
+    }
+    if (debugInfo != null) {
+        Text(
+            debugInfo,
+            fontSize = 11.sp,
+            color = Palette.ink.copy(alpha = 0.7f),
+            modifier = Modifier.fillMaxWidth().testTag("debug-info"),
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

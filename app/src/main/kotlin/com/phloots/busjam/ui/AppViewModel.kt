@@ -3,7 +3,7 @@ package com.phloots.busjam.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.phloots.jam.core.model.Level
+import com.phloots.jam.core.io.PackedLevel
 import com.phloots.busjam.data.LevelRepository
 import com.phloots.busjam.data.Progress
 import com.phloots.busjam.data.ProgressStore
@@ -19,8 +19,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val repository = LevelRepository(application)
     val progressStore = ProgressStore(application)
 
-    private val _levels = MutableStateFlow<List<Level>?>(null)
-    val levels: StateFlow<List<Level>?> = _levels.asStateFlow()
+    private val _levels = MutableStateFlow<List<PackedLevel>?>(null)
+    val levels: StateFlow<List<PackedLevel>?> = _levels.asStateFlow()
 
     val progress: StateFlow<Progress?> =
         progressStore.progress.stateIn(viewModelScope, SharingStarted.Eagerly, null)

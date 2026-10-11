@@ -58,10 +58,11 @@ class ModelAndCodecTest {
         val s = GameState.initial(level)
         assertEquals(Bits128.firstN(2), s.onBoard)
         assertEquals(List(Limits.DOCK_SLOTS) { null }, s.dock)
-        assertEquals(queue.take(7), s.staging)
-        assertEquals(7, s.queueIndex)
-        assertEquals(3, s.queueRemaining)
-        assertEquals((0 until 7).toList(), s.stagedElementIndices())
+        val k = minOf(Limits.STAGING_SPOTS, queue.size)
+        assertEquals(queue.take(k), s.staging)
+        assertEquals(k, s.queueIndex)
+        assertEquals(queue.size - k, s.queueRemaining)
+        assertEquals((0 until k).toList(), s.stagedElementIndices())
         assertEquals(Status.PLAYING, s.status)
 
         val short = GameState.initial(Level(2, 10, 12, containers.take(1), List(4) { 0 }))
@@ -86,7 +87,7 @@ class ModelAndCodecTest {
         assertTrue(Level(1, 12, 15, one, List(4) { 0 }).validate().any { "height" in it })
         assertEquals(emptyList(), Level(1, 12, 14, one, List(4) { 0 }).validate())
         assertTrue(Level(1, 10, 12, one, List(5) { 0 }).validate().isNotEmpty()) // unbalanced
-        assertTrue(Level(1, 10, 12, one, List(4) { 0 } + 9).validate().any { "queue" in it })
+        assertTrue(Level(1, 10, 12, one, List(4) { 0 } + Limits.MAX_COLORS).validate().any { "queue" in it })
         // 128 S containers fit on 12x14 (168 cells); 129 do not pass.
         val many = List(129) { Container(it, ContainerSize.S, 0, it / 12, it % 12, Dir.UP) }
         assertEquals(emptyList(), Level(1, 12, 14, many.take(128), List(128 * 4) { 0 }).validate())

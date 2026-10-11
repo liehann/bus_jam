@@ -14,7 +14,7 @@
 | seats / seatsLeft | capacity / spaceLeft |
 | Passenger | Element |
 | Parking slot(s) | Dock / DockSlot (4 slots) |
-| (new) | Staging area (7 spots) |
+| (new) | Staging area (40 spots) |
 | Queue | Queue |
 | Exit / park | Release (leaves board, docks) |
 | Depart | Dispatch (full container leaves dock) |
@@ -29,7 +29,8 @@ A length-1 container still faces a direction.
 (onBoard bitmask = two Longs). Any edge is an exit.
 
 **Staging area (replaces "front of queue only"):**
-- 7 staging spots. Whenever a spot is free and the queue is non-empty, the next queue element moves into staging
+- **40** staging spots (was 7; changed after playtest comparison with Bus Fever Party — ~40 waiting, ~50 vehicles).
+  Keep it a single constant so it can be tuned. Whenever a spot is free and the queue is non-empty, the next queue element moves into staging
   (auto-refill, in queue order). Staging is therefore always full unless the queue is exhausted.
 - Boarding loop, run after every state change until nothing changes:
   1. Scan dock slots **left to right** (positional, slot 0 first). For the leftmost docked container that has free
@@ -54,13 +55,30 @@ colour does not matter, so staging is a count vector.
 - Levels must have many containers from the start. Only **level 1** is a tutorial (10×12, sparse, no traps).
   From level 2 on, levels must clear a "too easy" floor (minimum containers, minimum score, minimum sharp
   decisions); the generator discards anything below it.
+- **Rollout difficulty (dominant score term):** K≈64 deterministic seeded stochastic heuristic players (softmax
+  over greedy-match scores at several temperatures + epsilon-random) play the level through Engine; loss rate is
+  the main difficulty signal ("how easy is it to blunder into a jam"). One-deviation trap metrics read ~0 at 40
+  staging, so T/D/O get low weight. Floor from level 2: naive bots lose and rollout loss rate ≥ X.
+- Staging stays at 40 (user confirmed after preview).
 - Replace P (it saturated at 1.0 in v1): P = mean over solution-path states of occupied dock slots / 4.
 - S normalisation: colours 4→8, containers 30→110, cells 120→168.
 - Campaign: fix the v1 boss bug — bosses must score meaningfully above level 9 of their cycle (target ≈ +6–10
   points), levels 1→9 must span a visible range, and level 1 of the next cycle drops back. Tests assert these.
-- Colours start at 4 (level 2) and ramp to 8.
+- **Queue structure:** every level (from 2) mixes short interleaved stretches with 1–2 long single-colour runs
+  that need several same-colour containers released in succession — the level's key challenge. Typical sizes
+  ~50 containers.
+- **Blocking chains (key difficulty lever, playtest finding):** dense boards where a needed container is buried
+  behind a chain of 1–10 containers (each blocking the next's exit path, up to an edge container). Intermediate
+  chain containers should often be "hard to fill" — colours whose elements sit beyond the current staging window
+  (late in the queue) — so digging a chain clogs the dock. Chain length and the number of hard-to-fill links ramp
+  with difficulty. Scorer reports chain metrics (max/mean dig depth of the containers the solution needs next;
+  count of hard-to-fill links docked at once).
+- Colours start at **5** (level 2) and ramp to **10** (Limits.MAX_COLORS = 10; Bus Fever Party shows up to 10) — with colours ≤ dock slots, "keep one of each colour docked"
+  always works (playtest finding).
+- **Heuristic-bot rejection:** from level 2, simulate deterministic naive players (one-of-each, greedy-match,
+  first-free) via Engine; if any wins, discard the level.
 
-**UI (v2):** board, then a staging row of 7 spots between the dock and the two-lane queue preview
+**UI (v2):** board, then a staging area of 40 spots (compact multi-row grid) between the dock and the two-lane queue preview
 (left lane = next ~12 after staging, right lane = ~12 from the halfway point). Keep current car art for now.
 
 **Reviewer fixes to include:** record a win only when the WON animation finishes (undo mid-animation must not keep

@@ -1,14 +1,17 @@
 package com.phloots.busjam.game
 
-import org.junit.Ignore
+import com.phloots.jam.core.model.Container
+import com.phloots.jam.core.model.ContainerSize
 import com.phloots.jam.core.model.Dir
 import com.phloots.jam.core.model.Event
 import com.phloots.jam.core.model.Level
+import com.phloots.jam.core.model.Move
 import com.phloots.jam.core.model.Status
-import com.phloots.jam.core.model.Container
-import com.phloots.jam.core.model.ContainerSize
+import com.phloots.jam.core.solver.Solver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -21,10 +24,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+/** ViewModel behaviour against the real Engine / Solver on tiny hand-built boards (Engine does not validate sizes). */
 @OptIn(ExperimentalCoroutinesApi::class)
-@Ignore("v2 pending")
 class GameViewModelTest {
-    private val dispatcher = UnconfinedTestDispatcher()
+    private val scheduler = TestCoroutineScheduler()
+    private val main = UnconfinedTestDispatcher(scheduler)
     private val wins = mutableListOf<Pair<Int, Int>>()
     private lateinit var vm: GameViewModel
 
@@ -38,7 +42,7 @@ class GameViewModelTest {
         queue = listOf(0, 0, 0, 0, 1, 1, 1, 1),
     )
 
-    /** S container 0 faces up but S container 1 (front (1,1), tail (1,0)) sits on its exit ray. */
+    /** S container 0 at (2,1) faces up; S container 1 at (1,1) sits on its exit ray. */
     private val blocked = Level(
         id = 2, width = 5, height = 5,
         containers = listOf(
@@ -50,8 +54,8 @@ class GameViewModelTest {
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(dispatcher)
-        vm = GameViewModel({ n, s -> wins += n to s }, dispatcher)
+        Dispatchers.setMain(main)
+        vm = GameViewModel({ n, s -> wins += n to s }, main)
     }
 
     @After
@@ -72,11 +76,14 @@ class GameViewModelTest {
     }
 
     @Test
-    fun cleanWinGivesThreeStarsAndRecordsProgress() {
+    fun cleanWinGivesThreeStarsAndRecordsProgressAfterTheAnimation() {
         vm.start(easy, 1, hasNext = true)
         tap(0)
-        tap(1)
+        vm.onContainerTapped(1)
         assertEquals(Status.WON, ui().state.status)
+        assertFalse(ui().showResult)
+        assertTrue("win must wait for the WON animation", wins.isEmpty())
+        finishAnimations()
         assertTrue(ui().showResult)
         assertEquals(3, ui().earnedStars)
         assertEquals(listOf(1 to 3), wins)
@@ -90,6 +97,7 @@ class GameViewModelTest {
         vm.undo()
         assertEquals(easy.containers.size, Snapshot.of(ui().state).onBoard.size)
         assertFalse(ui().canUndo)
+        assertEquals(2, ui().potentialStars)
         tap(0)
         tap(1)
         assertEquals(Status.WON, ui().state.status)
@@ -102,11 +110,45 @@ class GameViewModelTest {
         vm.start(easy, 1, hasNext = true)
         vm.hint()
         assertNotNull(ui().hintContainerId)
+        assertTrue(ui().usedHint)
         assertEquals(1, ui().potentialStars)
         tap(ui().hintContainerId!!)
         assertNull(ui().hintContainerId)
         tap(if (ui().state.isOnBoard(0)) 0 else 1)
+        assertEquals(Status.WON, ui().state.status)
         assertEquals(1, ui().earnedStars)
+        assertEquals(listOf(1 to 1), wins)
+    }
+
+    @Test
+    fun nullHintKeepsStarsAndExplains() {
+        vm = GameViewModel({ n, s -> wins += n to s }, main, findHint = { null })
+        vm.start(easy, 1, hasNext = true)
+        vm.hint()
+        assertFalse(ui().hintLoading)
+        assertNull(ui().hintContainerId)
+        assertEquals(NO_WINNING_MOVE, ui().hintMessage)
+        assertFalse(ui().usedHint)
+        assertEquals(3, ui().potentialStars)
+        tap(0)
+        assertNull("message clears on the next state change", ui().hintMessage)
+        tap(1)
+        assertEquals(3, ui().earnedStars)
+    }
+
+    @Test
+    fun hintInvalidatedByATapIsFree() {
+        val compute = StandardTestDispatcher(scheduler)
+        vm = GameViewModel({ n, s -> wins += n to s }, compute, findHint = Solver::hint)
+        vm.start(easy, 1, hasNext = true)
+        vm.hint()
+        assertTrue(ui().hintLoading)
+        tap(0) // state changes while the hint is computing
+        scheduler.advanceUntilIdle()
+        assertFalse(ui().hintLoading)
+        assertNull(ui().hintContainerId)
+        assertFalse(ui().usedHint)
+        assertEquals(3, ui().potentialStars)
     }
 
     @Test
@@ -124,6 +166,7 @@ class GameViewModelTest {
         tap(0)
         tap(1)
         assertEquals(3, ui().earnedStars)
+        assertEquals(listOf(1 to 3), wins)
     }
 
     @Test
@@ -132,7 +175,6 @@ class GameViewModelTest {
         vm.onContainerTapped(0)
         vm.onContainerTapped(1)
         val first = ui().anim!!
-        assertTrue(first.events.first() is Event.Released)
         assertEquals(0, (first.events.first() as Event.Released).containerId)
         vm.onAnimationFinished(first.seq)
         val second = ui().anim!!
@@ -141,6 +183,34 @@ class GameViewModelTest {
         vm.onAnimationFinished(second.seq)
         assertTrue(ui().showResult)
         assertEquals(Status.WON, ui().state.status)
+    }
+
+    @Test
+    fun undoDuringWinAnimationDiscardsTheWin() {
+        vm.start(easy, 1, hasNext = true)
+        tap(0)
+        vm.onContainerTapped(1)
+        val winning = ui().anim!!
+        assertEquals(Status.WON, ui().state.status)
+        vm.undo()
+        assertEquals(Status.PLAYING, ui().state.status)
+        assertNull(ui().anim)
+        vm.onAnimationFinished(winning.seq) // late callback from the cancelled playback
+        assertTrue(wins.isEmpty())
+        assertFalse(ui().showResult)
+        tap(1)
+        assertEquals(listOf(1 to 2), wins)
+    }
+
+    @Test
+    fun undoIsDisabledOnceTheWinIsRecorded() {
+        vm.start(easy, 1, hasNext = true)
+        tap(0)
+        tap(1)
+        assertEquals(listOf(1 to 3), wins)
+        vm.undo()
+        assertEquals(Status.WON, ui().state.status)
+        assertEquals(3, ui().earnedStars)
     }
 
     @Test
@@ -161,12 +231,23 @@ class GameViewModelTest {
     }
 
     @Test
-    fun boardingPhasesReplayToFinalState() {
+    fun phasesReplayToTheEngineState() {
         vm.start(easy, 1, hasNext = true)
         vm.onContainerTapped(0)
         val anim = ui().anim!!
         val kinds = anim.phases.map { it.kind }
-        assertEquals(listOf(PhaseKind.RELEASE, PhaseKind.BOARD, PhaseKind.DISPATCH), kinds)
+        assertEquals(listOf(PhaseKind.RELEASE, PhaseKind.FLOW, PhaseKind.DISPATCH), kinds.take(3))
         assertEquals(Snapshot.of(ui().state), anim.phases.last().after)
+    }
+
+    @Test
+    fun solverLineReplaysThroughTheViewModel() {
+        vm.start(blocked, 2, hasNext = false)
+        val line = Solver.solve(blocked)
+        assertTrue(line.solvable)
+        for (m: Move in line.solution) vm.onContainerTapped(m.containerId) // all queued during playback
+        finishAnimations()
+        assertEquals(Status.WON, ui().state.status)
+        assertEquals(listOf(2 to 3), wins)
     }
 }

@@ -1,6 +1,5 @@
 package com.phloots.busjam
 
-import org.junit.Ignore
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
@@ -15,10 +14,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 
 /** Plays level 1 to a win by tapping the board along the solver's move list. */
 @OptIn(ExperimentalTestApi::class)
-@Ignore("v2 pending")
+@Config(qualifiers = "w411dp-h914dp-xxhdpi")
 @RunWith(AndroidJUnit4::class)
 class PlayLevelOneTest {
     @get:Rule

@@ -1,0 +1,9 @@
+levelgen: seed=1 cycles=100 scale=1.0 threads=8 bands=25 candidates=24200 maxNodes=200000
+  ... 2000 / 24200 candidates (9 s)
+  ... 4000 / 24200 candidates (15 s)
+  ... 6000 / 24200 candidates (21 s)
+  ... 8000 / 24200 candidates (27 s)
+  ... 10000 / 24200 candidates (35 s)
+  ... 12000 / 24200 candidates (42 s)
+  ... 14000 / 24200 candidates (49 s)
+  ... 16000 / 24200 candidates (56 s)

@@ -2,6 +2,7 @@ package com.phloots.busjam.game
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.phloots.busjam.data.ProgressSink
 import com.phloots.jam.core.engine.Engine
 import com.phloots.jam.core.model.Event
 import com.phloots.jam.core.model.GameState
@@ -9,8 +10,8 @@ import com.phloots.jam.core.model.IgnoreReason
 import com.phloots.jam.core.model.Level
 import com.phloots.jam.core.model.Move
 import com.phloots.jam.core.model.Status
+import com.phloots.jam.core.model.Transition
 import com.phloots.jam.core.solver.Solver
-import com.phloots.busjam.data.ProgressSink
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,6 +26,9 @@ data class AnimJob(val seq: Long, val from: GameState, val events: List<Event>) 
     val phases: List<Phase> by lazy { planPhases(from, events) }
 }
 
+/** Shown when the solver finds no winning continuation. */
+const val NO_WINNING_MOVE = "No winning move — try Undo"
+
 data class GameUiState(
     val levelNumber: Int,
     val isBoss: Boolean,
@@ -34,11 +38,13 @@ data class GameUiState(
     val anim: AnimJob? = null,
     val hintContainerId: Int? = null,
     val hintLoading: Boolean = false,
+    /** Transient hint feedback (e.g. [NO_WINNING_MOVE]); cleared by the next state change. */
+    val hintMessage: String? = null,
     val usedUndo: Boolean = false,
     val usedHint: Boolean = false,
     val canUndo: Boolean = false,
-    /** Increments whenever a tap is refused because all slots are full (UI shakes the slots). */
-    val slotsFullSignal: Int = 0,
+    /** Increments whenever a tap is refused because all dock slots are occupied (UI shakes the dock). */
+    val dockFullSignal: Int = 0,
     /** Stars earned (set once WON). */
     val earnedStars: Int = 0,
 ) {
@@ -59,11 +65,18 @@ fun starsFor(usedUndo: Boolean, usedHint: Boolean): Int = when {
  * Game screen state holder. All rules go through [Engine.apply]; hints through [Solver.hint].
  *
  * Taps are queued: while a transition's animation plays, further taps are buffered and applied in order
- * once [onAnimationFinished] is called for the current job. All methods must be called on the main thread.
+ * once [onAnimationFinished] is called for the current job. A win is recorded only when the animation of the
+ * winning transition has finished (an undo before that discards it); once recorded, undo is disabled.
+ * A hint costs stars only when it actually highlights a move for the current state. All methods must be called on
+ * the main thread.
  */
 class GameViewModel(
     private val progress: ProgressSink,
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    /** Rules; [Engine.apply] in the app (tests may substitute a recorded engine). */
+    private val applyMove: (GameState, Move) -> Transition = Engine::apply,
+    /** Hint source; [Solver.hint] in the app. */
+    private val findHint: (GameState) -> Move? = Solver::hint,
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow<GameUiState?>(null)
@@ -74,6 +87,7 @@ class GameViewModel(
     private var seq = 0L
     private var hintJob: Job? = null
     private var level: Level? = null
+    private var winRecorded = false
 
     /**
      * Starts [level] as campaign level [levelNumber]. Unless [fresh], keeps an in-progress game of the same level
@@ -93,7 +107,8 @@ class GameViewModel(
     }
 
     fun onContainerTapped(containerId: Int) {
-        if (_ui.value == null) return
+        val ui = _ui.value ?: return
+        if (ui.state.status == Status.WON) return
         pending.addLast(Move(containerId))
         pump()
     }
@@ -103,11 +118,18 @@ class GameViewModel(
         val ui = _ui.value ?: return
         if (ui.anim?.seq != seq) return
         _ui.value = ui.copy(anim = null)
+        if (ui.state.status == Status.WON && !winRecorded) {
+            winRecorded = true
+            val n = ui.levelNumber
+            val stars = ui.earnedStars
+            viewModelScope.launch { progress.recordWin(n, stars) }
+        }
         pump()
     }
 
     fun undo() {
         val ui = _ui.value ?: return
+        if (winRecorded) return
         val prev = undoStack.removeLastOrNull() ?: return
         cancelInFlight()
         _ui.value = ui.copy(
@@ -117,6 +139,7 @@ class GameViewModel(
             canUndo = undoStack.isNotEmpty(),
             hintContainerId = null,
             hintLoading = false,
+            hintMessage = null,
             earnedStars = 0,
         )
     }
@@ -137,17 +160,17 @@ class GameViewModel(
     fun hint() {
         val ui = _ui.value ?: return
         if (ui.state.status != Status.PLAYING || ui.hintLoading) return
-        // Computed for the latest logical state; discarded if the state changes before it arrives.
+        // Computed for the latest logical state; discarded (free) if the state changes before it arrives.
         val target = ui.state
-        _ui.value = ui.copy(usedHint = true, hintLoading = true)
+        _ui.value = ui.copy(hintLoading = true, hintMessage = null, hintContainerId = null)
         hintJob?.cancel()
         hintJob = viewModelScope.launch {
-            val move = withContext(computeDispatcher) { Solver.hint(target) }
+            val move = withContext(computeDispatcher) { findHint(target) }
             val now = _ui.value ?: return@launch
-            if (now.state === target) {
-                _ui.value = now.copy(hintContainerId = move?.containerId, hintLoading = false)
-            } else {
-                _ui.value = now.copy(hintLoading = false)
+            _ui.value = when {
+                now.state !== target -> now.copy(hintLoading = false)
+                move == null -> now.copy(hintLoading = false, hintMessage = NO_WINNING_MOVE)
+                else -> now.copy(hintLoading = false, hintContainerId = move.containerId, usedHint = true)
             }
         }
     }
@@ -155,6 +178,7 @@ class GameViewModel(
     private fun reset() {
         cancelInFlight()
         undoStack.clear()
+        winRecorded = false
     }
 
     private fun cancelInFlight() {
@@ -170,29 +194,26 @@ class GameViewModel(
             if (ui.anim != null) return
             val move = pending.removeFirstOrNull() ?: return
             val before = ui.state
-            val t = Engine.apply(before, move)
+            val t = applyMove(before, move)
             val ignored = t.events.singleOrNull() as? Event.Ignored
             if (ignored != null || t.events.isEmpty()) {
                 if (ignored?.reason == IgnoreReason.DOCK_FULL) {
-                    _ui.value = ui.copy(slotsFullSignal = ui.slotsFullSignal + 1)
+                    _ui.value = ui.copy(dockFullSignal = ui.dockFullSignal + 1)
                 }
                 continue
             }
             val changed = t.state != before
             if (changed) undoStack.addLast(before)
             val won = t.state.status == Status.WON
-            val stars = if (won) starsFor(ui.usedUndo, ui.usedHint) else 0
             _ui.value = ui.copy(
                 state = t.state,
                 anim = AnimJob(++seq, before, t.events),
                 canUndo = undoStack.isNotEmpty(),
                 hintContainerId = if (changed) null else ui.hintContainerId,
-                earnedStars = stars,
+                hintMessage = if (changed) null else ui.hintMessage,
+                earnedStars = if (won) starsFor(ui.usedUndo, ui.usedHint) else 0,
             )
-            if (won) {
-                pending.clear()
-                viewModelScope.launch { progress.recordWin(ui.levelNumber, stars) }
-            }
+            if (won) pending.clear()
         }
     }
 }

@@ -26,6 +26,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.phloots.busjam.data.Progress
 import com.phloots.busjam.game.GameViewModel
 import com.phloots.busjam.ui.AppViewModel
+import com.phloots.busjam.ui.headerInfo
+import com.phloots.busjam.ui.tileInfo
 import com.phloots.busjam.ui.game.GameScreen
 import com.phloots.busjam.ui.home.HomeScreen
 import com.phloots.busjam.ui.levels.LevelSelectScreen
@@ -63,7 +65,7 @@ fun BusJamApp() {
     val openLevel: (Int) -> Unit = { n ->
         levels?.let { pack ->
             val number = n.coerceIn(1, pack.size)
-            game.start(pack[number - 1], number, hasNext = number < pack.size, fresh = true)
+            game.start(pack[number - 1].level, number, hasNext = number < pack.size, fresh = true)
             screen = number
         }
     }
@@ -83,11 +85,14 @@ fun BusJamApp() {
                 progress = progress,
                 onPlay = openLevel,
                 onBack = { screen = HOME },
+                unlockAll = BuildConfig.DEBUG,
+                tileInfo = if (BuildConfig.DEBUG) { n -> pack.getOrNull(n - 1)?.tileInfo() } else null,
+                showGoTo = BuildConfig.DEBUG,
             )
             screen > 0 && pack != null -> {
                 val number = screen.coerceIn(1, pack.size)
                 LaunchedEffect(number, pack) {
-                    game.start(pack[number - 1], number, hasNext = number < pack.size, fresh = false)
+                    game.start(pack[number - 1].level, number, hasNext = number < pack.size, fresh = false)
                 }
                 val ui by game.ui.collectAsStateWithLifecycle()
                 val current = ui
@@ -102,6 +107,7 @@ fun BusJamApp() {
                         onNext = { openLevel(number + 1) },
                         onLevels = { screen = LEVELS },
                         onHome = { screen = HOME },
+                        debugInfo = if (BuildConfig.DEBUG) pack[number - 1].headerInfo() else null,
                     )
                 }
             }

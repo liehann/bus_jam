@@ -1,4 +1,17 @@
 [
-  {"file": "levels.json", "label": "Campaign", "description": "1000-level v2 campaign (rollout scoring, before motifs)"},
-  {"file": "motif-preview-1.json", "label": "Motif preview 1", "description": "Vault motifs: capacity choice, big unblocks, stack to unlock, dense core (no dock pressure yet)"}
+ {
+  "file": "levels.json",
+  "label": "Campaign",
+  "description": "1000-level v2 campaign (rollout scoring, before motifs)"
+ },
+ {
+  "file": "motif-preview-1.json",
+  "label": "Motif preview 1",
+  "description": "Vault motifs: capacity choice, big unblocks, stack to unlock, dense core (no dock pressure yet)"
+ },
+ {
+  "file": "motif-preview-2.json",
+  "label": "Motif preview 2",
+  "description": "Chained stalls + pressure/fork scoring; dock 3+ on 10-25% of moves"
+ }
 ]

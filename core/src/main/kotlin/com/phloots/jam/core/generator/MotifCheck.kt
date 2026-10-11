@@ -6,6 +6,10 @@ import com.phloots.jam.core.model.Limits
 import com.phloots.jam.core.model.Status
 import com.phloots.jam.core.scoring.DifficultyConfig
 import com.phloots.jam.core.scoring.DifficultyReport
+import com.phloots.jam.core.scoring.Pressure
+import com.phloots.jam.core.scoring.Forks
+import com.phloots.jam.core.scoring.ForkMetrics
+import com.phloots.jam.core.scoring.PressureMetrics
 import com.phloots.jam.core.scoring.RolloutDifficulty
 import com.phloots.jam.core.scoring.Scorer
 import com.phloots.jam.core.solver.FullAnalysis
@@ -251,6 +255,8 @@ data class MotifFilter(
     /** DenseCore: minimum core density and sharp fraction of sampled core-phase states. */
     val coreMinDensity: Double = 0.88,
     val coreMinSharp: Double = 0.25,
+    /** Reject levels below the v2 "too easy" floor incl. the sustained-pressure floor ([Scorer.isTooEasy]). */
+    val pressureFloor: Boolean = true,
     val maxAttempts: Int = 40,
 )
 
@@ -263,6 +269,8 @@ data class MotifResult(
     val report: DifficultyReport,
     val rollout: RolloutDifficulty.Result,
     val solveStats: SolveStats,
+    val pressure: PressureMetrics? = null,
+    val forks: ForkMetrics? = null,
 ) {
     /** Tags with verification outcome, e.g. "CapacityChoice M6|L10 @12 LOSS"; recorded in PackedLevel.motifs. */
     fun tags(): List<String> {
@@ -274,6 +282,7 @@ data class MotifResult(
                 out += "${c.decision.kind} ${c.decision.detail} @${c.decision.step} ${c.outcome}"
             }
             if (!grp.stack) out += "Squeeze ${ml.runSpans[g].first}-${ml.runSpans[g].last}"
+            else if (!grp.decoy) out += "Stall ${ml.runSpans[g].first}-${ml.runSpans[g].last}"
         }
         return out
     }
@@ -305,8 +314,11 @@ fun MotifGenerator.generate(
         val core = if (ml.coreMask != null) MotifCheck.coreCheck(ml, states).also { if (it.sharpFraction < filter.coreMinSharp) return@repeat } else null
         val analysis = Solver.analyzeBounded(level, config)
         if (!analysis.solvable || analysis.capped) return@repeat
-        val report = Scorer.score(level, analysis, config, rollout.lossRate)
-        return MotifResult(ml, checks, core, analysis, report, rollout, solved.stats)
+        val pressure = Pressure.measure(level, analysis.solution, config)
+        val forks = Forks.measure(level, analysis.solution, config)
+        val report = Scorer.score(level, analysis, config, rollout.lossRate, pressure, forks)
+        if (filter.pressureFloor && Scorer.isTooEasy(level, report, config)) return@repeat
+        return MotifResult(ml, checks, core, analysis, report, rollout, solved.stats, pressure, forks)
     }
     return null
 }

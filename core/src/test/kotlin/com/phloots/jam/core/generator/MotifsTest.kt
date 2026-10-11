@@ -14,7 +14,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class MotifsTest {
-    private val filter = MotifFilter(maxAttempts = 3)
+    private val filter = MotifFilter(maxAttempts = 3, pressureFloor = false)
 
     private val recipes = mapOf(
         MotifKind.CapacityChoice to MotifParams(width = 10, height = 12, colors = 6, maxContainers = 60, groups = listOf(RunGroup(capacityChoice = true))),

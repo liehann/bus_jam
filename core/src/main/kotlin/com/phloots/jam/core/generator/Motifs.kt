@@ -54,6 +54,17 @@ data class RunGroup(
      * so the unpacking order is constrained by the queue.
      */
     val mixed: Int = 1,
+    /** StackToUnlock decoy (the decision); false = a plain stack stall (pressure only). */
+    val decoy: Boolean = true,
+    /** DenseCore decision in a mixed vault; false = mixed shadow without the planted fork. */
+    val coreDecision: Boolean = true,
+    /** Wall links of this group (0 = [MotifParams.wallLinks]). 2 leaves two working slots during the stall. */
+    val links: Int = 0,
+    /**
+     * Shadow containers' elements are spread over [spread] positions after their release instead of arriving all at
+     * once, so during the stall they wait partially filled (needs [links] <= 2: two working slots to juggle).
+     */
+    val spread: Double = 0.0,
 )
 
 /**
@@ -85,6 +96,41 @@ data class MotifParams(
     val wallLinks: Int = 3,
     val runLength: IntRange = 42..50,
     val window: Double = 1.5,
+    /**
+     * Sustained pressure (DESIGN principle 6): filler elements are keyed in [j - spreadBefore, j + window] around
+     * their container's intended position j, so a container's colour trickles in over several moves (it waits in the
+     * dock) and early elements wait in staging. [colorSpread] = a filler container avoids the colours of the last
+     * that many containers of the intended order (well-mixed queue: few of each colour staged).
+     */
+    val spreadBefore: Double = 0.0,
+    val colorSpread: Int = 0,
+    /** Filler elements are keyed [queueLag] positions after their container's intended release (it docks first). */
+    val queueLag: Double = 0.0,
+    /** Placement preference (exponent) for cells on the exit rays of still-free containers: small frontier. */
+    val frontierBias: Double = 0.0,
+    /** Digs (a target whose elements come before its blockers') anywhere on the board, not only in a dense core. */
+    val digAnywhere: Boolean = false,
+    /**
+     * Require the intended order to win (always, when there are run groups). Pure-pressure levels may set false: the
+     * well-mixed queue is then validated by the solver (callers must solve; [MotifLevel.order] is then only the
+     * construction order).
+     */
+    val requireIntendedLine: Boolean = true,
+    /** Space each filler container's elements evenly over its key span (well-mixed queue). */
+    val evenSpread: Boolean = false,
+    /**
+     * Sustained dock pressure: along the intended line up to [waitTarget] filler containers at a time are "blockers
+     * that wait": a container that blocks one released within the next [waitHorizon] positions gets its elements
+     * keyed after that container's, so it must be docked (partially filled) to dig out what the staging asks for.
+     */
+    val waitTarget: Int = 0,
+    val waitHorizon: Int = 6,
+    val waitLag: Double = 7.0,
+    /** Lane layout instead of inside-out placement (see place()); [laneCross] vertical cross containers. */
+    val lanes: Boolean = false,
+    /** Filler releases between consecutive run groups (back-to-back stalls = sustained pressure). */
+    val groupGap: IntRange = 6..9,
+    val laneCross: Int = 0,
     val decoyFraction: Double = 0.1,
     val colorMargin: Int = 5,
     val midGap: Int = 7,
@@ -143,7 +189,7 @@ class MotifGenerator(private val seed: Long) {
      * lane, so every shadow container exits only through T's cells, i.e. only after the WHOLE wall is out.
      * Placement order (reverse extraction): shadow bottom-up, T, links right to left. Returns null if it does not fit.
      */
-    private fun stampVault(p: MotifParams, bigUnblocks: Boolean, runLength: IntRange, occ: BooleanArray, out: ArrayList<Container>, rays: IntArray): Vault? {
+    private fun stampVault(p: MotifParams, bigUnblocks: Boolean, runLength: IntRange, links: Int, lTop: Boolean, occ: BooleanArray, out: ArrayList<Container>, rays: IntArray): Vault? {
         val w = p.width
         val h = p.height
         val t = rng.nextInt(8)
@@ -164,7 +210,7 @@ class MotifGenerator(private val seed: Long) {
             if (transpose) { val x = dr; dr = dc; dc = x }
             return Dir.entries.first { it.dRow == dr && it.dCol == dc }
         }
-        val nl = p.wallLinks + (if (bigUnblocks) 1 else 0)
+        val nl = links + (if (bigUnblocks) 1 else 0)
         if (fw < nl + 3) return null
         val f = nl + rng.nextInt(fw - 3 - nl + 1)
         val linkCols = (0 until f).shuffled(rng).take(nl).sortedDescending()
@@ -179,7 +225,11 @@ class MotifGenerator(private val seed: Long) {
         var col = rng.nextInt(3)
         var guard = 0
         while (cap < target && guard++ < 100) {
-            val sz = listOf(ContainerSize.S, ContainerSize.M, ContainerSize.L, ContainerSize.M, ContainerSize.L)[rng.nextInt(5)]
+            // DenseCore: one column starts with an L (the planted fork's B), its column kept short.
+            if (lTop && col == 0 && depth[col] > 1) { col = 1 + rng.nextInt(2); continue }
+            val sz = if (lTop && depth[col] == 1 && col == 0) ContainerSize.L
+                else if (lTop && depth[col] == 1 && col == 1) (if (rng.nextBoolean()) ContainerSize.S else ContainerSize.M)
+                else listOf(ContainerSize.S, ContainerSize.M, ContainerSize.L, ContainerSize.M, ContainerSize.L)[rng.nextInt(5)]
             if (depth[col] + sz.length - 1 <= maxDepth) {
                 shadowPlan += C(sz, depth[col], f + col, Dir.UP)
                 depth[col] += sz.length
@@ -234,6 +284,8 @@ class MotifGenerator(private val seed: Long) {
         val h = p.height
         val occ = BooleanArray(w * h)
         val rays = IntArray(w * h)
+        val owners = Array(w * h) { ArrayList<Int>() }  // filler containers whose exit ray crosses the cell
+        val blockedSet = HashSet<Int>()
         val out = ArrayList<Container>()
         val maxN = p.maxContainers.coerceAtMost(Limits.MAX_CONTAINERS)
         val cw = if (p.denseCore) Math.round(w * p.coreFraction).toInt().coerceIn(3, w) else w
@@ -270,15 +322,21 @@ class MotifGenerator(private val seed: Long) {
                 }
                 if (options.isNotEmpty()) {
                     val wts = options.map { v ->
-                        if (p.blockBias > 0.0) StrictMath.pow(1.0 + v.cells().sumOf { rays[it.row * w + it.col] }, p.blockBias) else 1.0
+                        val b = if (p.blockBias > 0.0) StrictMath.pow(1.0 + v.cells().sumOf { rays[it.row * w + it.col] }, p.blockBias) else 1.0
+                        // Small frontier: prefer covering rays of containers that are still free.
+                        val f = if (p.frontierBias > 0.0) {
+                            val m = v.cells().flatMap { owners[it.row * w + it.col] }.filter { it !in blockedSet }.toSet().size
+                            StrictMath.pow(1.0 + m, p.frontierBias)
+                        } else 1.0
+                        b * f
                     }
                     var x = rng.nextDouble() * wts.sum()
                     var pick = options.last()
                     for (k in options.indices) { x -= wts[k]; if (x < 0) { pick = options[k]; break } }
-                    for (c in pick.cells()) occ[c.row * w + c.col] = true
+                    for (c in pick.cells()) { occ[c.row * w + c.col] = true; blockedSet += owners[c.row * w + c.col] }
                     var r = pick.row + pick.dir.dRow
                     var c = pick.col + pick.dir.dCol
-                    while (r in 0 until h && c in 0 until w) { rays[r * w + c]++; r += pick.dir.dRow; c += pick.dir.dCol }
+                    while (r in 0 until h && c in 0 until w) { rays[r * w + c]++; owners[r * w + c] += out.size; r += pick.dir.dRow; c += pick.dir.dCol }
                     out += pick
                     return true
                 }
@@ -291,7 +349,8 @@ class MotifGenerator(private val seed: Long) {
         for (g in p.groups) {
             var v: Vault? = null
             var tries = 0
-            while (v == null && tries++ < 30) v = stampVault(p, g.bigUnblocks, if (g.mixed > 1) p.coreRunLength else p.runLength, occ, out, rays)
+            while (v == null && tries++ < 200) v = stampVault(p, g.bigUnblocks, if (g.mixed > 1 && g.coreDecision) p.coreRunLength else p.runLength,
+                if (g.links > 0) g.links else p.wallLinks, g.mixed > 1 && g.coreDecision, occ, out, rays)
             if (v == null) return Placed(out, core, 0.0, emptyList())
             vaults += v
             for (c in v.gaps) occ[c] = true
@@ -309,6 +368,39 @@ class MotifGenerator(private val seed: Long) {
                 if (core[cell] || occ[cell]) continue
                 if (rng.nextDouble() >= p.peripheryDensity) continue
                 cover(cell) { !core[it] }
+            }
+        } else if (p.lanes) {
+            // Lane layout (deep chains, small frontier): rows of horizontal containers all facing their row's exit
+            // side, filled from the deep end, so only the container nearest the exit is free; a few vertical
+            // "cross" containers placed first are blocked by every row they cross (keystones of several rows).
+            fun commit(v: Container) {
+                for (c in v.cells()) { occ[c.row * w + c.col] = true; blockedSet += owners[c.row * w + c.col] }
+                var r = v.row + v.dir.dRow
+                var c = v.col + v.dir.dCol
+                while (r in 0 until h && c in 0 until w) { rays[r * w + c]++; owners[r * w + c] += out.size; r += v.dir.dRow; c += v.dir.dCol }
+                out += v.copy(id = out.size)
+            }
+            repeat(p.laneCross) {
+                val sz = if (rng.nextBoolean()) ContainerSize.M else ContainerSize.L
+                val d = if (rng.nextBoolean()) Dir.UP else Dir.DOWN
+                val v = Container(out.size, sz, 0, 1 + rng.nextInt(h - 2), 1 + rng.nextInt(w - 2), d)
+                if (fits(v, occ, w, h)) commit(v)
+            }
+            for (r in (0 until h).shuffled(rng)) {
+                val d = if (rng.nextBoolean()) Dir.LEFT else Dir.RIGHT
+                val cols = if (d == Dir.LEFT) (w - 1 downTo 0).toList() else (0 until w).toList()
+                for (c in cols) {
+                    if (out.size >= maxN) break
+                    if (occ[r * w + c] || rng.nextDouble() >= p.uniformDensity) continue
+                    var sz: ContainerSize? = drawSize()
+                    while (sz != null) {
+                        // The deep end is cell c; the front is towards the exit.
+                        val front = c + d.dCol * (sz.length - 1)
+                        val v = Container(out.size, sz, 0, r, front, d)
+                        if (v.cells().all { it.col in 0 until w && !occ[it.row * w + it.col] } && fits(v, occ, w, h)) { commit(v); break }
+                        sz = ContainerSize.entries.getOrNull(sz.ordinal - 1)
+                    }
+                }
             }
         } else {
             for (cell in cells) {
@@ -348,7 +440,7 @@ class MotifGenerator(private val seed: Long) {
     fun construct(p: MotifParams): MotifLevel? {
         require(p.width in Limits.MIN_WIDTH..Limits.MAX_WIDTH && p.height in Limits.MIN_HEIGHT..Limits.MAX_HEIGHT)
         require(p.colors in 1..Limits.MAX_COLORS)
-        require(p.groups.size in 0..2)
+        require(p.groups.size in 0..4)
         val placed = place(p)
         val n0 = placed.containers.size
         if (placed.vaults.size < p.groups.size) return fail("vault")
@@ -449,7 +541,7 @@ class MotifGenerator(private val seed: Long) {
                 if (ss.isEmpty()) { openWhy = "bu s"; return false }
                 buS = ss[rng.nextInt(ss.size)]; used += buS
             }
-            if (spec.stack) {
+            if (spec.stack && spec.decoy) {
                 val ds = freeOther { shapes[it].size != ContainerSize.S }
                 if (ds.isEmpty()) { openWhy = "decoy"; return false }
                 decoy = ds[rng.nextInt(ds.size)]; used += decoy
@@ -514,13 +606,21 @@ class MotifGenerator(private val seed: Long) {
             val tops = rest.filter { blockers[it].all { b -> released[b] || b == g.t } }
             var last = -1
             // Mixed vault: the column of B (the biggest top) is unpacked last.
-            val bTop = if (spec.mixed > 1) tops.maxWithOrNull(compareBy({ shapes[it].size.capacity }, { rng.nextDouble() })) ?: -1 else -1
-            val bCol = HashSet<Int>()
-            if (bTop >= 0) {
-                bCol += bTop
+            fun column(top: Int): Set<Int> {
+                val col = hashSetOf(top)
                 var grew = true
-                while (grew) { grew = false; for (u in rest) if (u !in bCol && blockers[u].any { it in bCol }) { bCol += u; grew = true } }
+                while (grew) { grew = false; for (u in rest) if (u !in col && blockers[u].any { it in col }) { col += u; grew = true } }
+                return col
             }
+            // B = a non-S top whose column is the lightest (the rest of the shadow must hold a staging window of
+            // elements between C and B); ties -> bigger B.
+            val bTop = if (spec.mixed > 1 && spec.coreDecision) tops.filter { shapes[it].size != ContainerSize.S }
+                .minWithOrNull(compareBy({ -shapes[it].size.capacity }, { column(it).sumOf { u -> shapes[u].size.capacity } })) ?: -1 else -1
+            val bCol = if (bTop >= 0) column(bTop) else emptySet()
+            // C (the fork's exact fit) = the smallest other top, unpacked first.
+            val cTop = if (bTop >= 0) tops.filter { it != bTop && shapes[it].size.capacity < shapes[bTop].size.capacity }
+                .minByOrNull { shapes[it].size.capacity } ?: -1 else -1
+            if (cTop >= 0) { release(cTop); g.members += cTop; rest -= cTop; last = cTop }
             while (rest.isNotEmpty()) {
                 val fr0 = rest.filter { exitable(it) }
                 val fr = fr0.filter { it !in bCol }.ifEmpty { fr0 }
@@ -530,7 +630,11 @@ class MotifGenerator(private val seed: Long) {
                 val u = if (same) below[rng.nextInt(below.size)] else fr[rng.nextInt(fr.size)]
                 release(u); g.members += u; rest -= u; last = u
             }
-            if (spec.mixed > 1) {
+            if (spec.mixed > 1 && !spec.coreDecision) {
+                val casc = g.members.drop(1)
+                var ci = 0
+                for (u in casc) { ci = (ci + 1 + rng.nextInt(spec.mixed - 1)) % spec.mixed; g.colorIdx[u] = ci }
+            } else if (spec.mixed > 1) {
                 // DenseCore decision: B = the column top unpacked last, C = an early, smaller container. Only B and C
                 // take the scarce colour (index 1), so when C is next exactly cap(C) of it is staged: C fits, B would
                 // take them, wait for the rest on the single free slot and jam.
@@ -538,12 +642,15 @@ class MotifGenerator(private val seed: Long) {
                 val b = bTop
                 val ib = casc.indexOf(b)
                 // B's elements must lie beyond the staging window when C is next.
-                val early = casc.take(4).filter { c ->
+                val early = casc.take(5).filter { c ->
                     c != b && shapes[c].size.capacity < shapes[b].size.capacity &&
                         casc.subList(casc.indexOf(c), ib).sumOf { shapes[it].size.capacity } >= Limits.STAGING_SPOTS + shapes[c].size.capacity + 2
                 }
-                if (early.isEmpty()) { lastFailure = "core pair"; return false }
-                val c = early[rng.nextInt(early.size)]
+                if (early.isEmpty()) {
+                    lastFailure = "core pair"
+                    return false
+                }
+                val c = early.first()
                 for (u in casc) g.colorIdx[u] = if (spec.mixed > 2 && rng.nextDouble() < 0.5) 2 else 0
                 g.colorIdx[b] = 1; g.colorIdx[c] = 1
                 g.coreB = b; g.coreC = c
@@ -570,9 +677,10 @@ class MotifGenerator(private val seed: Long) {
         val digStart = IntArray(n) { -1 }
         val digTargetPos = IntArray(n) { -1 }
         fun coreDig(): Boolean {
-            val core = placed.core ?: return false
+            val core = placed.core
+            if (core == null && !p.digAnywhere) return false
             val cs = (0 until n).filter { u ->
-                !released[u] && !pinned[u] && role[u] == Role.FILLER && core[shapes[u].row * w + shapes[u].col]
+                !released[u] && !pinned[u] && role[u] == Role.FILLER && (p.digAnywhere || core!![shapes[u].row * w + shapes[u].col])
             }.map { it to digSet(it) }.filter { (_, d) ->
                 d.size in p.coreDigLinks && d.all { !pinned[it] && role[it] == Role.FILLER }
             }
@@ -592,18 +700,19 @@ class MotifGenerator(private val seed: Long) {
         var lead = when (groups.size) {
             0 -> n
             1 -> (n * (0.15 + 0.2 * rng.nextDouble())).toInt()
-            else -> (n * (0.08 + 0.1 * rng.nextDouble())).toInt()
+            2 -> (n * (0.08 + 0.1 * rng.nextDouble())).toInt()
+            else -> 2 + rng.nextInt(3)
         }
         while (order.size < n) {
             if (gi < groups.size && lead <= 0) {
                 if (open(gi)) {
                     if (!runGroup(gi)) return fail(lastFailure)
                     gi++
-                    lead = p.colorMargin + 1 + rng.nextInt(4)
+                    lead = p.groupGap.first + rng.nextInt(p.groupGap.last - p.groupGap.first + 1)
                     continue
                 }
             }
-            if (placed.core != null && rng.nextDouble() < p.coreDigRate && coreDig()) { lead -= 3; continue }
+            if ((placed.core != null || p.digAnywhere) && rng.nextDouble() < p.coreDigRate && coreDig()) { lead -= 3; continue }
             if (!fillerStep()) {
                 if (gi < groups.size) return fail("no filler before group: $openWhy")
                 // Only pinned containers left (should not happen after all groups ran).
@@ -647,7 +756,9 @@ class MotifGenerator(private val seed: Long) {
             }
             // Wall links are on the board (free on the edge) from the start: no element of their colours may
             // appear before the run ends, or the wall could be cleared early.
-            val linkFrom = -m
+            // (From the previous run's end for later groups: before that their colours may appear; a player who
+            // pre-fills such a link only eases a later stall. The group's own decisions come after that point.)
+            val linkFrom = if (gIdx == 0) -m else groups[gIdx - 1].runEnd - m
             val linkTo = g.runEnd + 3 + m
             if (g.spec.stack) {
                 val pc = reserve(linkFrom, linkTo) ?: return fail("colour P")
@@ -685,12 +796,20 @@ class MotifGenerator(private val seed: Long) {
             val (from, to) = when (role[u]) {
                 Role.DIG_T -> (digStart[u] - 1.0) to (j + 1.0)
                 Role.DIG_LINK -> j.toDouble() to (digTargetPos[u] + 2.0)
-                else -> j.toDouble() to (j + p.window + 1.0)
+                else -> (j + p.queueLag - p.spreadBefore - 1.0) to (j + p.queueLag + p.window + 1.0)
             }
             val banned = HashSet<Int>()
-            groups.forEachIndexed { gIdx, g -> if (g.closure.isNotEmpty() && g.closure[u]) banned += g.runColors }
-            val ok = (0 until p.colors).filter { it !in banned && !conflicts(it, from, to, -1) }
-            if (ok.isEmpty()) return fail("colour filler")
+            // Groups with planted decisions need the strict ban (their proofs assume no absorber); a plain stall only
+            // bans run colours for filler that is still on board during its run and could shortcut it right then.
+            groups.forEachIndexed { gIdx, g ->
+                if (g.closure.isEmpty() || !g.closure[u]) return@forEachIndexed
+                val decisive = g.spec.capacityChoice || g.spec.bigUnblocks || (g.spec.stack && g.spec.decoy) || (g.spec.mixed > 1 && g.spec.coreDecision)
+                if (decisive || pos[u] <= g.runEnd + p.colorMargin) banned += g.runColors
+            }
+            val ok0 = (0 until p.colors).filter { it !in banned && !conflicts(it, from, to, -1) }
+            if (ok0.isEmpty()) return fail("colour filler")
+            val recent = (maxOf(0, j - p.colorSpread) until j).map { colors[order[it]] }.toSet()
+            val ok = ok0.filter { it !in recent }.ifEmpty { ok0 }
             val minUse = ok.minOf { useCount[it] }
             val pref = ok.filter { useCount[it] <= minUse + 1 }
             val c = pref[rng.nextInt(pref.size)]
@@ -700,6 +819,25 @@ class MotifGenerator(private val seed: Long) {
         val containers = shapes.mapIndexed { i, v -> v.copy(color = colors[i]) }
 
         // ------------------------------------------------------------ queue
+        // Waiting blockers (sustained pressure), decided along the intended order.
+        val waitKey = DoubleArray(n) { -1.0 }
+        if (p.waitTarget > 0) {
+            val dependents = Array(n) { ArrayList<Int>() }
+            for (v in 0 until n) for (b in blockers[v]) dependents[b] += v
+            val waiting = ArrayList<Int>() // release positions until which a waiting blocker sits
+            for (j in order.indices) {
+                val u = order[j]
+                waiting.removeAll { it < j }
+                if (role[u] != Role.FILLER || waiting.size >= p.waitTarget) continue
+                val deps = dependents[u].filter { role[it] == Role.FILLER && pos[it] > j && pos[it] <= j + p.waitHorizon }
+                if (deps.isEmpty()) continue
+                val d = deps[rng.nextInt(deps.size)]
+                // Beyond the staging window (~6 containers of elements) so it really waits in the dock.
+                val until = maxOf(pos[d] + 0.5, j + p.waitLag)
+                waitKey[u] = until
+                waiting += until.toInt()
+            }
+        }
         val keys = ArrayList<Pair<Double, Int>>()
         fun add(count: Int, key: Double, color: Int) = repeat(count) { keys += key to color }
         val runRanges = groups.map { it.runStart until (it.runEnd + 1) }
@@ -709,7 +847,11 @@ class MotifGenerator(private val seed: Long) {
             val gIdx = groupOf[u]
             val g = if (gIdx >= 0) groups[gIdx] else null
             when (role[u]) {
-                Role.RUN, Role.CC_A, Role.CC_B -> add(v.size.capacity, j.toDouble(), v.color)
+                Role.RUN -> if (g != null && g.spec.spread > 0.0 && u != g.t) repeat(v.size.capacity) { ei ->
+                    // Evenly over [j, j + spread], kept inside the run's block.
+                    keys += minOf(j + g.spec.spread * (ei + 0.5) / v.size.capacity, g.runEnd + 0.4) to v.color
+                } else add(v.size.capacity, j.toDouble(), v.color)
+                Role.CC_A, Role.CC_B -> add(v.size.capacity, j.toDouble(), v.color)
                 Role.HARD -> repeat(v.size.capacity) {
                     keys += (g!!.runEnd + 0.5 + (if (g.spec.stack) 0.0 else rng.nextDouble())) to v.color
                 }
@@ -723,14 +865,21 @@ class MotifGenerator(private val seed: Long) {
                     add(g!!.decoyF, g.runStart - 0.6, v.color)
                     add(v.size.capacity - g.decoyF, j.toDouble(), v.color)
                 }
-                Role.FILLER, Role.DIG_LINK, Role.DIG_T -> repeat(v.size.capacity) {
+                Role.FILLER, Role.DIG_LINK, Role.DIG_T -> repeat(v.size.capacity) { ei ->
+                    val span = p.spreadBefore + p.window
                     var key = when (role[u]) {
                         Role.DIG_T -> digStart[u] - 0.3
                         Role.DIG_LINK -> digTargetPos[u] + 0.5 + rng.nextDouble()
-                        else -> j + rng.nextDouble() * p.window
+                        // Even spacing over the span (no Poisson clumps a perfect-information line could exploit).
+                        else -> if (waitKey[u] >= 0) waitKey[u] + rng.nextDouble() * p.window
+                        else if (p.evenSpread) j + p.queueLag - p.spreadBefore + span * (ei + 0.2 + 0.6 * rng.nextDouble()) / v.size.capacity
+                        else j + p.queueLag - p.spreadBefore + rng.nextDouble() * span
                     }
-                    // Keep runs pure: nothing may be keyed into a later run's block.
-                    for (r in runRanges) if (j < r.first && key >= r.first - 0.7) key = r.first - 0.7 - rng.nextDouble() * 0.2
+                    // Keep runs pure: nothing may be keyed into a run's block (or before an earlier run).
+                    for (r in runRanges) {
+                        if (j < r.first && key >= r.first - 0.7) key = r.first - 0.7 - rng.nextDouble() * 0.2
+                        if (j > r.last && key <= r.last + 3.6) key = r.last + 3.6 + rng.nextDouble() * 0.3
+                    }
                     keys += key to v.color
                 }
             }
@@ -761,7 +910,7 @@ class MotifGenerator(private val seed: Long) {
         val queue = sorted.map { it.second }
         val level = Level(p.levelId, w, h, containers, queue)
         check(level.validate().isEmpty()) { "motif generator produced invalid level: ${level.validate()}" }
-        LineSim.run(level, order) ?: return fail("LineSim")
+        if (LineSim.run(level, order) == null && (p.requireIntendedLine || groups.isNotEmpty())) return fail("LineSim")
 
         groups.forEachIndexed { gIdx, g ->
             fun sz(u: Int) = containers[u].size.let { "${it.name}${it.capacity}" }
@@ -771,7 +920,7 @@ class MotifGenerator(private val seed: Long) {
                 colors[g.buB], "${sz(g.buB)}|${sz(g.buS)}")
             if (g.coreC >= 0) decisions += MotifDecision(MotifKind.DenseCore, gIdx, pos[g.coreC], Move(g.coreC), Move(g.coreB),
                 colors[g.coreC], "${sz(g.coreC)}|${sz(g.coreB)}")
-            if (g.spec.stack) decisions += MotifDecision(MotifKind.StackToUnlock, gIdx, g.runStart, Move(order[g.runStart]),
+            if (g.spec.stack && g.decoy >= 0) decisions += MotifDecision(MotifKind.StackToUnlock, gIdx, g.runStart, Move(order[g.runStart]),
                 Move(g.decoy), colors[g.hard.first()], "${g.hard.size}x|decoy ${sz(g.decoy)}")
         }
         return MotifLevel(level, order.toList(), decisions, p.groups, groups.map { it.runStart..it.runEnd },

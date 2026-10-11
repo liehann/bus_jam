@@ -96,6 +96,34 @@ colour does not matter, so staging is a count vector.
    long single-colour runs are occasional events, not the backbone. Measure it directly along the winning line:
    fraction of states with dock ≥ 3, mean moves a container stays docked, fraction of decision states with only
    1–2 safe moves — this becomes a primary score term and a floor.
+7. **Reverse ("director") generation (user idea, prototyped in parallel with the motif generator).** Play the game
+   backwards from the empty end state; each reverse step undoes one tap plus its whole automatic cascade, so the
+   intended line is valid by construction: un-dispatch (full container back into a free dock slot), un-board
+   (elements from a docked container back into staging, respecting oldest-first and left→right priority),
+   un-refill (staged elements back to the queue front), un-release (an *empty* docked container whose left
+   neighbours are all occupied leaves the dock and slides onto the board from an edge along its exit lane until it
+   hits something — this builds blocking chains naturally; heuristics avoid gaps). Key invariant: between taps no
+   staged element matches a docked container with space — so a partially-filled docked container means its colour
+   is absent from all 40 staged. A director script controls pressure directly (e.g. hold 3 slots with partial
+   containers while chain A is built, then switch slot and chain). Forward checks (bots lose, tight decisions)
+   still decide whether alternatives fail; the director can plant decoys deliberately.
+8. **Decisions = forks; difficulty = few good options × deep horizon (user, 2026-10-10).** At a decision state:
+   b = legal moves, w = winning ("good") moves, h = horizon = smallest search depth that proves a bad move lost
+   (h=1 obvious, h≥4 needs planning). A good level has a handful of decision states with small w (1–2) out of b ≥ 3
+   and h ≥ 2; never many states with lots of good options. Difficulty score is driven by Σ over decision states of
+   (b−w)/b weighted by h (and penalised when w is large); floor: ≥ k decision states with w ≤ 2, b ≥ 3, h ≥ 2.
+   Generators *plant forks*: at a chosen point, the correct container C plus a reachable decoy D whose failure
+   mechanism and horizon are designed, then verified forward (D proven lost, C wins). Fork catalogue:
+   (a) big-now-not-small: big waits but exactly enough is coming; small leaves leftovers that force the big one in
+       later when it no longer fits;
+   (b) exact fit vs overfill: M fills and leaves; L sits through a run and blocks the run's slot;
+   (c) chain order: digging chain A first leaves a hard link docked when B's hard link arrives;
+   (d) deliberate dead weight: the right move docks a slow-filling container because it's the only way to reach
+       something needed in time (counter-intuitive move);
+   (e) left-slot steal: a same-colour container released into a free slot left of a partial one steals its
+       elements; the fork is which slot will be free (controlled by dispatch order);
+   (f) timing window: right container now vs later; too early sits empty, too late misses its colour's batch;
+   (g) exact colour budget: colour batches 4 then 10 require S4 then L10; M6 first orphans 4.
 5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 

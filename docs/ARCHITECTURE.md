@@ -290,3 +290,24 @@ Gotchas:
     counts, byte-compared). Shipped pack regenerated with the default `./gradlew :levelgen:run`.
   - `:levelgen`: `--motif-preview <n>` (default out `levelgen/out/preview-levels.json`, `--seeds-per-slot k`) and
     `--motif-explore` (construction/verification funnel diagnostics; `MOTIFS=S3,CC,...` env selects recipes).
+- 2026-10-10 (generator, with lead's go-ahead on scoring): **sustained pressure + forks** (DESIGN principles 6, 8).
+  Additive; the stored campaign scores are unchanged (new terms only weigh in when their metrics are passed).
+  - New `core/.../scoring/Pressure.kt`: `Pressure.measure(level, line, config): PressureMetrics` (dockHigh = fraction
+    of decision states with dock >= 3, meanDwell = mean moves docked per container, tight = fraction of states with
+    >= 3 legal moves and only 1–2 safe ones; safe = budgeted solve wins or is unknown); `sustained(config)` = Q.
+  - New `core/.../scoring/Forks.kt`: `Forks.measure(level, line, config): ForkMetrics`, `Forks.fork(state, step,
+    config): Fork?` — `Fork(step, b, w, h)` (w = good moves, unknown counts as good; h = moves until every continuation
+    of the hardest-to-see bad move has ended, capped), `ForkMetrics(forks, value F, tightForks)`.
+  - `Scorer.score(..., rolloutLossRate, pressure: PressureMetrics? = null, forks: ForkMetrics? = null)`: score =
+    100 × ((1 − wSustained − wForks)·legacy + wSustained·Q + wForks·F), each weight only applied when the metric is
+    supplied. `Scorer.isTooEasy` adds the pressure floor / fork floor for reports that carry them.
+    `DifficultyReport` gained defaulted `pressureMeasured, dockHigh, dwell, tight, sustained, forksMeasured, forkValue,
+    tightForks, forkStates`. `DifficultyConfig` gained `wSustained, pressure*Norm, pressureChildBudget,
+    floorMinDockHigh, floorMinDwell, floorMinTight, wForks, forkChildBudget, forkHorizonCap, forkHorizonBudget,
+    forkNorm, floorMinForks`.
+  - `core/.../generator/Ladder.kt`: greedy bot ladder with a k-ply safety lookahead (`Ladder.winRate(level, k, runs)`).
+  - Motif generator: `MotifParams` gained queue/placement knobs (`spreadBefore, colorSpread, queueLag, frontierBias,
+    digAnywhere, requireIntendedLine, evenSpread, waitTarget, waitHorizon, waitLag, lanes, laneCross, groupGap`);
+    `RunGroup` gained `decoy, coreDecision, links, spread`; up to 4 run groups. `MotifGenerator.generate` measures
+    pressure + forks on the solver's line and applies the floors (`MotifFilter.pressureFloor`). `:levelgen
+    --pressure-preview <n>` (and diagnostics `--pressure-explore`, `--stall-explore`, `--pressure-debug`).

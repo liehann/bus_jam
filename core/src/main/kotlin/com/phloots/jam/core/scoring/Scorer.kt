@@ -24,6 +24,18 @@ data class DifficultyReport(
     val rollout: Double = 0.0,
     val chain: Double = 0.0,
     val deadWeight: Double = 0.0,
+    /** Sustained pressure ([PressureMetrics]); meaningful only when [pressureMeasured]. */
+    val pressureMeasured: Boolean = false,
+    val dockHigh: Double = 0.0,
+    val dwell: Double = 0.0,
+    val tight: Double = 0.0,
+    /** Q = [PressureMetrics.sustained], 0..1. */
+    val sustained: Double = 0.0,
+    /** Forks ([ForkMetrics]); meaningful only when [forksMeasured]. */
+    val forksMeasured: Boolean = false,
+    val forkValue: Double = 0.0,
+    val tightForks: Int = 0,
+    val forkStates: Int = 0,
 )
 
 /** Owner: gamestate agent. */
@@ -39,6 +51,8 @@ object Scorer {
         analysis: FullAnalysis,
         config: DifficultyConfig = DifficultyConfig.DEFAULT,
         rolloutLossRate: Double? = null,
+        pressure: PressureMetrics? = null,
+        forks: ForkMetrics? = null,
     ): DifficultyReport {
         val t = analysis.trapRatio.coerceIn(0.0, 1.0)
         val d = (analysis.meanTrapDepth / config.trapDepthNorm).coerceIn(0.0, 1.0)
@@ -53,8 +67,13 @@ object Scorer {
         val c = 0.5 * (analysis.digDepthMean / config.digMeanNorm).coerceIn(0.0, 1.0) +
             0.5 * (analysis.digDepthMax / config.digMaxNorm).coerceIn(0.0, 1.0)
         val w = (analysis.peakDeadWeight / 3.0).coerceIn(0.0, 1.0)
-        val weighted = config.wRollout * r + config.wChain * c + config.wDeadWeight * w + config.wSize * s +
+        val legacy = config.wRollout * r + config.wChain * c + config.wDeadWeight * w + config.wSize * s +
             config.wTrap * t + config.wDepth * d + config.wOrdering * o + config.wPressure * p
+        val q = pressure?.sustained(config) ?: 0.0
+        val wq = if (pressure != null) config.wSustained else 0.0
+        val wf = if (forks != null) config.wForks else 0.0
+        val fv = forks?.value ?: 0.0
+        val weighted = (1.0 - wq - wf) * legacy + wq * q + wf * fv
         return DifficultyReport(
             score = 100.0 * weighted,
             trap = t,
@@ -68,6 +87,15 @@ object Scorer {
             rollout = r,
             chain = c,
             deadWeight = w,
+            pressureMeasured = pressure != null,
+            dockHigh = pressure?.dockHigh ?: 0.0,
+            dwell = pressure?.meanDwell ?: 0.0,
+            tight = pressure?.tight ?: 0.0,
+            sustained = q,
+            forksMeasured = forks != null,
+            forkValue = fv,
+            tightForks = forks?.tightForks ?: 0,
+            forkStates = forks?.decisionStates ?: 0,
         )
     }
 
@@ -75,14 +103,18 @@ object Scorer {
      * DESIGN.md v2 "too easy" floor (levels 2+), except the naive-bot check (generator): fewer than
      * [DifficultyConfig.floorMinContainers] containers or [DifficultyConfig.floorMinColors] colours, rollout loss
      * below [DifficultyConfig.floorMinRolloutLoss] (so [report] must be scored with a rollout loss rate), score below
-     * [DifficultyConfig.floorMinScore], or fewer than [DifficultyConfig.floorMinSharpDecisions] sharp decisions.
+     * [DifficultyConfig.floorMinScore], fewer than [DifficultyConfig.floorMinSharpDecisions] sharp decisions, or (for
+     * reports scored with [PressureMetrics]) below the pressure floor (dock>=3 fraction, mean dwell, tight fraction).
      */
     fun isTooEasy(level: Level, report: DifficultyReport, config: DifficultyConfig = DifficultyConfig.DEFAULT): Boolean =
         level.containers.size < config.floorMinContainers ||
             level.colors().size < config.floorMinColors ||
             report.rollout < config.floorMinRolloutLoss ||
             report.score < config.floorMinScore ||
-            report.sharpDecisions < config.floorMinSharpDecisions
+            report.sharpDecisions < config.floorMinSharpDecisions ||
+            (report.pressureMeasured && (report.dockHigh < config.floorMinDockHigh ||
+                report.dwell < config.floorMinDwell || report.tight < config.floorMinTight)) ||
+            (report.forksMeasured && report.tightForks < config.floorMinForks)
 
     private fun norm(value: Int, min: Int, max: Int): Double =
         if (max <= min) 0.0 else ((value - min).toDouble() / (max - min)).coerceIn(0.0, 1.0)

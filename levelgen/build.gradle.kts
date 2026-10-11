@@ -26,3 +26,13 @@ tasks.named<JavaExec>("run") {
 tasks.test {
     useJUnitPlatform()
 }
+
+// Reverse ("director") generation preview / diagnostics (reverse level designer).
+tasks.register<JavaExec>("reversePreview") {
+    group = "application"
+    description = "Reverse (director) generator preview: levelgen/out/reverse-preview-levels.json"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set(providers.gradleProperty("reverseMain").orElse("com.phloots.jam.levelgen.reverse.ReversePreviewKt"))
+    workingDir = rootProject.projectDir
+    jvmArgs("-Xss16m", "-Xmx4g")
+}

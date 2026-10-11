@@ -26,6 +26,8 @@ private const val USAGE = """Usage: ./gradlew :levelgen:run --args="[options]"
   --width <x>          band width in score points for levels 1..9 of a cycle (default 9)
   --boss-gap <x>       boss target above L9 (default 8; minimum accepted 6)
   --pool-csv <path>    also dump the whole de-duplicated candidate pool (for tuning)
+  --pressure-preview <n>  sustained-pressure preview (>= 2 back-to-back stalls per level, forks + ladder
+                       metrics), ordered by score, to levelgen/out/preview-levels.json (or --out)
   --motif-preview <n>  motif-built preview (tutorial + motif showcases + combinations) to
                        levelgen/out/preview-levels.json (or --out); --seeds-per-slot <k> (default 16)
 """
@@ -55,6 +57,14 @@ fun main(args: Array<String>) {
     }
     if (opts.containsKey("motif-explore")) { motifExploreMain(); return }
     if (opts.containsKey("motif-debug")) { motifDebugCascade(); return }
+    if (opts.containsKey("pressure-debug")) { pressureDebug(); return }
+    opts["stall-explore"]?.let { stallExplore(it.toInt()); return }
+    if (opts.containsKey("pressure-explore")) { pressureExplore(opts["pressure-explore"]!!.toInt()); return }
+    opts["pressure-preview"]?.toInt()?.let { n ->
+        pressurePreview(n, opts["seed"]?.toLong() ?: 1L, opts["threads"]?.toInt() ?: Runtime.getRuntime().availableProcessors(),
+            opts["seeds-per-slot"]?.toInt() ?: 16, opts["out"] ?: "levelgen/out/preview-levels.json")
+        return
+    }
     opts["motif-preview"]?.toInt()?.let { n ->
         motifPreview(n, opts["seed"]?.toLong() ?: 1L, opts["threads"]?.toInt() ?: Runtime.getRuntime().availableProcessors(),
             opts["seeds-per-slot"]?.toInt() ?: 16, opts["out"] ?: "levelgen/out/preview-levels.json")

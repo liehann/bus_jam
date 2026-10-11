@@ -12,6 +12,12 @@ package com.phloots.jam.core.scoring
  * - P = mean over solution-path states of occupied dock slots / 4 (a PLAYING state has at most 3 occupied, so
  *   P <= 0.75). S normalises colours 4→10, containers 30→110, cells 120→168. T, D, O as in v1.
  * Weights sum to 1.
+ *
+ * Sustained pressure (DESIGN.md v2 principle 6): when [Scorer.score] gets [PressureMetrics], the score becomes
+ * 100 × ((1 − wSustained)·legacy + wSustained·Q) with legacy = the weighted sum above and Q =
+ * [PressureMetrics.sustained]; without metrics (e.g. the stored campaign pack) the legacy formula is unchanged.
+ * With [ForkMetrics] as well: 100 × ((1 − wSustained − wForks)·legacy + wSustained·Q + wForks·F), F =
+ * [ForkMetrics.value]. Each of Q / F only takes its weight when its metrics were supplied.
  */
 data class DifficultyConfig(
     val wRollout: Double = 0.45,
@@ -72,6 +78,33 @@ data class DifficultyConfig(
     val rolloutStarvePenalty: Double = 0.5,
     /** Too-easy floor (levels 2+), together with all bots losing. */
     val floorMinRolloutLoss: Double = 0.25,
+    // ---- sustained pressure (scoring/Pressure.kt; applied when the report was scored with PressureMetrics) ----
+    /** Weight of Q in the blended score (Q and rollout are the primary terms). */
+    val wSustained: Double = 0.45,
+    /** Q normalisers: dock>=3 fraction, mean dwell (moves), tight-decision fraction. */
+    val pressureDockHighNorm: Double = 0.6,
+    val pressureDwellNorm: Double = 4.0,
+    val pressureTightNorm: Double = 0.4,
+    /** Solver node budget per child when classifying safe moves. */
+    val pressureChildBudget: Long = 20_000,
+    /** Pressure floor from level 2 (only for reports scored with PressureMetrics). */
+    // Calibrated to what forced-pressure construction reaches today (motif preview v3); DESIGN targets are higher
+    // (dock>=3 on 30-50% of steps).
+    val floorMinDockHigh: Double = 0.10,
+    val floorMinDwell: Double = 0.4,
+    val floorMinTight: Double = 0.10,
+    // ---- forks (scoring/Forks.kt, DESIGN principle 8; applied when the report was scored with ForkMetrics) ----
+    /** Weight of the fork value F in the blended score. */
+    val wForks: Double = 0.35,
+    /** Solver node budget per child when classifying good / bad moves. */
+    val forkChildBudget: Long = 20_000,
+    /** Horizon cap (moves) and node budget of the horizon proof per bad move. */
+    val forkHorizonCap: Int = 8,
+    val forkHorizonBudget: Long = 20_000,
+    /** F = min(1, Σ c / forkNorm). */
+    val forkNorm: Double = 4.0,
+    /** Floor from level 2: at least this many forks with w <= 2, b >= 3, h >= 2. */
+    val floorMinForks: Int = 3,
     /**
      * Budgets for [com.phloots.jam.core.solver.Solver.analyzeBounded] (solver nodes): the root solve (exceeded =
      * capped, reject), each path-child classification (exceeded = UNKNOWN, not counted as losing) and each

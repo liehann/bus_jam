@@ -101,3 +101,12 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
   off-colour (orange/red/blue buses at the top) = more dead weight beside the pink.
 - Decision structure = big-vs-small + stall (how many dummies can you afford with one slot already dead) + a
   squatter-like yellow surge. Target feel for our hybrid generator.
+
+### Level 9 after the choke point (2026-10-11)
+- Dock: pink bus in slot 1 (badge 8 → 4), a second pink (van, from the top-right cluster) in slot 3 with badge "24";
+  slots 2 and 4 free. A large pink block is approaching on both arms of the line — the player pre-docked a second
+  pink to absorb the run (left slot fills first, matching our left→right priority).
+- Yellow still dominates the ring with both big yellow buses buried in the core: the player got through by riding
+  the pink run, not by digging for yellow. Top clusters mostly cleared → route into the core opening.
+- Badge semantics unclear: the van shows 24 while the bus showed 8 — maybe not "seats left in this vehicle"
+  (to confirm with the user).

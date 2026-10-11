@@ -155,6 +155,12 @@ colour does not matter, so staging is a count vector.
     can afford before the ring jams. Metric: along the winning line and bot lines, track |W ∩ R| per state; target
     mismatch windows of length k (ramping with difficulty), and reject levels where the overlap is usually large
     (they play themselves). The reverse director controls both W (staged colours) and R (exposed containers).
+13. **Just-enough cascades (ref L15, 2026-10-11: "I got just enough space from red to fill enough green to also get a
+    blue, and keep the level going").** A fill frees k carousel seats → exactly enough of the next colour steps on
+    from the line to fill a docked container → that dispatch frees seats/a slot → the next colour gets in. Designed
+    tight margins (k just sufficient) give a visible "save". The reverse director controls the line just beyond the
+    ring, so it can plant such chains deliberately; the wrong ordering (e.g. docking an off-colour first) should
+    break the chain → a fork with deep horizon. Same mechanism as the "rescue stuck outside a full ring" loss.
 5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 

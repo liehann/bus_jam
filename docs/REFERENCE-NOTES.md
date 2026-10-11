@@ -211,3 +211,5 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
   bottleneck was opening.
 - Generator metric: per container, fan-in = number of containers whose exit chains pass through it; keystone with
   high fan-in + colour not yet waiting = strong pinch point.
+- Level 15: "a really interesting moment where I got just enough space from red to fill enough green to also get a
+  blue, and keep the level going" → just-enough cascade, DESIGN principle 13.

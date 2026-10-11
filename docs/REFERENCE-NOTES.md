@@ -52,3 +52,13 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - Mood emoji escalates (angry) — likely tied to waiting-area fill / difficulty.
 - For us: shaped boards (heart/star/letters; for Kitten Jumble paw prints, fish, cat heads) via a per-level cell
   mask on our grid — visual variety without angles or engine changes.
+
+### Level 7 (2026-10-11; user reported "level 9" — in-game numbers run ~2 lower than the user's count)
+- Dominant colour: brown ≈ half the queue, ~a third of the vehicles; short islands of other colours (orange ~4,
+  purple/blue small, cyan larger) scattered through the brown — repeated interrupted runs.
+- 7 colours (brown, blue, cyan, purple, orange, yellow, green); ~45 vehicles.
+- Diagonal "domino stacks": 4–5 parallel vehicles on one diagonal, nose to tail; only the end one can leave →
+  visible fixed-order chain with a designed colour order inside.
+- Loose mirror layout: chevron of stacks at top, central spine (brown car on yellow bus), rows of upright vehicles
+  at the bottom.
+- For us: deliberate visible stacks (same lane, same facing) whose internal colour order fights the queue.

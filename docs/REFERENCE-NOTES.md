@@ -127,3 +127,13 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
   vehicles in a radial ring inside an outer ring of coloured ones; ~40 vehicles; mirror-symmetric radial layout with
   a short central spine (brown → blue, facing up) and an upright row at the bottom.
 - Queue: pink-heavy front, then cyan, green, purple, blue.
+
+### Level 12 (2026-10-11) — closest analogue to our format
+- Strict dense rectangular grid, all axis-aligned, 4 directions, packed nearly wall to wall. By pixels a car ≈ 2
+  cells, a long bus ≈ 3 cells, grid ≈ 12–13 cells wide — very close to our M/L sizes and board widths.
+- Two dense halves separated by a one-column central gutter; vehicles facing across the gutter are blocked by the
+  other half.
+- ~13 hidden ("?") vehicles throughout, including outer-edge ones (first moves are reveals).
+- 5 visible colours (blue, red, pink, yellow, brown); blue dominant on board and at queue front; ~40 vehicles, many
+  blue buses.
+- Use as a calibration target for our hybrid generator (same ingredients).

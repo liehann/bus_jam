@@ -5,23 +5,13 @@
   "description": "1000-level v2 campaign (rollout scoring, before motifs)"
  },
  {
-  "file": "motif-preview-1.json",
-  "label": "Motif preview 1",
-  "description": "Vault motifs: capacity choice, big unblocks, stack to unlock, dense core (no dock pressure yet)"
- },
- {
   "file": "motif-preview-2.json",
   "label": "Motif preview 2",
   "description": "Chained stalls + pressure/fork scoring; dock 3+ on 10-25% of moves"
  },
  {
-  "file": "reverse-preview-1.json",
-  "label": "Reverse preview 1",
-  "description": "Reverse director: dock 3+ on 50-76% of moves, planted forks (likely too hard)"
- },
- {
-  "file": "hybrid-preview-1.json",
-  "label": "Hybrid preview 1",
-  "description": "L18-style stalls, rolling/partial dummies, interrupted runs, squatter colour"
+  "file": "hybrid-preview-2.json",
+  "label": "Hybrid preview 2",
+  "description": "Reverse director + stalls: mismatch windows, just-enough cascades, keystones, left-slot steals, squatters, dense packs (L10 hard, L20 super hard)"
  }
 ]

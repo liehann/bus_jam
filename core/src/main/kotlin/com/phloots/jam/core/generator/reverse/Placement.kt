@@ -16,7 +16,12 @@ class Board(val width: Int, val height: Int) {
     val occ = IntArray(width * height) { -1 }
     val placed = HashMap<Int, Container>()
 
+    /** Cells nothing may occupy (e.g. a gutter); exit rays pass through them. */
+    val reserved = BooleanArray(width * height)
+
     fun free(r: Int, c: Int) = r in 0 until height && c in 0 until width && occ[r * width + c] < 0
+
+    private fun placeable(r: Int, c: Int) = free(r, c) && !reserved[r * width + c]
 
     fun inside(r: Int, c: Int) = r in 0 until height && c in 0 until width
 
@@ -59,6 +64,7 @@ class Board(val width: Int, val height: Int) {
                 val fmax = freeRun - len
                 for (f in 0..fmax) {
                     val front = cell(f)
+                    if ((0 until len).any { k -> cell(f + k).let { !placeable(it.row, it.col) } }) continue
                     out += Candidate(Container(id, size, color, front.row, front.col, dir), f == fmax, f)
                 }
             }

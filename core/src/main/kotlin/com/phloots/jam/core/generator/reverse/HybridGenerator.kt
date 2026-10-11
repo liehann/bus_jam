@@ -4,6 +4,7 @@ import com.phloots.jam.core.engine.Engine
 import com.phloots.jam.core.model.GameState
 import com.phloots.jam.core.model.Level
 import com.phloots.jam.core.model.Move
+import com.phloots.jam.core.model.Status
 import com.phloots.jam.core.scoring.DifficultyConfig
 import com.phloots.jam.core.scoring.Fork
 import com.phloots.jam.core.scoring.ForkMetrics
@@ -37,6 +38,9 @@ data class HybridEval(
     val pressure: PressureMetrics,
     val fitness: Double,
     val checks: List<String>,
+    val metrics: LevelMetrics? = null,
+    /** Preview-2 fitness ([HybridGenerator.fitness2] + verified checks). */
+    val fitness2: Double = fitness,
 )
 
 object HybridGenerator {
@@ -47,6 +51,15 @@ object HybridGenerator {
 
     fun fitness(mass: Double, wide: Int, botEarly: Double) = mass + 0.5 * wide + 2.0 * botEarly
 
+    /**
+     * Preview-2 fitness: [fitness] plus the principle-12 mismatch windows (longest window, number of windows), chained
+     * cascades and critical keystones (see [LevelMetrics]).
+     */
+    fun fitness2(mass: Double, wide: Int, botEarly: Double, m: LevelMetrics, meanB: Double = 0.0) = fitness(mass, wide, botEarly) +
+        0.3 * minOf(m.longestWindow, 15) + 0.2 * minOf(m.windows, 8) + 0.5 * minOf(m.chainCascades, 4) +
+        0.5 * minOf(m.criticalKeystones, 3) + 0.6 * minOf(m.steals, 10) + 0.3 * maxOf(0.0, meanB - 8.0) +
+        10.0 * maxOf(0.0, m.density - 0.6)
+
     private val LOST_H = Regex("""lost h=(>?\d+)""")
     private val ALT = Regex("""alt lost (\d+) \(h<=(>?\d+)\)""")
 
@@ -56,6 +69,23 @@ object HybridGenerator {
         val a = ALT.find(c)
         (m != null && (m.groupValues[1].startsWith(">") || m.groupValues[1].toInt() >= 2)) ||
             (a != null && a.groupValues[1].toInt() > 0 && (a.groupValues[2].startsWith(">") || a.groupValues[2].toInt() >= 2))
+    }
+
+    /**
+     * "Rescue just outside a full ring" (reference L15 loss): play the lost state on with the 1-ply bot until it ends;
+     * true if it ends DEADLOCKED with a full staging area while the next elements in line include a docked colour.
+     */
+    fun rescueLocked(start: GameState): Boolean {
+        val bot = LookaheadBot(1)
+        var s = start
+        var guard = 0
+        while (s.status == Status.PLAYING && guard++ < 200) {
+            val m = bot.choose(s) ?: break
+            s = Engine.apply(s, m).state
+        }
+        if (s.status != Status.DEADLOCK || s.staging.size < com.phloots.jam.core.model.Limits.STAGING_SPOTS) return false
+        val docked = s.dock.filterNotNull().map { it.color }.toSet()
+        return s.level.queue.drop(s.queueIndex).take(12).any { it in docked }
     }
 
     /** Cheap gate: replay + bots. Null if the line does not replay (a construction bug). */
@@ -76,7 +106,10 @@ object HybridGenerator {
         val m = mass(f.forks)
         val w = wide(f.forks)
         val ch = if (withChecks) checks(sl) else emptyList()
-        return HybridEval(true, solvable, f, w, m, f.forks.map { it.b }.average(), bots, early, p, fitness(m, w, early) + verified(ch), ch)
+        val lm = LevelMetrics.measure(lv, sl.line)
+        val meanB = f.forks.map { it.b }.average()
+        return HybridEval(true, solvable, f, w, m, meanB, bots, early, p, fitness(m, w, early) + verified(ch), ch,
+            lm, fitness2(m, w, early, lm, meanB) + verified(ch))
     }
 
     /**
@@ -122,6 +155,44 @@ object HybridGenerator {
             val bStep = if (bFirst != null) sl.line.indexOf(Move(bFirst)) else -1
             if (bStep >= 0 && late != null) out += "IR#$gi dig-early@$bStep: " + outcome(states[bStep], Move(late))
             out += "IR#$gi island@${g.islandStep}: " + alternatives(states[g.islandStep], sl.line[g.islandStep])
+        }
+        fun reachableOffColour(st: GameState, intended: Move): List<Move> {
+            val staged = st.staging.toSet()
+            return Engine.legalMoves(st).filter { it != intended && st.level.containers[it.containerId].color !in staged }
+        }
+        fun worst(st: GameState, moves: List<Move>): String {
+            if (moves.isEmpty()) return "n/a"
+            var lost = 0; var hMax = 0; var won = 0; var unk = 0; var rescue = 0
+            for (m in moves) {
+                val child = Engine.apply(st, m).state
+                val r = Solver.solve(child, budget)
+                when {
+                    r == null -> unk++
+                    r.solvable -> won++
+                    else -> {
+                        lost++
+                        hMax = maxOf(hMax, ReverseAnalysis.lossHorizon(child, 7, 30_000)?.plus(1) ?: 9)
+                        if (rescueLocked(child)) rescue++
+                    }
+                }
+            }
+            return "off-colour docks lost $lost (h<=${if (hMax == 9) ">8" else hMax}, rescue-locked $rescue) won $won unknown $unk"
+        }
+        for ((gi, g) in sl.stalls.withIndex()) {
+            when {
+                g.kind.startsWith("cascade") && g.triggerStep >= 0 ->
+                    out += "cascade#$gi@${g.triggerStep}: " + worst(states[g.triggerStep], reachableOffColour(states[g.triggerStep], sl.line[g.triggerStep]))
+                g.kind.startsWith("steal") && g.dummies.size >= 2 -> {
+                    val cheap = Move(g.dummies[0][0]); val big = Move(g.dummies[1][0])
+                    val step = sl.line.indexOf(cheap)
+                    if (step >= 0) out += "steal#$gi big-first@$step: " + outcome(states[step], big)
+                }
+            }
+            // Wrong dummy at the first dummy of a wall group: dock an off-colour container that is not the wall.
+            if (!g.kind.startsWith("cascade") && g.dummies.isNotEmpty()) {
+                val step = sl.line.indexOf(Move(g.dummies[0][0]))
+                if (step >= 0) out += "wrong-dummy#$gi@$step: " + worst(states[step], reachableOffColour(states[step], sl.line[step]))
+            }
         }
         sl.squat?.let { sq ->
             for (v in sq.valves) {

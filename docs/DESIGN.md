@@ -161,6 +161,15 @@ colour does not matter, so staging is a count vector.
     tight margins (k just sufficient) give a visible "save". The reverse director controls the line just beyond the
     ring, so it can plant such chains deliberately; the wrong ordering (e.g. docking an off-colour first) should
     break the chain → a fork with deep horizon. Same mechanism as the "rescue stuck outside a full ring" loss.
+14. **Juggle from the first moves, then climax (playtest of Hybrid preview 2 L19, 2026-10-11: "easy until it
+    wasn't"; the opening was "find anything that works", the long red chain was the good part, but a mistake made
+    in the easy opening had already left too few free docks to reach red).** Wanted from the opening on: several
+    partially filled docks plus passengers on the carousel, so that picking the next move carries pressure. Shape
+    for hard levels (user choice): steady juggling from about move 3, i.e. 2–3 docked containers partly filled and
+    several colours waiting, held through the middle and building to one long-chain climax. A wide, pressure-free
+    opening whose choices only bite ~8 moves later is the failure to avoid: the stakes must be felt when the move
+    is made. Metric: per state on the winning and bot lines, count partly filled docked containers and staged
+    elements; reject levels whose first ~third has long stretches below the target.
 5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 

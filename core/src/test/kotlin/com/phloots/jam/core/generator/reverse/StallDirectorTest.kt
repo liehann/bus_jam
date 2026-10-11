@@ -25,6 +25,39 @@ class StallDirectorTest {
             squat = SquatDef(squat = 20, bigs = 2, valves = listOf(ContainerSize.S to 1, ContainerSize.M to 1))),
     )
 
+    private val scripts2 = mapOf(
+        "steal" to StallScript(11, 13, 9, lead = 5, stalls = listOf(StallDef(3, 4, steal = true), StallDef(2, 3)), exitFill = 16, sizeWeights = sw, candidates = 1),
+        "cascade" to StallScript(11, 13, 9, lead = 5, stalls = listOf(CascadeDef(2, 2), StallDef(2, 3)), exitFill = 16, sizeWeights = sw, candidates = 1),
+        "keystone+gutter" to StallScript(11, 13, 9, lead = 5, stalls = listOf(StallDef(3, 4, keystone = true, domino = true)), exitFill = 18, sizeWeights = sw,
+            candidates = 1, gutter = true, mirror = 2.0),
+        "squatter dig" to StallScript(11, 13, 9, lead = 5, stalls = listOf(StallDef(2, 3), StallDef(3, 3, squatRun = true)), exitFill = 14, sizeWeights = sw,
+            candidates = 1, squat = SquatDef(18, bigs = 0)),
+        "dense" to StallScript(12, 14, 9, lead = 4, stalls = listOf(StallDef(3, 3, keystone = true, roll = 1), CascadeDef(2, 1), StallDef(2, 3, steal = true), StallDef(1, 3)),
+            exitFill = 14, sizeWeights = listOf(0.5, 1.0, 1.6), candidates = 1, density = 0.9),
+    )
+
+    /** Preview-2 features: exact replay, cascades dispatch more than the tapped container, density target reached. */
+    @Test
+    fun preview2FeaturesReplayToWon() {
+        for ((name, sc) in scripts2) {
+            var built = 0
+            for (seed in 0L until 16L) {
+                val sl = StallDirector(sc, seed).run() ?: continue
+                built++
+                assertTrue(sl.level.validate().isEmpty(), "$name seed $seed: ${sl.level.validate()}")
+                assertTrue(ReverseAnalysis.replay(sl.level, sl.line), "$name seed $seed does not replay")
+                val m = LevelMetrics.measure(sl.level, sl.line)
+                if (name == "cascade") assertTrue(m.chainCascades >= 1, "$name seed $seed: no chained cascade")
+                if (name == "dense") assertTrue(m.density >= 0.85, "$name seed $seed: density ${m.density}")
+                if (name == "keystone+gutter") {
+                    val mid = sl.level.width / 2
+                    assertTrue(sl.level.containers.none { c -> c.cells().any { it.col == mid } }, "gutter occupied")
+                }
+            }
+            assertTrue(built >= 4, "$name: only $built of 16 built")
+        }
+    }
+
     /** Every built level replays through the real Engine to WON along its intended line. */
     @Test
     fun hybridLinesReplayToWon() {

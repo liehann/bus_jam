@@ -43,10 +43,34 @@ data class StallDef(
     val stack: Boolean = false,
     val roll: Int = 0,
     val gap: Int = 0,
+    /**
+     * Left-slot steal (catalogue e): the first two dummies share a colour, a cheap S (needs 4) docked left of a big L
+     * (needs 10). At the end of the run only the S is completed (4 revealed), freeing its slot for the next segment;
+     * the L is carried. Docking the L first puts it leftmost: it steals the 4 and the slot never frees. Needs a
+     * following segment.
+     */
+    val steal: Boolean = false,
+    /** The outermost wall link is placed to block as many exit chains as possible (high fan-in) while not staged. */
+    val keystone: Boolean = false,
+    /** Squatter variant 2: the target and run are the squatter colour's big containers (dug out with dummies). */
+    val squatRun: Boolean = false,
+    /** Run containers stacked nose to tail in one lane (a visible domino stack in release order). */
+    val domino: Boolean = false,
 ) : Segment {
     override fun summary(): String = "S(d$dummies r$run" + (if (runColors > 1) " c$runColors" else "") +
         (if (partial > 0) " p${(partial * 100).toInt()}" else "") + (if (stack) " stack" else "") +
-        (if (roll > 0) " roll$roll" else "") + (if (gap > 0) " g$gap" else "") + ")"
+        (if (roll > 0) " roll$roll" else "") + (if (gap > 0) " g$gap" else "") + (if (steal) " steal" else "") +
+        (if (keystone) " key" else "") + (if (squatRun) " Qrun" else "") + (if (domino) " domino" else "") + ")"
+}
+
+/**
+ * Just-enough cascade (DESIGN.md v2 principle 13), forward order: dock [waits] waiting containers (colours absent from
+ * staging), [gap] filler taps, then one filler tap whose boardings reveal exactly enough of the first waiting
+ * colour to fill it, whose boardings reveal exactly enough of the next, and so on (each link's need equals the
+ * previous link's reveal count).
+ */
+data class CascadeDef(val waits: Int = 2, val gap: Int = 2, val partial: Double = 0.0) : Segment {
+    override fun summary(): String = "C(w$waits g$gap" + (if (partial > 0) " p${(partial * 100).toInt()}" else "") + ")"
 }
 
 /**
@@ -97,9 +121,20 @@ data class StallScript(
     /** Weight of the measured fork quality when choosing among candidates (0 = first candidate). */
     val fork: Double = 1.0,
     val squat: SquatDef? = null,
+    /** Fill the board up to this density with extra opening fillers (0 = no extra). */
+    val density: Double = 0.0,
+    /** Keep the middle column empty ("two halves with a gutter"). */
+    val gutter: Boolean = false,
+    /** Placement weight for left/right mirror symmetry. */
+    val mirror: Double = 0.0,
+    /** Candidate-selection weight for mismatch windows (|W ∩ R| <= 1, principle 12). */
+    val mismatch: Double = 0.0,
+    /** Placement reward per reachable container of a staged colour that the new container hides. */
+    val coverStaged: Double = 0.0,
 ) {
     fun summary(): String = "L$lead " + stalls.joinToString(" ") { it.summary() } + " X$exitFill" +
-        (squat?.let { " Q(${it.squat}/${it.bigs}L v${it.valves.size})" } ?: "")
+        (squat?.let { " Q(${it.squat}/${it.bigs}L v${it.valves.size})" } ?: "") +
+        (if (density > 0) " D${(density * 100).toInt()}" else "") + (if (gutter) " gutter" else "") + (if (mirror > 0) " mirror" else "")
 }
 
 /**
@@ -133,6 +168,10 @@ data class StallInfo(
     val absorbStart: Int = -1,
     /** Dummies of this group docked after the island (interrupted run A). */
     val lateDummies: Int = 0,
+    /** "stall", "steal", "cascade", "irun-A", "irun-B" (+ "+key", "+Qrun"). */
+    val kind: String = "stall",
+    /** Cascade: forward step of the trigger tap; else -1. */
+    val triggerStep: Int = -1,
 )
 
 /** Squatter facts: colour and valves (container id, capacity, forward step). */
@@ -153,6 +192,10 @@ data class StallLevel(
         val out = ArrayList<String>()
         for ((i, s) in stalls.withIndex()) {
             if (s.islandOf >= 0) continue // reported with its run
+            if (s.kind.startsWith("cascade")) {
+                out += "Cascade @${s.triggerStep}: " + s.dummies.joinToString(" -> ") { "${colorName(it[1])}(${it[2] - it[3]} needed)" } + " (just enough)"
+                continue
+            }
             val d = s.dummies.joinToString(" ") { "${colorName(it[1])}(${it[3]}/${it[2]})" }
             val nextIdx = (i + 1 until stalls.size).firstOrNull { stalls[it].islandOf < 0 && stalls[it].dummies.isNotEmpty() }
             val next = nextIdx?.let { stalls[it].dummies.first()[1] }
@@ -165,7 +208,12 @@ data class StallLevel(
                 out += "InterruptedRun ${s.runColors.joinToString("+") { colorName(it) }}[${b.runColors.joinToString("+") { colorName(it) }}@${b.islandStep}] " +
                     "dummies B:${b.dummies.size} A:${s.dummies.size - s.lateDummies}+${s.lateDummies} slack ${b.slack} ($bd | $d)$roll"
             } else {
-                out += "Stall ${s.runColors.joinToString("+") { colorName(it) }}: dummies ${d.ifEmpty { "(carried)" }}" +
+                val tag = when {
+                    s.kind.startsWith("steal") -> "LeftSlotSteal "
+                    "+Qrun" in s.kind -> "SquatterDig "
+                    else -> ""
+                } + (if ("+key" in s.kind) "Keystone " else "")
+                out += "${tag}Stall ${s.runColors.joinToString("+") { colorName(it) }}: dummies ${d.ifEmpty { "(carried)" }}" +
                     (if (s.carried > 0 && s.dummies.size < 3) " +${s.carried} carried" else "") + roll
             }
         }
@@ -225,13 +273,25 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         var afterRef = -1
         var refGroup = -1
         var absorb = false
+        /** Cascade trigger: each completed container's need equals the previous link's reveal count. */
+        var justEnough = false
     }
     private class DInfo(val group: Int) {
         var slot = -1; var id = -1; var color = -1; var size = ContainerSize.S; var preload = 0
+        /** Fixed size (left-slot steal pair). */
+        var forceSize: ContainerSize? = null
+        /** Not part of the wall chain (placed freely). */
+        var free = false
     }
 
     /** A wall group: dummies -> target -> run. [islandOf] = the interrupted run group whose island this is. */
     private class Grp(val partial: Double, val stack: Boolean, val runColorsN: Int, val islandOf: Int = -1) {
+        var steal = false
+        var keystone = false
+        var squatRun = false
+        var domino = false
+        var cascade = false
+        var triggerStep = -1
         var late = 0
         var islandStep = -1
         var absorbStart = -1
@@ -264,19 +324,53 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
             taps += PTap(PK.DUMMY, g, d)
             docked += d
         }
-        fun newDummies(seg: Segment?) = when (seg) { is StallDef -> seg.dummies; is IRunDef -> seg.bDummies + seg.pre; null -> 0 }
+        fun newDummies(seg: Segment?) = when (seg) {
+            is StallDef -> seg.dummies; is IRunDef -> seg.bDummies + seg.pre; is CascadeDef -> seg.waits; null -> 0
+        }
         val valvesAt = sc.squat?.valves.orEmpty().groupBy { it.second }
         for ((si, seg) in sc.stalls.withIndex()) {
             for (v in valvesAt[si].orEmpty()) taps += PTap(PK.VALVE, -1).also { it.afterRef = v.first.ordinal }
             val gA: Int
             when (seg) {
                 is StallDef -> {
-                    gA = groups.size; groups += Grp(seg.partial, seg.stack, seg.runColors)
+                    gA = groups.size
+                    groups += Grp(seg.partial, seg.stack || seg.steal, seg.runColors).also {
+                        it.steal = seg.steal; it.keystone = seg.keystone; it.squatRun = seg.squatRun; it.domino = seg.domino
+                    }
                     carriedInto[gA] = docked.size
+                    val first = dummies.size
                     repeat(seg.dummies) { dock(gA) }
+                    if (seg.steal && seg.dummies >= 2) {
+                        // Cheap S docked first (leftmost), big L next; the S stands apart from the wall.
+                        dummies[first].forceSize = ContainerSize.S
+                        dummies[first + 1].forceSize = ContainerSize.L
+                    }
                     if (docked.size > 3) { failure = "plan: ${docked.size} docked"; return false }
                     taps += PTap(PK.TARGET, gA)
                     repeat(seg.run) { taps += PTap(PK.RUN, gA) }
+                    if (seg.steal && seg.dummies >= 2) {
+                        // Only the cheap S completes at the end of the run; the L is carried.
+                        taps.last().completes += first
+                        docked.remove(first)
+                        val nextNew = newDummies(sc.stalls.getOrNull(si + 1))
+                        while (docked.size + nextNew > 3) {
+                            val o = docked.first { it != first + 1 }
+                            taps.last().completes += o; docked.remove(o)
+                        }
+                        repeat(seg.gap) { taps += PTap(PK.FILLER, -1) }
+                        continue
+                    }
+                }
+                is CascadeDef -> {
+                    gA = groups.size; groups += Grp(seg.partial, false, 0).also { it.cascade = true }
+                    carriedInto[gA] = docked.size
+                    val mine = ArrayList<Int>()
+                    repeat(seg.waits) { mine += dummies.size; dock(gA) }
+                    if (docked.size > 3) { failure = "plan: ${docked.size} docked (cascade)"; return false }
+                    repeat(seg.gap) { taps += PTap(PK.FILLER, -1) }
+                    taps += PTap(PK.FILLER, -1).also { t -> t.justEnough = true; t.refGroup = gA; t.completes += mine }
+                    docked.removeAll(mine)
+                    continue
                 }
                 is IRunDef -> {
                     gA = groups.size; groups += Grp(seg.partial, false, 1)
@@ -303,8 +397,8 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 }
             }
             val last = taps.last()
-            val roll = when (seg) { is StallDef -> seg.roll; is IRunDef -> seg.roll }
-            val gap = when (seg) { is StallDef -> seg.gap; is IRunDef -> seg.gap }
+            val roll = when (seg) { is StallDef -> seg.roll; is IRunDef -> seg.roll; is CascadeDef -> 0 }
+            val gap = when (seg) { is StallDef -> seg.gap; is IRunDef -> seg.gap; is CascadeDef -> 0 }
             val nextNew = newDummies(sc.stalls.getOrNull(si + 1))
             val k = if (roll > 0 && si + 1 < sc.stalls.size) maxOf(roll, docked.size + nextNew - 3).coerceAtMost(docked.size)
                 else docked.size
@@ -374,9 +468,10 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
     fun run(): StallLevel? {
         if (!plan()) return null
         if (sc.squat != null) q = rng.nextInt(sc.colors)
+        if (sc.gutter) for (r in 0 until sc.height) board.reserved[r * sc.width + sc.width / 2] = true
         reserveColours()
-        val n = taps.size
-        for (i in n - 1 downTo 0) {
+        val n0 = taps.size
+        for (i in n0 - 1 downTo 0) {
             val tap = taps[i]
             val want = if (sc.fork > 0 && sc.candidates > 1) sc.candidates else 1
             val cands = ArrayList<Cand>()
@@ -384,7 +479,20 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
             while (cands.size < want && tries++ < want * 4 + 8) build(tap, i)?.let { cands += it }
             if (cands.isEmpty()) { failure = "tap $i ${tap.kind} g${tap.group}: $lastWhy"; return null }
             val best = if (cands.size == 1) cands[0] else cands.onEach { evaluate(it) }.maxBy { it.score }
-            commit(best, tap, n - 1 - i, i)
+            commit(best, tap, n0 - 1 - i, i)
+        }
+        // Dense pack: extra opening fillers (the free outer rim) until the target density.
+        var extra = 0
+        while (sc.density > 0 && board.cellsUsed().toDouble() / (sc.width * sc.height) < sc.density && extra < 60) {
+            val tap = PTap(PK.FILLER, -1)
+            val c = (0 until 10).firstNotNullOfOrNull { build(tap, -1 - extra) } ?: break
+            commit(c, tap, n0 + extra, -1 - extra)
+            extra++
+        }
+        val n = n0 + extra
+        if (extra > 0) for (g in groups) {
+            if (g.islandStep >= 0) g.islandStep += extra
+            if (g.absorbStart >= 0) g.absorbStart += extra
         }
         if (state.dockUsed != 0 || releasedRev.size != sizes.size) { failure = "unfinished"; return null }
         val containers = (0 until sizes.size).map { board.placed[it]!! }
@@ -401,8 +509,13 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 val a = runColors[gr.islandOf]?.firstOrNull() ?: -1
                 slack = Limits.STAGING_SPOTS - st.staging.count { it == a } - (if (q >= 0) st.staging.count { it == q } else 0)
             }
+            val kind = (when {
+                gr.cascade -> "cascade"; gr.steal -> "steal"; gr.islandOf >= 0 -> "irun-B"
+                groups.any { it.islandOf == g } -> "irun-A"; else -> "stall"
+            }) + (if (gr.keystone) "+key" else "") + (if (gr.squatRun) "+Qrun" else "")
             StallInfo(runColors[g] ?: emptyList(), stallTarget[g] ?: -1, ds, rolledColors[g] ?: arrayListOf(),
-                carriedInto[g + 1] ?: carriedInto[g + 2] ?: 0, gr.islandOf, gr.islandStep, slack, gr.absorbStart, gr.late)
+                carriedInto[g + 1] ?: carriedInto[g + 2] ?: 0, gr.islandOf, gr.islandStep, slack, gr.absorbStart, gr.late,
+                kind, if (gr.triggerStep >= 0) gr.triggerStep + extra else -1)
         }
         val forks = forksRev.map { intArrayOf(n - 1 - it[0], it[1], it[2], it[3]) }.sortedBy { it[0] }
         val sq = if (q >= 0) SquatInfo(q, valveSteps.map { intArrayOf(it[0], it[1], line.indexOf(Move(it[0]))) }) else null
@@ -453,22 +566,32 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
     private var revStep = 0
 
     /** Recipients for the dummies completed in this tap (un-dispatched into their planned slots). */
-    private fun completions(tap: PTap, fwd: Int, head: List<Int>, xColor: Int, baseId: Int, specs: ArrayList<Pair<ContainerSize, Int>>, ids: HashMap<Int, Pair<Int, Int>>): List<Recipient>? {
+    private fun completions(tap: PTap, fwd: Int, head: List<Int>, xColor: Int, xCap: Int, baseId: Int, specs: ArrayList<Pair<ContainerSize, Int>>, ids: HashMap<Int, Pair<Int, Int>>): List<Recipient>? {
         val hs = head.toSet()
         val used = HashSet(dockColors(state.dock))
         val out = ArrayList<Recipient>()
         val stackColor = HashMap<Int, Int>()
+        var chainNeed = xCap
         for (d in tap.completes) {
             val di = dummies[d]
             val gr = groups[di.group]
-            val prev = stackColor[di.group] ?: dummies.firstOrNull { it.group == di.group && it.color >= 0 }?.color
+            // Stack: one colour per group (steal: only the forced S/L pair shares it).
+            val stacked = if (gr.steal) di.forceSize != null else gr.stack
+            val prev = stackColor[di.group] ?: dummies.firstOrNull { it.group == di.group && it.color >= 0 && (!gr.steal || it.forceSize != null) }?.color
             val ok = palette().filter { it !in hs && it != xColor && it !in used }
             val pref = ok.filter { it in reservedFor[fwd].orEmpty() }
-            val c = if (gr.stack && prev != null && prev !in hs && prev != xColor) prev else weighted(pref.ifEmpty { ok }) ?: return null
-            if (gr.stack) stackColor[di.group] = c else used += c
-            val size = pick(sc.dummySizeWeights)
-            val partial = !gr.stack && rng.chance(gr.partial)
-            val j = if (partial) maxOf(1, size.capacity / 3 + rng.nextInt(size.capacity - size.capacity / 3)) else size.capacity
+            val c = if (stacked && prev != null && prev !in hs && prev != xColor) prev else weighted(pref.ifEmpty { ok }) ?: return null
+            if (stacked) stackColor[di.group] = c
+            used += c
+            var size = di.forceSize ?: pick(sc.dummySizeWeights)
+            val partial = !stacked && rng.chance(gr.partial)
+            var j = if (partial) maxOf(1, size.capacity / 3 + rng.nextInt(size.capacity - size.capacity / 3)) else size.capacity
+            if (tap.justEnough) {
+                // Each link needs exactly what the previous one reveals (X's batch for the first).
+                if (size.capacity < chainNeed) size = ContainerSize.entries.first { it.capacity >= chainNeed }.let { if (it.capacity < chainNeed) ContainerSize.L else it }
+                j = minOf(chainNeed, size.capacity)
+                chainNeed = j
+            }
             val id = baseId + specs.size
             specs += size to c
             ids[d] = id to c
@@ -491,9 +614,21 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 val head = after.w.subList(0, minOf(Limits.STAGING_SPOTS - jX, after.w.size))
                 val built = ReverseStep.build(after, XSpec.Existing(slot), emptyList(), rng, ::cap, insertAt = squatAt(head, fwd))
                     ?: return why("dummy build")
-                val wall = wallHead[di.group]?.let { board.placed[it] }
-                val v = place(d.id, sizes[d.id], d.color, built.before, mustCover = wall?.let { listOf(it) }, chainBonus = null, wallLink = true)
-                    ?: return why("dummy place")
+                val gr = groups[di.group]
+                // Steal pair: both the S and the L sit on the target's exit ray, neither blocking the other, so either
+                // can be docked first.
+                val pair = gr.steal && di.forceSize != null
+                val wall = if (di.free || gr.cascade) null
+                    else if (pair) stallTarget[di.group]?.let { board.placed[it] }
+                    else wallHead[di.group]?.let { board.placed[it] }
+                val twin = if (pair) dummies.firstOrNull { it.group == di.group && it.forceSize != null && it !== di && it.id >= 0 }
+                    ?.let { board.placed[it.id] } else null
+                // Keystone: the group's outermost wall link (first docked) blocks as many exit chains as it can.
+                val outermost = dummies.indexOfFirst { it.group == di.group && !it.free } == tap.dummy
+                fun put(avoid: Container?) = place(d.id, sizes[d.id], d.color, built.before, mustCover = wall?.let { listOf(it) }, chainBonus = null,
+                    wallLink = !di.free, keystoneW = if (gr.keystone && outermost) 2.5 else 0.0, avoidRayOf = avoid)
+                // A steal pair that cannot sit side by side falls back to a chained pair (no order choice).
+                val v = put(twin) ?: (if (twin != null) put(null) else null) ?: return why("dummy place")
                 return Cand(built, v, emptyList(), emptyMap(), null)
             }
             PK.TARGET, PK.RUN -> {
@@ -507,20 +642,24 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 // Run colours are fixed at the group's last tap (first in reverse), avoiding docked colours.
                 var rc = runColors[g]
                 val newRc = rc == null
+                if (rc == null && gr.squatRun) {
+                    if (q < 0 || q in dcols) return why("squat run colour")
+                    rc = listOf(q)
+                }
                 if (rc == null) {
                     val refColor = if (tap.refGroup >= 0) runColors[tap.refGroup]?.firstOrNull() else null
                     val refDummyColors = if (tap.refGroup >= 0) dummies.filter { it.group == tap.refGroup && it.color >= 0 }.map { it.color }.toSet() else emptySet()
                     val res = reservedAt[fwd].orEmpty()
                     val allowed = palette().filter { it !in dcols && it != refColor && it !in refDummyColors && (tap.afterRef < 0 || it !in head) }
                         .let { l -> rng.shuffle(l.filter { it !in res }) + l.filter { it in res } }
-                    if (allowed.size < gr.runColorsN + tap.completes.size) return why("run colours")
+                    if (allowed.size < gr.runColorsN) return why("run colours")
                     rc = allowed.take(gr.runColorsN)
                 }
                 val xColor = if (tap.kind == PK.TARGET) rc[0] else rc[rng.nextInt(rc.size)]
                 if (xColor in dcols) return why("run colour docked")
                 val rec = if (tap.completes.isEmpty()) emptyList() else {
                     if (after.w.size < p0) return why("short w")
-                    completions(tap, fwd, head, xColor, base + 1, specs, ids)?.also { r -> if (r.any { it.color in rc }) return why("dummy=run colour") }
+                    completions(tap, fwd, head, xColor, size.capacity, base + 1, specs, ids)?.also { r -> if (r.any { it.color in rc }) return why("dummy=run colour") }
                         ?: return why("dummy colour")
                 }
                 // Island target: its batch goes after the first [afterRef] elements of the interrupted run's colour.
@@ -535,11 +674,13 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 }
                 val xId = base
                 val allSpecs = listOf(size to xColor) + specs
-                val built = ReverseStep.build(after, XSpec.New(xId, size, xColor), rec, rng, ::cap, insertAt = at) ?: return why("run build")
+                val built = ReverseStep.build(after, XSpec.New(xId, size, xColor), rec, rng, ::cap, insertAt = at)
+                    ?: return why("run build" + if (System.getenv("HDEBUG") != null) " x=$xColor rec=$rec dock=${after.dock} head=${head.joinToString("")}" else "")
                 val runs = stallRun[g].orEmpty().mapNotNull { board.placed[it] }.filter { board.rayClear(it) }
                 // Every run link hides the reachable ones behind it (soft for runs, hard for the target).
-                val v = if (tap.kind == PK.TARGET) place(xId, size, xColor, built.before, mustCover = runs, chainBonus = null, wallLink = true)
-                    else place(xId, size, xColor, built.before, mustCover = runs, chainBonus = runs, wallLink = true, softCover = true)
+                val prevRun = if (gr.domino) stallRun[g]?.lastOrNull()?.let { board.placed[it] } else null
+                val v = if (tap.kind == PK.TARGET) place(xId, size, xColor, built.before, mustCover = runs, chainBonus = null, wallLink = true, domino = prevRun)
+                    else place(xId, size, xColor, built.before, mustCover = runs, chainBonus = runs, wallLink = true, softCover = true, domino = prevRun)
                 v ?: return why("${tap.kind} place")
                 return Cand(built, v, allSpecs, ids, if (newRc) rc else null)
             }
@@ -562,7 +703,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 val ids = HashMap<Int, Pair<Int, Int>>()
                 val rec = if (tap.completes.isEmpty()) emptyList() else {
                     if (after.w.size < p0) return why("short w (exit)")
-                    completions(tap, fwd, head, xColor, base + 1, specs, ids) ?: return why("exit dummy colour")
+                    completions(tap, fwd, head, xColor, size.capacity, base + 1, specs, ids) ?: return why("exit dummy colour")
                 }
                 val built = ReverseStep.build(after, XSpec.New(base, size, xColor), rec, rng, ::cap, insertAt = squatAt(head, fwd))
                     ?: return why("filler build")
@@ -590,12 +731,13 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
             }
             PK.RUN -> stallRun.getOrPut(tap.group) { arrayListOf() } += c.v.id
             PK.DUMMY -> {
-                wallHead[tap.group] = c.v.id
+                if (!(groups[tap.group].steal && dummies[tap.dummy].forceSize != null)) wallHead[tap.group] = c.v.id
                 val d = state.dock[dummies[tap.dummy].slot]!!
                 dummies[tap.dummy].preload = cap(d.id) - d.space
                 avoid[d.color] = revIndex + DUMMY_AVOID
             }
             PK.FILLER -> {
+                if (tap.justEnough && tap.refGroup >= 0) groups[tap.refGroup].triggerStep = fwd
                 if (tap.absorb && tap.refGroup >= 0) {
                     // Island group of this run = the group whose islandOf is refGroup.
                     groups.firstOrNull { it.islandOf == tap.refGroup }?.let { it.absorbStart = fwd }
@@ -626,9 +768,14 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
      */
     private fun place(
         id: Int, size: ContainerSize, color: Int, before: RevState, mustCover: List<Container>?, chainBonus: List<Container>?,
-        wallLink: Boolean = false, softCover: Boolean = false,
+        wallLink: Boolean = false, softCover: Boolean = false, keystoneW: Double = 0.0, domino: Container? = null,
+        avoidRayOf: Container? = null,
     ): Container? {
         var cands = board.candidates(id, size, color)
+        if (avoidRayOf != null) {
+            val ray = board.ray(avoidRayOf).toSet()
+            cands = cands.filter { c -> c.v.cells().none { it in ray } }
+        }
         if (!mustCover.isNullOrEmpty()) {
             val rays = mustCover.map { board.ray(it).toSet() }
             val covering = cands.filter { c -> val cells = c.v.cells(); rays.all { r -> cells.any { it in r } } }
@@ -641,6 +788,9 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         val dcols = dockColors(before.dock)
         val reachRays = board.placed.values.filter { board.rayClear(it) }
             .map { r -> board.ray(r).toSet() to (counts[r.color] >= r.size.capacity && r.color !in dcols) }
+        val stagedSet = before.staging.toSet()
+        val stagedRays = if (sc.coverStaged > 0) board.placed.values.filter { it.color in stagedSet && board.rayClear(it) }
+            .map { board.ray(it).toSet() to it.color } else emptyList()
         val fill = board.cellsUsed().toDouble() / (sc.width * sc.height)
         val cr = (sc.height - 1) / 2.0
         val cc = (sc.width - 1) / 2.0
@@ -654,6 +804,17 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
             var cover = 0.0
             for ((ray, fillable) in reachRays) if (fillable && cells.any { it in ray }) cover += sc.coverFillable
             for (ray in chainRays) if (cells.any { it in ray }) cover += 6.0
+            // Keystone: count every container whose exit ray this one would cross.
+            if (keystoneW > 0) cover += keystoneW * board.placed.values.count { u -> board.ray(u).any { it in cells } }
+            // Domino stack: same lane and facing as the previous run container, nose to tail.
+            if (domino != null && c.v.dir == domino.dir) {
+                val sameLane = if (c.v.dir == Dir.UP || c.v.dir == Dir.DOWN) c.v.col == domino.col else c.v.row == domino.row
+                if (sameLane) cover += 8.0
+            }
+            // Mismatch windows: hide reachable containers whose colour is staged (keeps W and R apart).
+            if (sc.coverStaged > 0) for ((ray, col) in stagedRays) if (cells.any { it in ray }) cover += sc.coverStaged
+            // Mirror symmetry: the mirrored footprint is free (a future twin) or holds a mirrored twin.
+            if (sc.mirror > 0) cover += sc.mirror * mirrorScore(c.v)
             // A wall link (target, run, dummy) must leave room in its exit ray for the next link to block it.
             val roomBonus = if (wallLink) 0.8 * minOf(board.ray(c.v).count { board.free(it.row, it.col) }, 5) else 0.0
             val score = cover + roomBonus + board.contact(c.v) + (if (c.stopped && board.stoppedByContainer(c.v)) 1.5 else 0.0) -
@@ -661,6 +822,22 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
             if (score > bestScore) { bestScore = score; best = c.v }
         }
         return best
+    }
+
+    /** 1 if the left/right mirror of [v] is free or exactly a mirrored twin of the same size, 0 otherwise. */
+    private fun mirrorScore(v: Container): Double {
+        val w = sc.width
+        val md = when (v.dir) { Dir.LEFT -> Dir.RIGHT; Dir.RIGHT -> Dir.LEFT; else -> v.dir }
+        val m = Container(-1, v.size, v.color, v.row, w - 1 - v.col, md)
+        val cells = m.cells()
+        if (cells.toSet() == v.cells().toSet()) return 1.0 // on the spine
+        if (cells.all { board.free(it.row, it.col) }) return 0.5
+        val ids = cells.map { board.occ[it.row * w + it.col] }.toSet()
+        if (ids.size == 1 && ids.first() >= 0) {
+            val o = board.placed[ids.first()]!!
+            if (o.size == v.size && o.dir == md && o.cells().toSet() == cells.toSet()) return 1.0
+        }
+        return 0.0
     }
 
     /** The exact forward GameState before the candidate's tap. */
@@ -694,6 +871,12 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         score -= 0.4 * maxOf(0, d.w - 2)
         for ((name, m) in ReverseAnalysis.botChoices(s)) {
             if (m != null && d.outcome[m.containerId] == false) score += if (name.startsWith("look")) 1.5 else 0.5
+        }
+        if (sc.mismatch > 0 && s.queueRemaining > 0) {
+            val w = s.staging.toSet()
+            val r = Engine.legalMoves(s).map { s.level.containers[it.containerId].color }.toSet()
+            val overlap = w.count { it in r }
+            score += sc.mismatch * (if (overlap <= 1) 1.5 else -0.4 * (overlap - 1))
         }
         c.score = sc.fork * score + rng.nextDouble() * 0.5
     }

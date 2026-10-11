@@ -89,6 +89,13 @@ colour does not matter, so staging is a count vector.
    enough of another colour (e.g. blues) to clear a long run — that's what made preview level 20 interesting.
 4. **Dense core, built outward.** Construct from the centre out: the centre is ~fully packed with only a handful
    of unpacking orders that don't jam; the periphery is looser and gives early freedom.
+6. **Sustained dock pressure (playtest of motif preview level 2: "every vehicle filled up immediately").**
+   Containers must sit in the dock partially filled for several moves, and the dock must regularly fill to 3–4,
+   so the player repeatedly faces "which container next?" with only 1–2 non-losing options. Achieve this with a
+   well-mixed queue (8–10 colours spread out so the 40 staged hold only a few of each colour, below L/M capacity);
+   long single-colour runs are occasional events, not the backbone. Measure it directly along the winning line:
+   fraction of states with dock ≥ 3, mean moves a container stays docked, fraction of decision states with only
+   1–2 safe moves — this becomes a primary score term and a floor.
 5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 

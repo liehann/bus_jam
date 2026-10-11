@@ -90,3 +90,16 @@ class PackSelectionStore(private val dataStore: DataStore<Preferences>) {
         val SELECTED = stringPreferencesKey("selected_pack")
     }
 }
+
+/** Debug setting: real-time carousel (true) or turn-based staging (false); null = not chosen yet. */
+class GameModeStore(private val dataStore: DataStore<Preferences>) {
+    val realTime: Flow<Boolean?> = dataStore.data.map { it[REAL_TIME] }
+
+    suspend fun setRealTime(on: Boolean) {
+        dataStore.edit { it[REAL_TIME] = on }
+    }
+
+    private companion object {
+        val REAL_TIME = androidx.datastore.preferences.core.booleanPreferencesKey("real_time_mode")
+    }
+}

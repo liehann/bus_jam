@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.phloots.busjam.BuildConfig
 import com.phloots.busjam.data.AndroidAssetSource
+import com.phloots.busjam.data.GameModeStore
 import com.phloots.busjam.data.LevelRepository
 import com.phloots.busjam.data.PackCatalog
 import com.phloots.busjam.data.PackInfo
@@ -61,6 +62,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val progress: StateFlow<Progress?> = pack.filterNotNull()
         .flatMapLatest { p -> progressStore(p).progress }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val mode = GameModeStore(dataStore)
+
+    /** Real-time carousel mode: debug builds only (default on, toggle on the home screen); release is turn-based. */
+    val realTime: StateFlow<Boolean> = mode.realTime
+        .map { BuildConfig.DEBUG && (it ?: true) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun setRealTime(on: Boolean) {
+        viewModelScope.launch { mode.setRealTime(on) }
+    }
 
     fun selectPack(file: String) {
         viewModelScope.launch { selection.select(file) }

@@ -119,7 +119,7 @@ fun GameScreen(
 
     Box(Modifier.fillMaxSize().background(Palette.background)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
-            TopBar(ui, debugHeader, onLevels)
+            TopBar(ui.levelNumber, ui.isBoss, ui.potentialStars, debugHeader, onLevels)
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 PlayField(
                     logical = ui.state,
@@ -165,12 +165,22 @@ fun GameScreen(
                 )
             }
         }
-        if (ui.showResult) ResultOverlay(ui, onUndo, onRestart, onNext, onLevels, onHome)
+        if (ui.showResult) {
+            ResultOverlay(ui.state.status, ui.earnedStars, ui.hasNext, ui.canUndo, onUndo, onRestart, onNext, onLevels, onHome)
+        }
     }
 }
 
 @Composable
-private fun TopBar(ui: GameUiState, header: DebugHeader?, onLevels: () -> Unit) {
+internal fun TopBar(
+    levelNumber: Int,
+    isBoss: Boolean,
+    potentialStars: Int,
+    header: DebugHeader?,
+    onLevels: () -> Unit,
+    /** Extra control before the stars (real-time pause button). */
+    action: (@Composable () -> Unit)? = null,
+) {
     Row(
         Modifier.fillMaxWidth().height(44.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -180,12 +190,12 @@ private fun TopBar(ui: GameUiState, header: DebugHeader?, onLevels: () -> Unit) 
         }
         Spacer(Modifier.weight(1f))
         Text(
-            "Level ${ui.levelNumber}",
+            "Level ${levelNumber}",
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
             color = Palette.ink,
         )
-        if (ui.isBoss) {
+        if (isBoss) {
             Spacer(Modifier.width(6.dp))
             Text(
                 "BOSS",
@@ -198,14 +208,15 @@ private fun TopBar(ui: GameUiState, header: DebugHeader?, onLevels: () -> Unit) 
             )
         }
         Spacer(Modifier.weight(1f))
-        StarRow(ui.potentialStars, 18.dp, Modifier.padding(end = 12.dp))
+        action?.invoke()
+        StarRow(potentialStars, 18.dp, Modifier.padding(end = 12.dp))
     }
     if (header != null) {
         Column(
             Modifier.fillMaxWidth().testTag("debug-header"),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            PackChip("${header.packLabel} · L${ui.levelNumber}", header.packColor, Modifier.testTag("pack-chip"))
+            PackChip("${header.packLabel} · L${levelNumber}", header.packColor, Modifier.testTag("pack-chip"))
             header.info?.let {
                 Text(it, fontSize = 11.sp, color = Palette.ink.copy(alpha = 0.7f), textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = 2.dp).testTag("debug-info"))
@@ -220,8 +231,11 @@ private fun TopBar(ui: GameUiState, header: DebugHeader?, onLevels: () -> Unit) 
 }
 
 @Composable
-private fun ResultOverlay(
-    ui: GameUiState,
+internal fun ResultOverlay(
+    status: Status,
+    earnedStars: Int,
+    hasNext: Boolean,
+    canUndo: Boolean,
     onUndo: () -> Unit,
     onRestart: () -> Unit,
     onNext: () -> Unit,
@@ -235,7 +249,7 @@ private fun ResultOverlay(
             .pointerInput(Unit) { detectTapGestures { } }, // swallow taps; no semantics merge
         contentAlignment = Alignment.Center,
     ) {
-        val won = ui.state.status == Status.WON
+        val won = status == Status.WON
         Column(
             Modifier
                 .padding(32.dp)
@@ -247,16 +261,16 @@ private fun ResultOverlay(
         ) {
             if (won) {
                 Text("Level complete!", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Palette.ink)
-                StarRow(ui.earnedStars, 44.dp)
+                StarRow(earnedStars, 44.dp)
                 Text(
-                    when (ui.earnedStars) {
+                    when (earnedStars) {
                         3 -> "Perfect - no undo, no hint"
                         2 -> "Used undo"
                         else -> "Used a hint"
                     },
                     color = Palette.ink.copy(alpha = 0.7f),
                 )
-                if (ui.hasNext) {
+                if (hasNext) {
                     GameButton("Next", onNext, Modifier.fillMaxWidth().testTag("next"), fontSize = 20)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -265,18 +279,18 @@ private fun ResultOverlay(
                 }
             } else {
                 Text(
-                    if (ui.state.status == Status.DEADLOCK) "Dock full!" else "No moves left",
+                    if (status == Status.DEADLOCK) "Dock full!" else "No moves left",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Palette.ink,
                 )
                 Text(
-                    if (ui.state.status == Status.DEADLOCK) "Nobody in line can board a docked container."
+                    if (status == Status.DEADLOCK) "Nobody in line can board a docked container."
                     else "No container can leave and the queue is stuck.",
                     color = Palette.ink.copy(alpha = 0.7f),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    GameButton("Undo", onUndo, Modifier.testTag("lose-undo"), enabled = ui.canUndo)
+                    GameButton("Undo", onUndo, Modifier.testTag("lose-undo"), enabled = canUndo)
                     GameButton("Restart", onRestart, Modifier.testTag("lose-restart"), container = Palette.boss)
                 }
                 TextButton(onClick = onHome) { Text("Home", color = Palette.ink) }

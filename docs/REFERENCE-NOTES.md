@@ -115,7 +115,7 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 ### Level 10 — new mechanic: hidden colours (2026-10-11)
 - ~14 vehicles are dark grey with "?"; colour revealed only once the vehicle is unblocked (exit path clear). They form a
   diagonal band through the centre, coloured vehicles around/between them.
-- Only 4 colours (pink, yellow, blue, purple) and a simple pink-heavy queue, right after the first hard level (9
+- Played as "quite easy" (user). Only 4 colours (pink, yellow, blue, purple) and a simple pink-heavy queue, right after the first hard level (9
   colours) → sawtooth: hard level, then breather + new mechanic.
 - For us: engine unchanged (knows colours); UI hides colour until the container's exit lane is clear; solver checks
   solvability with full information; bots/difficulty scoring must be information-limited (can't see hidden colours);

@@ -34,7 +34,11 @@ import com.phloots.busjam.ui.headerInfo
 import com.phloots.busjam.ui.packColor
 import com.phloots.busjam.ui.tagsLine
 import com.phloots.busjam.ui.tileInfo
+import com.phloots.busjam.game.rt.CoreRealTimeRules
+import com.phloots.busjam.game.rt.RealTimeViewModel
 import com.phloots.busjam.ui.game.GameScreen
+import com.phloots.busjam.ui.game.RealTimeGameScreen
+import com.phloots.jam.core.realtime.RealTimeState
 import com.phloots.busjam.ui.home.HomeScreen
 import com.phloots.busjam.ui.levels.LevelSelectScreen
 import com.phloots.busjam.ui.theme.Palette
@@ -62,6 +66,16 @@ fun BusJamApp() {
     val game: GameViewModel = viewModel(
         factory = viewModelFactory { initializer { GameViewModel(app.progressStore(PackInfo.CAMPAIGN)) } },
     )
+    val rtGame: RealTimeViewModel<RealTimeState> = viewModel(
+        factory = viewModelFactory {
+            initializer { RealTimeViewModel(app.progressStore(PackInfo.CAMPAIGN), CoreRealTimeRules()) }
+        },
+    )
+    val realTime by app.realTime.collectAsStateWithLifecycle()
+    val commitWins = {
+        game.commitPendingWin()
+        rtGame.commitPendingWin()
+    }
     val loadedPack by app.loaded.collectAsStateWithLifecycle()
     val selectedPack by app.pack.collectAsStateWithLifecycle()
     val levels = loadedPack?.levels?.takeIf { it.isNotEmpty() }
@@ -73,18 +87,31 @@ fun BusJamApp() {
     var screen by rememberSaveable { mutableIntStateOf(HOME) }
     // A win whose animation is still playing when the app goes to the background is recorded now: the process may
     // be killed before the animation can finish.
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { game.commitPendingWin() }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { commitWins() }
 
     BackHandler(enabled = screen != HOME) {
-        game.commitPendingWin()
+        commitWins()
         screen = HOME
     }
     val openLevel: (Int) -> Unit = { n ->
         levels?.let { pack ->
             val number = n.coerceIn(1, pack.size)
-            game.start(pack[number - 1].level, number, hasNext = number < pack.size, fresh = true, sink = app.progressStore(packInfo!!))
+            val sink = app.progressStore(packInfo!!)
+            if (realTime) {
+                rtGame.start(pack[number - 1].level, number, hasNext = number < pack.size, fresh = true, sink = sink)
+            } else {
+                game.start(pack[number - 1].level, number, hasNext = number < pack.size, fresh = true, sink = sink)
+            }
             screen = number
         }
+    }
+
+    val header: (Int) -> DebugHeader? = { number ->
+        val entry = levels?.getOrNull(number - 1)
+        if (showPack && entry != null) {
+            val mode = if (realTime) "real-time" else "turn-based"
+            DebugHeader(packInfo!!.label, packColor(packIndex), "${entry.headerInfo()} · $mode", entry.tagsLine())
+        } else null
     }
 
     Box(Modifier.fillMaxSize().background(Palette.background).safeDrawingPadding()) {
@@ -99,6 +126,8 @@ fun BusJamApp() {
                 packs = if (BuildConfig.DEBUG) app.packs else emptyList(),
                 selectedPack = selectedPack?.file,
                 onSelectPack = app::selectPack,
+                realTime = if (BuildConfig.DEBUG) realTime else null,
+                onRealTime = app::setRealTime,
             )
             screen == LEVELS && pack != null -> LevelSelectScreen(
                 count = pack.size,
@@ -110,6 +139,33 @@ fun BusJamApp() {
                 showGoTo = BuildConfig.DEBUG,
                 pack = if (showPack) packInfo!!.label to packColor(packIndex) else null,
             )
+            screen > 0 && pack != null && realTime -> {
+                val number = screen.coerceIn(1, pack.size)
+                LaunchedEffect(number, pack) {
+                    rtGame.start(
+                        pack[number - 1].level, number, hasNext = number < pack.size, fresh = false,
+                        sink = app.progressStore(packInfo!!),
+                    )
+                }
+                val ui by rtGame.ui.collectAsStateWithLifecycle()
+                val current = ui
+                if (current != null && current.levelNumber == number) {
+                    RealTimeGameScreen(
+                        ui = current,
+                        onFrame = rtGame::onFrame,
+                        onHostPause = rtGame::setHostPaused,
+                        onTogglePause = rtGame::togglePause,
+                        onTap = rtGame::onContainerTapped,
+                        onUndo = rtGame::undo,
+                        onRestart = rtGame::restart,
+                        onHint = rtGame::hint,
+                        onNext = { openLevel(number + 1) },
+                        onLevels = { commitWins(); screen = LEVELS },
+                        onHome = { commitWins(); screen = HOME },
+                        debugHeader = header(number),
+                    )
+                }
+            }
             screen > 0 && pack != null -> {
                 val number = screen.coerceIn(1, pack.size)
                 LaunchedEffect(number, pack) {
@@ -129,12 +185,9 @@ fun BusJamApp() {
                         onRestart = game::restart,
                         onHint = game::hint,
                         onNext = { openLevel(number + 1) },
-                        onLevels = { game.commitPendingWin(); screen = LEVELS },
-                        onHome = { game.commitPendingWin(); screen = HOME },
-                        debugHeader = if (showPack) {
-                            val entry = pack[number - 1]
-                            DebugHeader(packInfo!!.label, packColor(packIndex), entry.headerInfo(), entry.tagsLine())
-                        } else null,
+                        onLevels = { commitWins(); screen = LEVELS },
+                        onHome = { commitWins(); screen = HOME },
+                        debugHeader = header(number),
                     )
                 }
             }

@@ -88,7 +88,7 @@ class PlayLayout(
     /** Number of staging spots ([Limits.STAGING_SPOTS]). */
     val stagingSpots: Int = Limits.STAGING_SPOTS,
     val compact: Boolean = false,
-) {
+) : FieldGeometry {
     private val dp = density.density
 
     // queue lanes
@@ -120,17 +120,17 @@ class PlayLayout(
 
     // dock
     val slotGap = 8 * dp
-    val slotW = (width - (Limits.DOCK_SLOTS - 1) * slotGap) / Limits.DOCK_SLOTS
+    override val slotW = (width - (Limits.DOCK_SLOTS - 1) * slotGap) / Limits.DOCK_SLOTS
     /** Body width of a docked container (an L must fit the slot lying down). */
-    val dockedW = minOf(slotW * 0.92f / (0.9f + 0.48f * 5), 30 * dp)
-    val slotH = dockedW * (if (compact) 1.4f else 1.75f)
+    override val dockedW = minOf(slotW * 0.92f / (0.9f + 0.48f * 5), 30 * dp)
+    override val slotH = dockedW * (if (compact) 1.4f else 1.75f)
     val seatSize = dockedW * 0.34f
 
     private val gap = (if (compact) 4 else 8) * dp
     private val fixedH = captionH + laneH + gap + stagingH + gap + slotH + gap
-    val cell = minOf(width / levelWidth, (height - fixedH) / levelHeight)
-    val boardW = cell * levelWidth
-    val boardH = cell * levelHeight
+    override val cell = minOf(width / levelWidth, (height - fixedH) / levelHeight)
+    override val boardW = cell * levelWidth
+    override val boardH = cell * levelHeight
     /** Spare height (board limited by width) goes mostly below the board, next to the buttons. */
     private val top = ((height - fixedH - boardH) * 0.2f).coerceAtLeast(0f)
 
@@ -140,7 +140,7 @@ class PlayLayout(
     val stagingY = laneTop + laneH + gap + spotSize / 2
     val slotsTop = laneTop + laneH + gap + stagingH + gap
     val dockBottom = slotsTop + slotH
-    val board = Offset((width - boardW) / 2, dockBottom + gap)
+    override val board = Offset((width - boardW) / 2, dockBottom + gap)
 
     companion object {
         /** Cell size the board should keep if at all possible. */
@@ -168,18 +168,8 @@ class PlayLayout(
         val col = if (row % 2 == 0) i else stagingCols - 1 - i
         return Offset(stagingLeft + spotPitch * (col + 0.5f), stagingY + spotPitch * row)
     }
-    fun slotCenter(slot: Int) = Offset(slotW * (slot + 0.5f) + slotGap * slot, slotsTop + slotH / 2)
-    fun dockedLength(capacity: Int) = dockedLength(dockedW, capacity)
+    override fun slotCenter(slot: Int) = Offset(slotW * (slot + 0.5f) + slotGap * slot, slotsTop + slotH / 2)
 
-    /** Centre of an on-board container's body, in play-field pixels. */
-    fun containerCenter(v: Container): Offset {
-        val tail = v.tail()
-        return board + Offset((v.col + tail.col + 1) / 2f * cell, (v.row + tail.row + 1) / 2f * cell)
-    }
-
-    val boardBodyW get() = cell * 0.82f
-    fun boardBodyL(v: Container) = v.size.length * cell - cell * 0.16f
-    fun boardIcon(v: Container) = cell * (if (v.size.length == 1) 0.36f else 0.46f)
 }
 
 /** Maps a board-local pixel position to the id of the on-board container covering it, or null. */
@@ -190,14 +180,6 @@ fun hitTest(state: GameState, cellPx: Float, pos: Offset): Int? {
     return state.level.containers.firstOrNull { v ->
         state.isOnBoard(v.id) && v.cells().any { it.row == row && it.col == col }
     }?.id
-}
-
-/** Cells from the front cell to the board edge in the container's direction (exclusive of the front). */
-private fun cellsToEdge(v: Container, level: Level): Int = when (v.dir) {
-    Dir.UP -> v.row
-    Dir.DOWN -> level.height - 1 - v.row
-    Dir.LEFT -> v.col
-    Dir.RIGHT -> level.width - 1 - v.col
 }
 
 /**
@@ -290,7 +272,7 @@ private fun DrawScope.drawPlayField(
     val e = FastOutSlowInEasing.transform(t)
 
     drawQueueAndStaging(lay, before, after, flow != null, boardings.map { it.elementIndex }.toSet(), e, measurer)
-    drawDock(lay, before, phase, t, e, shakeT, boardings, ::boarderProgress)
+    drawDock(lay, before, phase, t, e, shakeT, boardings, ::boarderProgress, measurer)
     drawBoard(lay, before, phase, t, hintId, pulse)
 
     // elements hopping from staging (or straight from the queue) into their container
@@ -317,7 +299,7 @@ private fun DrawScope.drawPlayField(
 
     // a released container flying from the board to its dock slot
     val released = phase?.takeIf { it.kind == PhaseKind.RELEASE }?.events?.firstOrNull() as? Event.Released
-    if (released != null) drawReleaseFlight(lay, level, released, t)
+    if (released != null) drawReleaseFlight(lay, level, released.containerId, released.slot, t)
 }
 
 private fun DrawScope.drawQueueAndStaging(
@@ -404,17 +386,13 @@ private fun DrawScope.drawDock(
     shakeT: Float,
     boardings: List<Event.Boarded>,
     boarderProgress: (Int) -> Float,
+    measurer: TextMeasurer,
 ) {
     val dispatching = phase?.takeIf { it.kind == PhaseKind.DISPATCH }?.events
         ?.filterIsInstance<Event.Dispatched>()?.map { it.slot }?.toSet().orEmpty()
     translate(left = shake(shakeT) * 8 * density) {
         for (s in 0 until Limits.DOCK_SLOTS) {
-            val c = lay.slotCenter(s)
-            val tl = Offset(c.x - lay.slotW / 2, c.y - lay.slotH / 2)
-            val corner = CornerRadius(lay.slotH * 0.22f)
-            drawRoundRect(Palette.slotFill, tl, Size(lay.slotW, lay.slotH), corner)
-            drawRoundRect(Palette.slotLine, tl, Size(lay.slotW, lay.slotH), corner, style = Stroke(width = 2 * density))
-            val view: SlotView = before.slots[s] ?: continue
+            val view: SlotView? = before.slots[s]
             var alpha = 1f
             var offset = Offset.Zero
             if (s in dispatching) {
@@ -422,97 +400,15 @@ private fun DrawScope.drawDock(
                 offset = Offset(e * lay.slotW * 0.35f, -e * lay.slotH * 0.9f)
             }
             val landed = boardings.withIndex().count { (k, b) -> b.slot == s && boarderProgress(k) >= 1f }
-            drawContainer(
-                center = c + offset,
-                width = lay.dockedW,
-                length = lay.dockedLength(view.capacity),
-                degrees = DOCKED_DEGREES,
-                color = view.color,
-                alpha = alpha,
-                fill = Fill(view.filled + landed, view.capacity),
-            )
+            drawDockSlot(lay, s, view, (view?.filled ?: 0) + landed, measurer, offset, alpha)
         }
     }
 }
 
 private fun DrawScope.drawBoard(lay: PlayLayout, snap: Snapshot, phase: Phase?, t: Float, hintId: Int?, pulse: Float) {
-    val level = snap.level
-    val cell = lay.cell
-    val o = lay.board
-    val boardSize = Size(lay.boardW, lay.boardH)
-    drawRoundRect(Palette.asphalt, o, boardSize, CornerRadius(cell * 0.25f))
-    for (r in 0 until level.height) for (c in 0 until level.width) {
-        drawRoundRect(
-            Palette.asphaltLine,
-            Offset(o.x + c * cell + cell * 0.05f, o.y + r * cell + cell * 0.05f),
-            Size(cell * 0.9f, cell * 0.9f),
-            CornerRadius(cell * 0.14f),
-        )
-    }
-    drawRoundRect(Palette.boardEdge, o, boardSize, CornerRadius(cell * 0.25f), style = Stroke(width = cell * 0.06f))
-
     val released = (phase?.takeIf { it.kind == PhaseKind.RELEASE }?.events?.firstOrNull() as? Event.Released)?.containerId
     val block = phase?.takeIf { it.kind == PhaseKind.BLOCK }?.events?.firstOrNull() as? Event.Blocked
-    clipRect(o.x, o.y, o.x + boardSize.width, o.y + boardSize.height) {
-        for (id in snap.onBoard) {
-            if (id == released) continue // drawn in flight on top
-            val v = level.containers[id]
-            var center = lay.containerCenter(v)
-            if (block?.containerId == id) {
-                val travel = abs(block.stopRow - v.row) + abs(block.stopCol - v.col)
-                val dist = (travel + 0.18f) * cell
-                val out = if (t < 0.55f) FastOutSlowInEasing.transform(t / 0.55f)
-                else 1f - FastOutSlowInEasing.transform((t - 0.55f) / 0.45f)
-                center += Offset(v.dir.dCol * dist * out, v.dir.dRow * dist * out)
-            }
-            drawContainer(
-                center = center,
-                width = lay.boardBodyW,
-                length = lay.boardBodyL(v),
-                dir = v.dir,
-                color = v.color,
-                highlight = if (id == hintId) 0.3f + 0.7f * pulse else 0f,
-                iconSize = lay.boardIcon(v),
-            )
-        }
-    }
-}
-
-/** First 45 %: drive forward off the board edge. Rest: glide to the dock slot, turning to lie in it. */
-private fun DrawScope.drawReleaseFlight(lay: PlayLayout, level: Level, ev: Event.Released, t: Float) {
-    val v = level.containers[ev.containerId]
-    val start = lay.containerCenter(v)
-    val dist = (cellsToEdge(v, level) + v.size.length * 0.5f + 0.4f) * lay.cell
-    val exit = start + Offset(v.dir.dCol * dist, v.dir.dRow * dist)
-    val split = 0.45f
-    val boardDeg = v.dir.degrees()
-    if (t < split) {
-        val d = FastOutLinearInEasing.transform(t / split)
-        drawContainer(
-            center = start + (exit - start) * d,
-            width = lay.boardBodyW,
-            length = lay.boardBodyL(v),
-            degrees = boardDeg,
-            color = v.color,
-            iconSize = lay.boardIcon(v),
-        )
-        return
-    }
-    val p = FastOutSlowInEasing.transform((t - split) / (1f - split))
-    val end = lay.slotCenter(ev.slot)
-    var turn = DOCKED_DEGREES - boardDeg
-    if (turn > 180f) turn -= 360f
-    if (turn < -180f) turn += 360f
-    val w = lay.boardBodyW + (lay.dockedW - lay.boardBodyW) * p
-    val l = lay.boardBodyL(v) + (lay.dockedLength(v.size.capacity) - lay.boardBodyL(v)) * p
-    drawContainer(
-        center = exit + (end - exit) * p,
-        width = w,
-        length = l,
-        degrees = boardDeg + turn * p,
-        color = v.color,
-        iconSize = lay.boardIcon(v) * (1f - 0.3f * p),
-    )
+    drawBoardArea(lay, snap.level, snap.onBoard, setOfNotNull(released), block, t, hintId, pulse)
 }
 
 private fun DrawScope.plusLabel(measurer: TextMeasurer, text: String, x: Float, lay: PlayLayout, style: TextStyle) {

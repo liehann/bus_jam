@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -47,6 +48,9 @@ fun HomeScreen(
     packs: List<PackInfo> = emptyList(),
     selectedPack: String? = null,
     onSelectPack: (String) -> Unit = {},
+    /** Debug builds: real-time carousel toggle (null hides it). */
+    realTime: Boolean? = null,
+    onRealTime: (Boolean) -> Unit = {},
 ) {
     Column(
         Modifier.fillMaxSize().background(Palette.background).padding(32.dp),
@@ -67,9 +71,24 @@ fun HomeScreen(
             if (totalLevels > 0) "$totalStars / ${totalLevels * 3} stars" else "Loading levels...",
             color = Palette.ink.copy(alpha = 0.6f),
         )
-        if (packs.size > 1) {
+        if (packs.size > 1 || realTime != null) {
             Spacer(Modifier.height(20.dp))
-            PackSelector(packs, selectedPack, onSelectPack)
+            if (packs.size > 1) PackSelector(packs, selectedPack, onSelectPack)
+            if (realTime != null) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp).testTag("realtime-toggle"),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Real-time carousel", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Palette.ink)
+                        Text(
+                            if (realTime) "Waiting area rotates; tap any time" else "Turn-based staging (v2)",
+                            fontSize = 12.sp, color = Palette.ink.copy(alpha = 0.65f),
+                        )
+                    }
+                    Switch(checked = realTime, onCheckedChange = onRealTime, modifier = Modifier.testTag("realtime-switch"))
+                }
+            }
             Spacer(Modifier.height(20.dp))
         } else {
             Spacer(Modifier.height(40.dp))

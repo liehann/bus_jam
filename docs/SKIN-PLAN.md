@@ -348,17 +348,21 @@ are lighter than this; plates need the darker values for the rim to read at 18 d
 6. **M6: chrome + release.** Fredoka, buttons, top/bottom bars, home hero, level nodes, win/lose dialogs, app icon,
    app name/id rename, default skin flip.
 
+## Decisions (user, 2026-10-11)
+
+- **Scope first:** ship one polished theme (sushi bar) before any other theme or new mechanic. The art pipeline comes
+  first; the world list and new mechanics in `art/themes/worlds.json` are proposals only.
+- **Target device:** Pixel 9 Pro. If it looks good there, it's good; the compact 360 x 640 layout is not a target.
+- **Number under the table:** plates (elements) still needed; it counts down to zero.
+- **Colour lives on the plate rim.** Sushi type is not tied to colour.
+- **Species to start:** kitten, red panda, fox, wolf.
+- **UI:** top bar has the level label, pause and settings. Restart, undo and hint move into the pause menu. The
+  mock's "15/20" was meant to be the level number; show the level somewhere, not necessarily there.
+- **Theme selection:** per chapter (a run of levels shares one look), not per level.
+- **Palette:** the pastel palette, tweaked where needed for readability.
+
 ## Open questions
 
-1. Number under the table = plates still needed (proposal), or plates eaten?
-2. Tie sushi type to colour as a colour-blind cue? If yes, where does the cue go on the ticket (topping glyph next
-   to the animal icon, or the seated animal holds that topping)?
-3. Animals per table = ticket cells (S 1, M 2, L 3)? And the species pool: kitten, bunny, hamster, red panda, grey
-   tabby, fox?
-4. Queue: how many upcoming plates on the belt (today 20 + "+N"; the mock shows ~27 and no "+N")? Keep "+N"?
-5. What does "15/20" mean, if kept? It may reveal progress the game keeps hidden today.
-6. How is the theme chosen per level: a field in the level pack (like the per-level ring size), or by chapter
-   (levels 1-20 restaurant, 21-40 spa, ...)?
-7. Adopt the darker palette for rims/tickets, or keep the pack pastels?
-8. Hint button at the top (mock) and stars only in dialogs: OK?
-9. Rename app id/package (`com.phloots.busjam`) and make Kitten Jumble the default: when?
+1. Animals per table = ticket cells (S 1, M 2, L 3)?
+2. Queue: how many upcoming plates on the belt (today 20 + "+N"; the mock shows ~27 and no "+N")? Keep "+N"?
+3. Rename app id/package (`com.phloots.busjam`) and make Kitten Jumble the default: when?

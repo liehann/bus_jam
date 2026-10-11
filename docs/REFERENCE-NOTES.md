@@ -180,3 +180,12 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
   can't complete until slot 1 is full → both pinks hold their slots until ~48 pinks pass.
 - Badge semantics still unclear (40 vs 8 on two same-size pink buses).
 - Structure = principle 9 dummy stall + principle 8(e) on a ~70-vehicle, 9-colour board: the super-hard reference.
+
+### Level 15 — loss (2026-10-11)
+- Final dock: pink 40 | red 8 | pink 8 | blue 16 — all 4 full. Ring full of green/brown/yellow/purple/orange, none
+  matching. A large red block waits in the line just outside the ring and can't step on (ring full, no one can board).
+- Fatal move: the last free slot spent on a blue bus with no blue on the ring. Keeping it free would have let an
+  on-ring colour board, freeing seats for the reds to enter and finish the red van.
+- Near-miss loss with the rescue visible just outside the ring, most of the board left — "fair but painful".
+- Generator lessons: fork whose wrong answer is "dock a colour nobody on the ring is waiting for" when the line beyond
+  the ring holds the needed colour (lookahead depth = reading the line, not just the ring); prefer near-miss losses.

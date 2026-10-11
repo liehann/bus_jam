@@ -26,10 +26,18 @@ object RolloutDifficulty {
 
     fun lossRate(level: Level, config: DifficultyConfig = DifficultyConfig.DEFAULT): Double = evaluate(level, config).lossRate
 
-    fun evaluate(level: Level, config: DifficultyConfig = DifficultyConfig.DEFAULT): Result {
+    fun evaluate(level: Level, config: DifficultyConfig = DifficultyConfig.DEFAULT): Result =
+        evaluate(GameState.initial(level), config, 0L)
+
+    /**
+     * Rollouts from a mid-game [start] state (e.g. both branches of a motif decision). Seeded from the level content
+     * xor [salt]; with salt 0 from the initial state this is exactly [evaluate] of the level.
+     */
+    fun evaluate(start: GameState, config: DifficultyConfig, salt: Long): Result {
+        val level = start.level
         val count = Settings.count(config)
         val temps = Settings.temperatures(config)
-        val base = contentSeed(level)
+        val base = contentSeed(level) xor salt
         var losses = 0
         var lossMoves = 0L
         for (i in 0 until count) {
@@ -37,7 +45,7 @@ object RolloutDifficulty {
             val temp = temps[i % temps.size]
             val careless = Settings.carelessEvery(config).let { it > 0 && i % it == it - 1 }
             val eps = if (careless) Settings.carelessEpsilon(config) else Settings.epsilon(config)
-            var s = GameState.initial(level)
+            var s = start
             var moves = 0
             while (s.status == Status.PLAYING) {
                 val m = choose(s, rng, temp, eps, Settings.starvePenalty(config)) ?: break

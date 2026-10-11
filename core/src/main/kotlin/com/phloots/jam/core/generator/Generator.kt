@@ -227,7 +227,7 @@ class Generator(private val seed: Long) {
                         // so filling inside-out reaches much higher density.
                         val wts = options.map { v ->
                             val d = minOf(v.row, v.col, h - 1 - v.row, w - 1 - v.col) + 1.0
-                            val b = if (p.blockBias > 0.0) Math.pow(1.0 + v.cells().sumOf { rays[it.row * w + it.col] }, p.blockBias) else 1.0
+                            val b = if (p.blockBias > 0.0) StrictMath.pow(1.0 + v.cells().sumOf { rays[it.row * w + it.col] }, p.blockBias) else 1.0
                             d * d * d * b
                         }
                         var x = rng.nextDouble() * wts.sum()

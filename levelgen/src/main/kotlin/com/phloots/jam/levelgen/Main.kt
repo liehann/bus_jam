@@ -26,6 +26,8 @@ private const val USAGE = """Usage: ./gradlew :levelgen:run --args="[options]"
   --width <x>          band width in score points for levels 1..9 of a cycle (default 9)
   --boss-gap <x>       boss target above L9 (default 8; minimum accepted 6)
   --pool-csv <path>    also dump the whole de-duplicated candidate pool (for tuning)
+  --motif-preview <n>  motif-built preview (tutorial + motif showcases + combinations) to
+                       levelgen/out/preview-levels.json (or --out); --seeds-per-slot <k> (default 16)
 """
 
 /** Solve time of a level in ms (best of [reps], after the JIT is warm). Diagnostics only, never used to select. */
@@ -50,6 +52,13 @@ fun main(args: Array<String>) {
         if (!a.startsWith("--") || i + 1 >= args.size) { System.err.println(USAGE); exitProcess(2) }
         opts[a.removePrefix("--")] = args[i + 1]
         i += 2
+    }
+    if (opts.containsKey("motif-explore")) { motifExploreMain(); return }
+    if (opts.containsKey("motif-debug")) { motifDebugCascade(); return }
+    opts["motif-preview"]?.toInt()?.let { n ->
+        motifPreview(n, opts["seed"]?.toLong() ?: 1L, opts["threads"]?.toInt() ?: Runtime.getRuntime().availableProcessors(),
+            opts["seeds-per-slot"]?.toInt() ?: 16, opts["out"] ?: "levelgen/out/preview-levels.json")
+        return
     }
     val seed = opts["seed"]?.toLong() ?: 1L
     val cycles = opts["cycles"]?.toInt() ?: 100

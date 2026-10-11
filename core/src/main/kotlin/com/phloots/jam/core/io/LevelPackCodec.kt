@@ -5,12 +5,17 @@ import com.phloots.jam.core.scoring.DifficultyReport
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** One shipped level: definition + its difficulty score (+ optional full metrics). */
+/**
+ * One shipped level: definition + its difficulty score (+ optional full metrics).
+ * [motifs]: construction motifs of a motif-built level (generator `MotifResult.tags()`, e.g.
+ * "CapacityChoice M6|L10 @12 LOSS"; first word = motif kind), for the debug UI. Empty for other levels.
+ */
 @Serializable
 data class PackedLevel(
     val level: Level,
     val score: Double = 0.0,
     val metrics: DifficultyReport? = null,
+    val motifs: List<String> = emptyList(),
 )
 
 /** The levels.json payload. Campaign order == list order (levels[0] is level 1). */

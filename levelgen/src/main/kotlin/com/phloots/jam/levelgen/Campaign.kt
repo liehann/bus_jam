@@ -29,7 +29,7 @@ data class Pick(val index: Int, val cycle: Int, val pos: Int, val candidate: Can
  * deriving them from the per-cycle step, which collapsed them to ~0).
  *
  * Level 1 is the only tutorial (picked from the tutorial pool); levels 2–10 of cycle 1 are normal levels.
- * Colours: normal levels of cycle c use [colorsFor] (4 -> 8), bosses may use one more (cap 8).
+ * Colours: normal levels of cycle c use [colorsFor] (5 -> 10), bosses may use one more (cap 10).
  *
  * Guarantees by construction: per-cycle median of the 9 normal levels is non-decreasing; each boss >= L9 +
  * [minBossGap] when the pool allows (otherwise recorded in [gaps]).

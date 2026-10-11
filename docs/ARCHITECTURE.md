@@ -42,6 +42,10 @@ core/src/main/kotlin/com/phloots/jam/core/
   scoring/DifficultyConfig.kt    weights + thresholds, the single tuning file            (gamestate)
   scoring/Scorer.kt              Scorer.score, DifficultyReport                          (gamestate)
   generator/Generator.kt         Generator(seed).generate(GenParams), GenParams          (generator)
+  generator/Motifs.kt            MotifGenerator(seed).construct(MotifParams), RunGroup,
+                                 MotifKind, MotifDecision, MotifLevel, VaultInfo          (generator)
+  generator/MotifCheck.kt        MotifCheck (decision / core / wall-certificate checks),
+                                 MotifFilter, MotifResult, MotifGenerator.generate        (generator)
   io/LevelPackCodec.kt           LevelPack, PackedLevel, LevelPackCodec                  (frozen, architect)
 levelgen/src/main/kotlin/com/phloots/jam/levelgen/*.kt                                   (generator)
 app/src/main/kotlin/com/phloots/busjam/...                                               (UI)
@@ -266,3 +270,23 @@ Gotchas:
   Source-compatible (defaulted). UI: pass `{ !coroutineContext.isActive }`. `RolloutDifficulty` softmax uses
   `StrictMath.exp` (bit-identical across JVMs/CPUs; stored rollout scores may shift by an ulp-driven amount, so
   regenerate packs). Invariant docs above updated to `STAGING_SPOTS = 40`, `MAX_COLORS = 10`.
+- 2026-10-10 (generator): **motif-based construction** (DESIGN.md v2 "Level-design principles"). Additive only.
+  - New `core/.../generator/Motifs.kt` / `MotifCheck.kt`: `MotifGenerator(seed).construct(MotifParams): MotifLevel?`
+    and the extension `MotifGenerator.generate(params, config, MotifFilter): MotifResult?` (construct + v2 floor: bots
+    lose, rollout loss, root solve budget + per-decision verification + `analyzeBounded` + `Scorer.score`). Motifs
+    (`MotifKind`): Squeeze, StackToUnlock, CapacityChoice, BigUnblocks, DenseCore; each run group is a "vault" stamp
+    (wall links on an edge lane, run target T, shadow that exits only through T). `MotifCheck.checkDecision`: budgeted
+    `Solver.solve` of the wrong branch (LOSS / NOT_FORCING); if the budget runs out, `MotifCheck.wallCertificate`
+    (sound slot-count proof at the run's staging stall, cross-checked against the solver in tests) gives
+    CERTIFIED_LOSS; rollouts from both children are the last fallback (WORSE).
+  - `PackedLevel` (architect's io file, minimal): trailing defaulted `motifs: List<String> = emptyList()` — motif tags
+    of a motif-built level for the debug UI, e.g. `"CapacityChoice M6|L10 @12 LOSS"` (first word = `MotifKind` name,
+    `@n` = intended-line step of the decision, last word = verification outcome; `"DenseCore 0.95 sharp 5/14"`,
+    `"Squeeze 22-30"` = run span). Old packs decode unchanged; packs now encode `"motifs":[]` for other levels.
+  - `RolloutDifficulty.evaluate(start: GameState, config, salt)` overload (rollouts from a mid-game state); the
+    level overload delegates with salt 0 (identical results).
+  - Determinism: `Generator` placement uses `StrictMath.pow`; motif code uses only kotlin.random + StrictMath.
+    New `levelgen/src/test/.../DeterminismTest.kt` (small campaign run and motif preview, twice with different thread
+    counts, byte-compared). Shipped pack regenerated with the default `./gradlew :levelgen:run`.
+  - `:levelgen`: `--motif-preview <n>` (default out `levelgen/out/preview-levels.json`, `--seeds-per-slot k`) and
+    `--motif-explore` (construction/verification funnel diagnostics; `MOTIFS=S3,CC,...` env selects recipes).

@@ -22,7 +22,8 @@ import com.phloots.jam.core.model.Status
  *    (at most one boarding per [RtConfig.boardStaggerTicks] ticks), the most DOWNSTREAM element in the window whose
  *    colour has a docked (arrived) container with unreserved space leaves its seat and walks to the LEFTMOST such
  *    container. A burst of matching elements therefore boards as a wave rolling down the window, front first;
- *  - the ENTRY ([RtConfig.entryPosition], default N/2 (20 for 40 seats, 10 for 20), outside the window): when a seat arrives there empty
+ *  - the ENTRY ([RtConfig.entryPosition], default 60% of the way round from the window's middle (28 for 40 seats, 16 for
+ *    20), outside the window): when a seat arrives there empty
  *    and the queue is not exhausted, the next queue element steps on.
  * The gate is checked on every tick (after the rotation on a seat-step tick); the entry only on seat steps, after the
  * gate. A level starts with an EMPTY ring: every element waits in the queue line and the ring fills through the entry
@@ -50,20 +51,23 @@ data class RtConfig(
     /** Minimum ticks between two boarding starts (the "wave" spacing; 3 ticks = 75 ms). */
     val boardStaggerTicks: Int = 3,
     /**
-     * Ring position where queue elements step onto empty seats; [ENTRY_HALF_RING] (the default) = half the ring
-     * (N / 2), resolved per level by [entryFor].
+     * Ring position where queue elements step onto empty seats; [ENTRY_DEFAULT] (the default) = 60% of the way round
+     * from the middle of the boarding window (the top of the loop, towards its right end, so a new element reaches the
+     * window after ~40% of a lap), resolved per level by [entryFor].
      */
-    val entryPosition: Int = ENTRY_HALF_RING,
+    val entryPosition: Int = ENTRY_DEFAULT,
 ) {
     init {
         require(ticksPerSeat >= 1 && releaseTicks >= 1 && boardTicks >= 1 && dispatchTicks >= 1) { "durations must be >= 1" }
-        require(gatePosition >= 0 && (entryPosition >= 0 || entryPosition == ENTRY_HALF_RING)) { "negative position" }
+        require(gatePosition >= 0 && (entryPosition >= 0 || entryPosition == ENTRY_DEFAULT)) { "negative position" }
         require(gateWidth >= 1) { "gateWidth out of range" }
         require(boardStaggerTicks >= 1) { "boardStaggerTicks must be >= 1" }
     }
 
     /** The entry position on a ring of [seats] seats. */
-    fun entryFor(seats: Int): Int = if (entryPosition == ENTRY_HALF_RING) seats / 2 else entryPosition
+    fun entryFor(seats: Int): Int =
+        if (entryPosition == ENTRY_DEFAULT) (gatePosition + gateWidth / 2 + Math.round(ENTRY_FRACTION * seats)) % seats
+        else entryPosition
 
     /** Checks the gate window and entry fit a ring of [seats] seats (any size 20..40 with the defaults). */
     fun validateFor(seats: Int) {
@@ -77,8 +81,11 @@ data class RtConfig(
     fun secondsPerTick(seatSeconds: Double = 0.2): Double = seatSeconds / ticksPerSeat
 
     companion object {
-        /** [entryPosition] value meaning "half the ring". */
-        const val ENTRY_HALF_RING = -1
+        /** [entryPosition] value meaning "[ENTRY_FRACTION] of the way round from the window's middle". */
+        const val ENTRY_DEFAULT = -1
+
+        /** Share of the ring from the boarding window's middle to the default entry. */
+        const val ENTRY_FRACTION = 0.6f
         val DEFAULT = RtConfig()
     }
 }

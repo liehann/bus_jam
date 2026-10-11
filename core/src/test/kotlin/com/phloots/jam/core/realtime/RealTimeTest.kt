@@ -214,7 +214,7 @@ class RealTimeTest {
         val rt = filled(level, cfg)
         assertEquals(spots, rt.ringCount)
         assertEquals(spots, rt.seatCount)
-        assertEquals(spots / 2, rt.entryPosition)
+        assertEquals((4 + Math.round(0.6f * spots)) % spots, rt.entryPosition)
         // a line in queue order: the oldest element is the most downstream (first to reach the gate window)
         val entrySeat = rt.seatAt(rt.entryPosition)
         for (k in 0 until spots) {
@@ -408,8 +408,11 @@ class RealTimeTest {
 
     private fun shift(spots: Int) = spots / 2 - 20
 
-    /** Default timing (4 ticks per seat, stagger 3, width 6) with a short release drive. */
-    private val windowCfg = RtConfig(ticksPerSeat = 4, releaseTicks = 2, gateWidth = 6) // the window fixtures assume a 6-seat window at 4 ticks per seat
+    /**
+     * The timing the window fixtures were laid out for: 4 ticks per seat, stagger 3, a 6-seat window, the entry
+     * half-way round (N / 2), and a short release drive.
+     */
+    private fun windowCfg(spots: Int) = RtConfig(ticksPerSeat = 4, releaseTicks = 2, gateWidth = 6, entryPosition = spots / 2)
 
     private fun windowElements(rt: RealTimeState, cfg: RtConfig) =
         (0 until cfg.gateWidth).map { rt.seatElement(rt.seatAt(cfg.gatePosition + it)) }
@@ -434,7 +437,7 @@ class RealTimeTest {
         // Six reds fill the window, four more are next to enter it; one red L (capacity 10).
         val o = shift(spots)
         val level = windowLevel((14..23).toSet(), listOf(ContainerSize.L), spots)
-        val cfg = windowCfg
+        val cfg = windowCfg(spots)
         val rt = filled(level, cfg)
         assertEquals(listOf(19, 18, 17, 16, 15, 14).map { it + o }, windowElements(rt, cfg))
         val (end, b) = boardings(RealTime.tap(rt, 0).first)
@@ -453,7 +456,7 @@ class RealTimeTest {
         // Six reds in the window but only a red S (capacity 4) is docked: exactly 4 board, the rest stay on the ring.
         val o = shift(spots)
         val level = windowLevel((14..21).toSet(), listOf(ContainerSize.S, ContainerSize.S), spots)
-        val cfg = windowCfg
+        val cfg = windowCfg(spots)
         val rt = filled(level, cfg)
         val (afterFirst, b) = boardings(RealTime.tap(rt, 0).first)
         assertEquals(listOf(14, 15, 16, 17).map { it + o }, b.map { it.second.elementIndex })
@@ -470,7 +473,7 @@ class RealTimeTest {
         // Two red S containers dock at the same tick: the first four of the wave go to slot 0, the rest to slot 1.
         val o = shift(spots)
         val level = windowLevel((14..21).toSet(), listOf(ContainerSize.S, ContainerSize.S), spots)
-        val cfg = windowCfg
+        val cfg = windowCfg(spots)
         var rt = filled(level, cfg)
         rt = RealTime.tap(rt, 0).first
         rt = RealTime.tap(rt, 1).first
@@ -484,7 +487,7 @@ class RealTimeTest {
     @Test
     fun walkersRecordTheirWindowPosition() = TestLevels.SPOTS.forEach { spots ->
         val level = windowLevel((14..19).toSet(), listOf(ContainerSize.M), spots)
-        val cfg = windowCfg
+        val cfg = windowCfg(spots)
         var rt = RealTime.tap(filled(level, cfg), 0).first
         val positions = ArrayList<Int>()
         while (!rt.settled || positions.isEmpty()) {

@@ -3,6 +3,7 @@ package com.phloots.busjam.ui.game
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Density
 import com.phloots.busjam.ui.skin.FieldStyle
+import com.phloots.jam.core.realtime.RtConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -10,16 +11,19 @@ import org.junit.Test
 /**
  * Belt geometry (Critter Café style) on a Pixel 9 Pro sized field (dp = px at density 1). The belt continues the
  * ring: plates one seat apart, the front place one seat upstream of the entry, and the belt's end exactly at the
- * entry, so a plate moving up with the ring meets its seat there without a jump in position or speed.
+ * entry (the default, near the right end of the loop's top), so a plate moving up with the ring meets its seat there without a jump in position or speed.
  */
 class RingLayoutTest {
     private val belt = FieldStyle(queueBelt = true, dockBandDp = 92f)
 
-    // the default config: gate window centred at position 3.5, entry at N / 2
-    private val gate = 3.5f
+    // the default config: gate window 0..7 centred at position 3.5, entry 60% of the way round from there
+    private val cfg = RtConfig.DEFAULT
+    private val gate = cfg.gatePosition + (cfg.gateWidth - 1) / 2f
+
+    private fun entry(seats: Int) = cfg.entryFor(seats).toFloat()
 
     private fun layout(seats: Int) =
-        RingLayout(411f, 860f, 12, 14, Density(1f), seats, style = belt, entryFromGate = seats / 2f - gate)
+        RingLayout(411f, 860f, 12, 14, Density(1f), seats, style = belt, entryFromGate = entry(seats) - gate)
 
     private fun assertNear(expected: Offset, actual: Offset, tolerance: Float = 0.5f) =
         assertTrue("$expected vs $actual", (expected - actual).getDistance() < tolerance)
@@ -35,7 +39,7 @@ class RingLayoutTest {
     fun theBeltEndsAtTheEntrySeat() {
         for (seats in listOf(20, 28, 40)) {
             val lay = layout(seats)
-            assertNear(lay.seatPoint(seats / 2f, gate), lay.queuePoint(-1f, emptyList()))
+            assertNear(lay.seatPoint(entry(seats), gate), lay.queuePoint(-1f, emptyList()))
         }
     }
 
@@ -47,11 +51,11 @@ class RingLayoutTest {
             var beltLen = 0f
             var ringLen = 0f
             var b = lay.queuePoint(0f, emptyList())
-            var r = lay.seatPoint(seats / 2f - 1f, gate)
+            var r = lay.seatPoint(entry(seats) - 1f, gate)
             for (i in 1..200) {
                 val f = i / 200f
                 val b2 = lay.queuePoint(-f, emptyList())
-                val r2 = lay.seatPoint(seats / 2f - 1f + f, gate)
+                val r2 = lay.seatPoint(entry(seats) - 1f + f, gate)
                 beltLen += (b2 - b).getDistance()
                 ringLen += (r2 - r).getDistance()
                 b = b2

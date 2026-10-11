@@ -199,9 +199,11 @@ colour does not matter, so staging is a count vector.
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 
 **Real-time carousel (v3, user decision 2026-10-11).** The waiting area is a rotating ring of N = `level.stagingSpots`
-seats (20–40; ~0.2 s per seat, so ~8 s per rotation at 40 and ~4 s at 20). The entry point defaults to half-way round
-the ring from the gate (`RtConfig.entryPosition` = half ring, i.e. position N/2), so the 8-seat window and the entry
-fit every size. The boarding gate is a window of `RtConfig.gateWidth` (default 8) consecutive
+seats (20–40; ~0.2 s per seat, so ~8 s per rotation at 40 and ~4 s at 20). The entry point defaults to 60% of the way
+round the ring from the middle of the gate window (`RtConfig.entryPosition` = `ENTRY_DEFAULT`: position 28 at 40
+seats, 16 at 20; user decision 2026-10-11, was N/2), on the loop's top towards its right end, so the belt drops plates
+near the serving side and a new element reaches the window after ~40% of a lap; the 8-seat window and the entry fit
+every size. The boarding gate is a window of `RtConfig.gateWidth` (default 8) consecutive
 seats next to the dock: matching elements inside it board one after another, the most downstream first, at most one
 start per `boardStaggerTicks` (default 75 ms), so a burst rolls down the window as a wave; elements entering the
 window later board as they arrive (leftmost same-colour container with space first). The vacated seat travels on; an

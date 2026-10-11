@@ -1,6 +1,6 @@
 # Kitten Jumble skin plan
 
-Status: plan only, no app code changed. Revised 2026-10-11 against the locked-in sushi-restaurant direction and the
+Status: M1 implemented (skin layer, Critter Café cards and plates); M2+ planned. Revised 2026-10-11 against the locked-in sushi-restaurant direction and the
 mocks `docs/skin/mocks/restaurant_level.jpeg` and `docs/skin/mocks/bamboo_spa_level.jpeg`. Rules, solver and level
 packs are untouched; the code keeps its neutral terms (Container / Element / Dock / Staging).
 
@@ -333,9 +333,17 @@ are lighter than this; plates need the darker values for the rim to read at 18 d
 
 ## 6. Milestones
 
-1. **M1: skin switch + tickets + plates.** `Skin`, `FlatSkin` (identical, screenshot-compared), `KittenSkin` with the
-   palette; vector tickets S/M/L with arrow and a placeholder icon disc; vector plates (rim + placeholder topping
-   dot); restaurant colours for board and background. Debug toggle. Board-layer cache from day one.
+1. **M1: skin switch + cards + plates. Done 2026-10-11.** `ui/skin/Skin.kt` (`Skin`, `LocalSkin`), `FlatSkin`
+   (byte-identical screenshots), `ui/skin/critter/CritterCafeSkin` with `CritterPalette` (the tweaked palette below):
+   vector reservation cards S/M/L in 4 directions (white chevron with a darker backing, perforated stub, white badge
+   with a line-drawn kitten / red panda / fox / wolf face, species from the container id), plates (thick rim, white
+   well, placeholder salmon nigiri), light-wood board with frame and faint grain and **no grid** (user decision),
+   placeholder benches (docked card on the bench, plate stack, plates-still-needed pill counting down to 0), pale
+   slatted conveyor whose slats move with the plates, butter glow boarding window. Board + resting cards are cached
+   in a `GraphicsLayer`. Debug toggle "Critter Café skin" on the home screen (persisted). Real-time screen only.
+   Screenshots: `app/build/screenshots/p9p_critter_*.png`, `p9p_flat_*.png`. Emulator AVD `CritterCafe_Pixel9Pro`.
+   Known M1 gaps: the release flight still ends at the slot centre at bus size, then pops into the bench card;
+   top bar, buttons and the paused overlay are the old chrome; queue stays inside the loop.
 2. **M2: `TrackSpec` + conveyor.** LUT-based track replacing `trackPoint()` (stadium spec = today), variable N plate
    sizing, themed band, boarding-window glow, queue belt above the loop with the kitchen stub, compact fallback
    inside the loop.

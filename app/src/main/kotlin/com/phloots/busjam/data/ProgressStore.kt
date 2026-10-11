@@ -103,3 +103,16 @@ class GameModeStore(private val dataStore: DataStore<Preferences>) {
         val REAL_TIME = androidx.datastore.preferences.core.booleanPreferencesKey("real_time_mode")
     }
 }
+
+/** Debug setting: Critter Café skin (true) or the original flat look (false); null = not chosen yet. */
+class SkinStore(private val dataStore: DataStore<Preferences>) {
+    val critterCafe: Flow<Boolean?> = dataStore.data.map { it[CRITTER_CAFE] }
+
+    suspend fun setCritterCafe(on: Boolean) {
+        dataStore.edit { it[CRITTER_CAFE] = on }
+    }
+
+    private companion object {
+        val CRITTER_CAFE = androidx.datastore.preferences.core.booleanPreferencesKey("critter_cafe_skin")
+    }
+}

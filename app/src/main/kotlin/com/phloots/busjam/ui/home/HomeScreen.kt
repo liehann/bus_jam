@@ -51,6 +51,9 @@ fun HomeScreen(
     /** Debug builds: real-time carousel toggle (null hides it). */
     realTime: Boolean? = null,
     onRealTime: (Boolean) -> Unit = {},
+    /** Debug builds: Critter Café skin toggle (null hides it). */
+    critterCafe: Boolean? = null,
+    onCritterCafe: (Boolean) -> Unit = {},
 ) {
     Column(
         Modifier.fillMaxSize().background(Palette.background).padding(32.dp),
@@ -71,7 +74,7 @@ fun HomeScreen(
             if (totalLevels > 0) "$totalStars / ${totalLevels * 3} stars" else "Loading levels...",
             color = Palette.ink.copy(alpha = 0.6f),
         )
-        if (packs.size > 1 || realTime != null) {
+        if (packs.size > 1 || realTime != null || critterCafe != null) {
             Spacer(Modifier.height(20.dp))
             if (packs.size > 1) PackSelector(packs, selectedPack, onSelectPack)
             if (realTime != null) {
@@ -87,6 +90,21 @@ fun HomeScreen(
                         )
                     }
                     Switch(checked = realTime, onCheckedChange = onRealTime, modifier = Modifier.testTag("realtime-switch"))
+                }
+            }
+            if (critterCafe != null) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp).testTag("skin-toggle"),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Critter Café skin", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Palette.ink)
+                        Text(
+                            if (critterCafe) "Reservation cards and plates (real-time screen)" else "Original flat look",
+                            fontSize = 12.sp, color = Palette.ink.copy(alpha = 0.65f),
+                        )
+                    }
+                    Switch(checked = critterCafe, onCheckedChange = onCritterCafe, modifier = Modifier.testTag("skin-switch"))
                 }
             }
             Spacer(Modifier.height(20.dp))

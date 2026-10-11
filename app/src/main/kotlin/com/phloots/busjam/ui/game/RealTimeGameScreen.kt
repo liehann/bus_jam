@@ -43,6 +43,7 @@ import com.phloots.busjam.game.rt.RtUiState
 import com.phloots.busjam.ui.DebugHeader
 import com.phloots.busjam.ui.GameButton
 import com.phloots.busjam.ui.theme.Palette
+import com.phloots.busjam.ui.skin.LocalSkin
 import com.phloots.jam.core.model.Status
 import kotlinx.coroutines.isActive
 
@@ -91,7 +92,7 @@ fun RealTimeGameScreen(
             .animateFloat(0f, 1f, infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "pulse")
     } else null
 
-    Box(Modifier.fillMaxSize().background(Palette.background)) {
+    Box(Modifier.fillMaxSize().background(LocalSkin.current.background)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
             TopBar(ui.levelNumber, ui.isBoss, ui.potentialStars, debugHeader, onLevels) {
                 PauseButton(ui.paused, onTogglePause)

@@ -42,6 +42,10 @@ import com.phloots.jam.core.realtime.RealTimeState
 import com.phloots.busjam.ui.home.HomeScreen
 import com.phloots.busjam.ui.levels.LevelSelectScreen
 import com.phloots.busjam.ui.theme.Palette
+import com.phloots.busjam.ui.skin.FlatSkin
+import com.phloots.busjam.ui.skin.LocalSkin
+import com.phloots.busjam.ui.skin.critter.CritterCafeSkin
+import androidx.compose.runtime.CompositionLocalProvider
 
 /** Single activity, portrait only (manifest). */
 class MainActivity : ComponentActivity() {
@@ -71,6 +75,8 @@ fun BusJamApp() {
             initializer { RealTimeViewModel(app.progressStore(PackInfo.CAMPAIGN), CoreRealTimeRules()) }
         },
     )
+    val critterCafe by app.critterCafe.collectAsStateWithLifecycle()
+    val skin = if (critterCafe == true) CritterCafeSkin else FlatSkin
     val realTimeOrNull by app.realTime.collectAsStateWithLifecycle()
     val realTime = realTimeOrNull == true
     val commitWins = {
@@ -115,7 +121,8 @@ fun BusJamApp() {
         } else null
     }
 
-    Box(Modifier.fillMaxSize().background(Palette.background).safeDrawingPadding()) {
+    CompositionLocalProvider(LocalSkin provides skin) {
+    Box(Modifier.fillMaxSize().background(if (screen > 0 && realTime) skin.background else Palette.background).safeDrawingPadding()) {
         val pack = levels
         when {
             screen == HOME -> HomeScreen(
@@ -129,6 +136,8 @@ fun BusJamApp() {
                 onSelectPack = app::selectPack,
                 realTime = if (BuildConfig.DEBUG) realTimeOrNull else null,
                 onRealTime = app::setRealTime,
+                critterCafe = if (BuildConfig.DEBUG) critterCafe else null,
+                onCritterCafe = app::setCritterCafe,
             )
             screen == LEVELS && pack != null -> LevelSelectScreen(
                 count = pack.size,
@@ -196,5 +205,6 @@ fun BusJamApp() {
                 CircularProgressIndicator()
             }
         }
+    }
     }
 }

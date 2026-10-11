@@ -41,7 +41,12 @@ import com.phloots.jam.core.model.Event
 import com.phloots.busjam.game.rt.RtUiState
 import com.phloots.busjam.game.rt.RtView
 import com.phloots.busjam.ui.theme.Palette
-import com.phloots.busjam.ui.theme.drawElement
+import com.phloots.busjam.ui.skin.LocalSkin
+import com.phloots.busjam.ui.skin.Skin
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.unit.toIntSize
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import com.phloots.jam.core.model.Level
 import com.phloots.jam.core.model.Limits
 import kotlin.math.PI
@@ -170,6 +175,27 @@ fun hitTest(level: Level, onBoard: Set<Int>, cellPx: Float, pos: Offset): Int? {
     return level.containers.firstOrNull { v -> v.id in onBoard && v.cells().any { it.row == row && it.col == col } }?.id
 }
 
+/**
+ * The board and its resting containers, recorded into a [GraphicsLayer] and redrawn only when the key changes
+ * (layout, skin, level, on-board set, containers drawn live on top).
+ */
+private class BoardCache(val layer: GraphicsLayer) {
+    private var lay: RingLayout? = null
+    private var skin: Skin? = null
+    private var level: Level? = null
+    private var onBoard: Set<Int>? = null
+    private var live: Set<Int>? = null
+
+    /** True (and the key updated) when the layer must be re-recorded. */
+    fun stale(lay: RingLayout, skin: Skin, level: Level, onBoard: Set<Int>, live: Set<Int>): Boolean {
+        if (lay === this.lay && skin === this.skin && level === this.level && onBoard == this.onBoard && live == this.live) {
+            return false
+        }
+        this.lay = lay; this.skin = skin; this.level = level; this.onBoard = onBoard; this.live = live
+        return true
+    }
+}
+
 @Composable
 fun RingField(
     ui: RtUiState,
@@ -181,9 +207,12 @@ fun RingField(
     val view = ui.view
     val level = view.level
     val density = LocalDensity.current
+    val skin = LocalSkin.current
     val measurer = rememberTextMeasurer()
     val currentView by rememberUpdatedState(view)
     val currentOnTap by rememberUpdatedState(onTap)
+    val boardLayer = rememberGraphicsLayer()
+    val cache = remember(boardLayer) { BoardCache(boardLayer) }
     BoxWithConstraints(modifier) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
@@ -201,7 +230,7 @@ fun RingField(
                     }
                 },
         ) {
-            drawRingField(lay, ui, hintPulse(), shakeProgress(), measurer)
+            drawRingField(lay, ui, hintPulse(), shakeProgress(), measurer, skin, cache)
         }
         with(density) {
             Box(
@@ -219,7 +248,8 @@ fun RingField(
                         .size((lay.cell * (abs(v.col - tail.col) + 1)).toDp(), (lay.cell * (abs(v.row - tail.row) + 1)).toDp())
                         .testTag("container-${v.id}")
                         .semantics {
-                            contentDescription = "${Palette.name(v.color)} ${v.size.name} facing ${v.dir.name.lowercase()}"
+                            contentDescription =
+                                "${skin.colorName(v.color)} ${skin.containerNoun(v.size.name)} facing ${v.dir.name.lowercase()}"
                         },
                 )
             }
@@ -227,42 +257,63 @@ fun RingField(
     }
 }
 
-private fun DrawScope.drawRingField(lay: RingLayout, ui: RtUiState, pulse: Float, shakeT: Float, measurer: TextMeasurer) {
+private fun DrawScope.drawRingField(
+    lay: RingLayout,
+    ui: RtUiState,
+    pulse: Float,
+    shakeT: Float,
+    measurer: TextMeasurer,
+    skin: Skin,
+    cache: BoardCache,
+) = with(skin) {
     val view = ui.view
     val level = view.level
     val t = view.tick + ui.tickFraction // fractional tick: everything in motion is interpolated from it
     fun progress(from: Long, to: Long) = if (to <= from) 1f else ((t - from) / (to - from)).coerceIn(0f, 1f)
 
-    drawCarousel(lay, view, ui.tickFraction, measurer)
+    drawCarousel(lay, view, ui.tickFraction, measurer, skin)
 
     // dock: arriving containers are drawn in flight; dispatching ones lift away; walkers are not seated yet
     translate(left = shake(shakeT) * 8 * density) {
         for (s in 0 until Limits.DOCK_SLOTS) {
             val slot = view.slots[s]
             when {
-                slot == null -> drawDockSlot(lay, s, null, 0, measurer)
-                t < slot.dockedAt -> drawDockSlot(lay, s, null, 0, measurer)
+                slot == null -> dockSlot(lay, s, null, 0, measurer)
+                t < slot.dockedAt -> dockSlot(lay, s, null, 0, measurer)
                 slot.dispatchAt >= 0 && t >= slot.dispatchAt -> {
                     val p = progress(slot.dispatchAt, slot.freeAt)
                     val e = FastOutSlowInEasing.transform(p)
-                    drawDockSlot(
+                    dockSlot(
                         lay, s, SlotView(slot.containerId, slot.color, slot.seated, slot.capacity), slot.seated, measurer,
                         offset = Offset(e * lay.slotW * 0.35f, -e * lay.slotH * 0.9f),
                         alpha = 1f - FastOutLinearInEasing.transform(p),
                     )
                 }
-                else -> drawDockSlot(lay, s, SlotView(slot.containerId, slot.color, slot.seated, slot.capacity), slot.seated, measurer)
+                else -> dockSlot(lay, s, SlotView(slot.containerId, slot.color, slot.seated, slot.capacity), slot.seated, measurer)
             }
         }
     }
 
+    // board: resting containers come from the cached layer; the bumping and the hinted one are drawn live on top
     val bump = ui.bumps.firstOrNull { ui.nowMs < it.endMs }
+    val block = bump?.event?.let { Event.Blocked(it.containerId, it.stopRow, it.stopCol, it.blockerId) }
+    val blockT = bump?.progress(ui.nowMs) ?: 0f
     val arriving = view.slots.filterNotNull().filter { t < it.dockedAt }
-    drawBoardArea(
-        lay, level, view.onBoard, emptySet(),
-        bump?.event?.let { Event.Blocked(it.containerId, it.stopRow, it.stopCol, it.blockerId) },
-        bump?.progress(ui.nowMs) ?: 0f, ui.hintContainerId, pulse,
-    )
+    if (cacheBoard) {
+        val live = setOfNotNull(block?.containerId, ui.hintContainerId).filterTo(HashSet()) { it in view.onBoard }
+        if (cache.stale(lay, skin, level, view.onBoard, live)) {
+            // explicit Density: recording with the enclosing scope as its own density recurses in getDensity()
+            cache.layer.record(Density(density, fontScale), layoutDirection, size.toIntSize()) {
+                drawBoardArea(lay, level, view.onBoard, live, null, 0f, null, 0f, skin)
+            }
+        }
+        drawLayer(cache.layer)
+        if (live.isNotEmpty()) clipBoard(lay) {
+            for (id in live) drawBoardContainer(lay, level, id, block, blockT, ui.hintContainerId, pulse, skin)
+        }
+    } else {
+        drawBoardArea(lay, level, view.onBoard, emptySet(), block, blockT, ui.hintContainerId, pulse, skin)
+    }
 
     // elements walking from the gate into their container
     for (w in view.walkers) {
@@ -270,16 +321,45 @@ private fun DrawScope.drawRingField(lay: RingLayout, ui: RtUiState, pulse: Float
         val start = lay.seatPoint(w.fromPosition, view.gate)
         val end = lay.slotCenter(w.slot)
         val pos = Offset(start.x + (end.x - start.x) * p, start.y + (end.y - start.y) * p - sin(p * PI).toFloat() * lay.seatR * 2.2f)
-        drawElement(w.color, pos, lay.seatToken + (lay.dockedW * 0.34f - lay.seatToken) * p)
+        element(w.color, pos, lay.seatToken + (lay.dockedW * 0.34f - lay.seatToken) * p)
     }
     // containers driving from the board to their slot
     for (a in arriving) {
-        drawReleaseFlight(lay, level, a.containerId, view.slots.indexOf(a), progress(a.releasedAt, a.dockedAt))
+        drawReleaseFlight(lay, level, a.containerId, view.slots.indexOf(a), progress(a.releasedAt, a.dockedAt), skin)
     }
 }
 
-private fun DrawScope.drawCarousel(lay: RingLayout, view: RtView, fraction: Float, measurer: TextMeasurer) {
+private fun DrawScope.drawCarousel(lay: RingLayout, view: RtView, fraction: Float, measurer: TextMeasurer, skin: Skin) = with(skin) {
     val n = view.seats.size
+    val rot = view.rotation + view.rotationPerTick * fraction
+    val entry = lay.seatPoint(view.entry, view.gate)
+    val places = lay.queuePlaces(entry)
+    val front = places.first()
+    track(lay, view, rot, entry, front)
+
+    // queue line inside the oval
+    val queue = view.level.queue
+    val shown = minOf(places.size, view.queueRemaining)
+    for (k in 0 until shown) element(queue[view.queueIndex + k], places[k], lay.queueToken)
+    val more = view.queueRemaining - shown
+    if (more > 0) {
+        val m = measurer.measure("+$more", TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ink))
+        val last = places[shown - 1]
+        val x = if (last.y > front.y) last.x - lay.queuePitch / 2 - m.size.width - 2 * density else last.x + lay.queuePitch / 2 + 2 * density
+        drawText(m, topLeft = Offset(x, last.y - m.size.height / 2))
+    }
+
+    // seats, moving clockwise
+    for (i in 0 until n) {
+        val pos = (i + rot).let { it - floor(it / n) * n }
+        val c = lay.seatPoint(pos, view.gate)
+        seat(lay, c)
+        view.seats[i]?.let { element(it, c, lay.seatToken) }
+    }
+}
+
+/** The original grey track, gold boarding window and dashed entry link. */
+internal fun DrawScope.drawFlatTrack(lay: RingLayout, view: RtView, entry: Offset, front: Offset) {
     // track
     val trackColor = Color(0xFFD3DAE1)
     val path = Path().apply {
@@ -317,33 +397,10 @@ private fun DrawScope.drawCarousel(lay: RingLayout, view: RtView, fraction: Floa
     }
     drawPath(tri, Palette.gold)
 
-    // entry point + queue line inside the oval
-    val entry = lay.seatPoint(view.entry, view.gate)
-    val places = lay.queuePlaces(entry)
-    val front = places.first()
+    // entry point, linked to the front of the queue line
     drawLine(
         Palette.slotLine, front, entry, strokeWidth = 2 * density,
         pathEffect = PathEffect.dashPathEffect(floatArrayOf(4 * density, 3 * density)),
     )
     drawCircle(Palette.ink.copy(alpha = 0.5f), lay.seatR * 1.25f, entry, style = Stroke(width = 1.5f * density))
-    val queue = view.level.queue
-    val shown = minOf(places.size, view.queueRemaining)
-    for (k in 0 until shown) drawElement(queue[view.queueIndex + k], places[k], lay.queueToken)
-    val more = view.queueRemaining - shown
-    if (more > 0) {
-        val m = measurer.measure("+$more", TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Palette.ink))
-        val last = places[shown - 1]
-        val x = if (last.y > front.y) last.x - lay.queuePitch / 2 - m.size.width - 2 * density else last.x + lay.queuePitch / 2 + 2 * density
-        drawText(m, topLeft = Offset(x, last.y - m.size.height / 2))
-    }
-
-    // seats, moving clockwise
-    val rot = view.rotation + view.rotationPerTick * fraction
-    for (i in 0 until n) {
-        val pos = (i + rot).let { it - floor(it / n) * n }
-        val c = lay.seatPoint(pos, view.gate)
-        drawCircle(Color.White, lay.seatR, c)
-        drawCircle(Palette.slotLine, lay.seatR, c, style = Stroke(width = 1f * density))
-        view.seats[i]?.let { drawElement(it, c, lay.seatToken) }
-    }
 }

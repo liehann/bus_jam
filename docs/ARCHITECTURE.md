@@ -387,3 +387,13 @@ Gotchas:
   the same oval (board size unchanged) and draws them up to 35% larger on small rings. Tests run the engine,
   solver and carousel suites over N in {20, 28, 40}. Debug pack `ring-size-test.json` ("Ring size test",
   `levelgen/.../reverse/RingSizePack.kt`).
+- 2026-10-11 (UI, skin M1): **`Skin` layer** in `app/.../ui/skin/` (no `:core` change). `Skin` (board, container,
+  dockSlot, track, seat, element, colour names) provided by `LocalSkin` (default `FlatSkin`). `FlatSkin` wraps the
+  existing `drawContainer`/`drawDockSlot`/`drawElement` plus the extracted `drawFlatBoard`/`drawFlatTrack`; all
+  existing screenshots are byte-identical. `ui/skin/critter/`: `CritterCafeSkin`, `CritterPalette` (tweaked pastel
+  palette), `CritterArt` (reservation cards, `Species` per container id, animal-face badges, plates, plate stacks).
+  `RingField` draws through the skin and caches the board + resting containers in a `GraphicsLayer`
+  (re-recorded on layout/skin/level/on-board/live-set change; bumped and hinted containers draw live on top).
+  `drawBoardArea`/`drawReleaseFlight` take an optional `skin` (turn-based `PlayField` stays on `FlatSkin`).
+  Debug toggle "Critter Café skin": `SkinStore` (pref `critter_cafe_skin`), `AppViewModel.critterCafe`, home switch
+  `skin-switch`. Screenshot tests at Pixel 9 Pro size (`w427dp-h952dp-xxhdpi`): `p9p_flat_*`, `p9p_critter_*`.

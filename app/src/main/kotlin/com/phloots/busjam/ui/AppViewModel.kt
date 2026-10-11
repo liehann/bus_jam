@@ -12,6 +12,7 @@ import com.phloots.busjam.data.PackInfo
 import com.phloots.busjam.data.PackSelectionStore
 import com.phloots.busjam.data.Progress
 import com.phloots.busjam.data.ProgressStore
+import com.phloots.busjam.data.SkinStore
 import com.phloots.busjam.data.progressDataStore
 import com.phloots.jam.core.io.PackedLevel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -72,6 +73,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setRealTime(on: Boolean) {
         viewModelScope.launch { mode.setRealTime(on) }
+    }
+
+    private val skinStore = SkinStore(dataStore)
+
+    /** Critter Café skin: debug builds only (default off, toggle on the home screen). */
+    val critterCafe: StateFlow<Boolean?> = skinStore.critterCafe
+        .map { BuildConfig.DEBUG && (it ?: false) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setCritterCafe(on: Boolean) {
+        viewModelScope.launch { skinStore.setCritterCafe(on) }
     }
 
     fun selectPack(file: String) {

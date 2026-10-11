@@ -3,6 +3,9 @@ package com.phloots.busjam
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
+import com.phloots.busjam.ui.skin.critter.drawAnimalBadge
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.unit.dp
@@ -300,6 +303,113 @@ class ScreenshotTest {
         }
         rule.mainClock.advanceTimeBy(100)
         save("v2_rt_small_phone")
+    }
+
+    /** Pixel 9 Pro (1280 x 2856 px at 480 dpi = 427 x 952 dp): real-time game mid-level in each skin. */
+    private fun midLevelRealTime(): List<Pair<String, com.phloots.jam.core.realtime.RealTimeState>> {
+        val level = denseLevel(12, 14, seed = 7, colours = 10)
+        val rules = com.phloots.busjam.game.rt.CoreRealTimeRules()
+        var st = com.phloots.jam.core.realtime.RealTime.runUntilSettled(rules.initial(level)).first
+        fun run(n: Int) = repeat(n) { st = rules.tick(st).state }
+        val out = mutableListOf<Pair<String, com.phloots.jam.core.realtime.RealTimeState>>()
+        st = rules.tap(st, 0).state
+        run(30)
+        // two more containers of other colours, so three benches are busy
+        repeat(2) {
+            val next = level.containers.firstOrNull { v ->
+                v.id != 0 && com.phloots.jam.core.realtime.RealTime.isTappable(st, v.id) &&
+                    rules.view(st).slots.none { it?.color == v.color }
+            } ?: return@repeat
+            st = rules.tap(st, next.id).state
+            run(18)
+        }
+        out += "mid" to st
+        run(9)
+        out += "boarding" to st
+        return out
+    }
+
+    private fun showRealTime(skin: com.phloots.busjam.ui.skin.Skin, frames: List<Pair<String, com.phloots.jam.core.realtime.RealTimeState>>, prefix: String, hint: Int? = null) {
+        val rules = com.phloots.busjam.game.rt.CoreRealTimeRules()
+        var shown by androidx.compose.runtime.mutableStateOf(frames.first().second)
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            androidx.compose.runtime.CompositionLocalProvider(com.phloots.busjam.ui.skin.LocalSkin provides skin) {
+                com.phloots.busjam.ui.game.RealTimeGameScreen(
+                    ui = com.phloots.busjam.game.rt.RtUiState(12, false, true, rules.view(shown), nowMs = 0, tickFraction = 0.5f, canUndo = true, hintContainerId = hint),
+                    onFrame = {}, onHostPause = {}, onTogglePause = {}, onTap = {}, onUndo = {}, onRestart = {}, onHint = {},
+                    onNext = {}, onLevels = {}, onHome = {},
+                )
+            }
+        }
+        for ((name, state) in frames) {
+            shown = state
+            rule.mainClock.advanceTimeBy(100)
+            save("${prefix}_$name")
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w427dp-h952dp-xxhdpi")
+    fun pixel9ProFlat() = showRealTime(com.phloots.busjam.ui.skin.FlatSkin, midLevelRealTime(), "p9p_flat")
+
+    @Test
+    @Config(qualifiers = "w427dp-h952dp-xxhdpi")
+    fun pixel9ProCritterCafe() = showRealTime(com.phloots.busjam.ui.skin.critter.CritterCafeSkin, midLevelRealTime(), "p9p_critter")
+
+    /** Hinted card drawn live on top of the cached board layer. */
+    @Test
+    @Config(qualifiers = "w427dp-h952dp-xxhdpi")
+    fun pixel9ProCritterCafeHint() {
+        val frames = midLevelRealTime().take(1)
+        val st = frames.first().second
+        val hint = st.let { s -> (0 until 200).firstOrNull { com.phloots.jam.core.realtime.RealTime.isTappable(s, it) } }
+        showRealTime(com.phloots.busjam.ui.skin.critter.CritterCafeSkin, frames, "p9p_critter_hint", hint)
+    }
+
+    /** Every colour as S/M/L cards in all 4 directions, each species, plates, at board scale (Pixel 9 Pro). */
+    @Test
+    @Config(qualifiers = "w427dp-h952dp-xxhdpi")
+    fun critterCafeSheet() {
+        rule.setContent {
+            androidx.compose.foundation.Canvas(
+                Modifier.fillMaxSize().background(com.phloots.busjam.ui.skin.critter.CritterPalette.boardWood),
+            ) {
+                val cell = 35.5f * density // board cell on a Pixel 9 Pro, 12 wide
+                val w = cell * 0.82f
+                val skin = com.phloots.busjam.ui.skin.critter.CritterCafeSkin
+                val sizes = listOf(1, 2, 3)
+                val dirs = listOf(0f, 90f, 180f, 270f)
+                for (color in 0 until 10) {
+                    val y = cell * (0.9f + color * 2.2f)
+                    var x = cell * 0.6f
+                    // S in four directions
+                    for ((k, d) in dirs.withIndex()) {
+                        with(skin) { container(androidx.compose.ui.geometry.Offset(x, y), w, cell * 0.84f, d, color, id = color * 7 + k) }
+                        x += cell
+                    }
+                    // M horizontal left/right, L horizontal right
+                    with(skin) { container(androidx.compose.ui.geometry.Offset(x + cell * 0.5f, y), w, cell * 1.84f, 90f, color, id = color * 7 + 4) }
+                    x += cell * 2
+                    with(skin) { container(androidx.compose.ui.geometry.Offset(x + cell * 1f, y), w, cell * 2.84f, 270f, color, id = color * 7 + 5) }
+                    x += cell * 3.1f
+                    // M vertical
+                    with(skin) { container(androidx.compose.ui.geometry.Offset(x, y + cell * 0.5f), w, cell * 1.84f, if (color % 2 == 0) 0f else 180f, color, id = color * 7 + 6) }
+                    x += cell * 0.9f
+                    // plates at ring and queue sizes
+                    with(skin) {
+                        element(color, androidx.compose.ui.geometry.Offset(x, y), 17.5f * density)
+                        element(color, androidx.compose.ui.geometry.Offset(x + cell * 0.7f, y), 14f * density)
+                        element(color, androidx.compose.ui.geometry.Offset(x + cell * 0.25f, y + cell * 0.95f), 26f * density)
+                    }
+                }
+                // the four species large
+                for ((i, sp) in com.phloots.busjam.ui.skin.critter.Species.entries.withIndex()) {
+                    drawAnimalBadge(androidx.compose.ui.geometry.Offset(cell * (1.2f + i * 2.6f), cell * 23.9f), cell * 0.9f, sp)
+                }
+            }
+        }
+        save("p9p_critter_sheet")
     }
 
     @Test

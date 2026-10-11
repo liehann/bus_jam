@@ -21,6 +21,6 @@
     "night_sky": "a dark blue night sky above the rooftops, only along the top and outer edges",
     "light_sources": "strings of red paper lanterns along the edges, a glowing stall sign with a simple bowl icon and no text, and small table lanterns on the counter",
     "effects": "soft curls of steam rising from the stall, lantern strings framing the screen edges, and a few warm windows glowing on the rooftops",
-    "extra_avoid": "readable signs or shop text, steam covering the plates or tickets, red light on the board"
+    "extra_avoid": "readable signs or shop text, steam covering the plates or reservation cards, red light on the board"
   }
 }

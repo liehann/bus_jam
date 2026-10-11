@@ -15,22 +15,22 @@ TEMPLATE = bp.TEMPLATE.read_text(encoding="utf-8")
 
 # Invariant text that must reach every prompt unchanged.
 TICKET_RULES = [
-    "Ticket sizes, in roughly equal numbers: about 12 SINGLE-cell tickets, about 12 DOUBLE-cell tickets and about 10 TRIPLE-cell tickets.",
-    "A single-cell ticket is a small square exactly one grid cell in size, with the animal icon in its centre and a small arrow tucked against one of its edges.",
-    "Double- and triple-cell tickets are rectangles exactly 2 or 3 grid cells long, lying perfectly horizontal or perfectly vertical.",
-    "Every ticket has exactly one bold white chevron arrow at its front end, pointing towards a board edge (up, down, left or right). Never two arrows on one ticket.",
-    "A thin gap separates every ticket from all of its neighbours, so two tickets of the same colour next to each other are always clearly separate.",
-    "No writing, numbers or text on any ticket.",
+    "Card sizes, in roughly equal numbers: about 12 SINGLE-cell reservation cards, about 12 DOUBLE-cell reservation cards and about 10 TRIPLE-cell reservation cards.",
+    "A single-cell reservation card is a small square exactly one grid cell in size, with the animal icon in its centre and a small arrow tucked against one of its edges.",
+    "Double- and triple-cell reservation cards are rectangles exactly 2 or 3 grid cells long, lying perfectly horizontal or perfectly vertical.",
+    "Every reservation card has exactly one bold white chevron arrow at its front end, pointing towards a board edge (up, down, left or right). Never two arrows on one reservation card.",
+    "A thin gap separates every reservation card from all of its neighbours, so two reservation cards of the same colour next to each other are always clearly separate.",
+    "No writing, numbers or text on any reservation card.",
 ]
 TEN_COLOURS = "(pink, mint green, sky blue, butter yellow, lavender, tangerine, cherry red, blueberry blue, plum purple, charcoal grey)"
-TEXT_ALLOWLIST = 'text other than "Level 12", the bench numbers and "15/20"'
+TEXT_ALLOWLIST = 'text other than "Level 12" and the bench numbers'
 CORE_AVOID = (
     "Avoid: realistic style, 3D render, perspective camera, dark conveyor belts, dark or busy backgrounds behind the "
-    "tickets, animals on the board, detailed or coloured animal drawings on tickets, more than one icon per ticket, "
-    "two arrows on one ticket, no single-cell tickets, text or numbers on tickets, tickets touching each other, a "
-    "ticket without an arrow, crumpled or curled tickets, diagonal tickets, overlapping tickets, a loop with a gap or "
+    "reservation cards, animals on the board, detailed or coloured animal drawings on reservation cards, more than one icon per reservation card, "
+    "two arrows on one reservation card, no single-cell reservation cards, text or numbers on reservation cards, reservation cards touching each other, a "
+    "reservation card without an arrow, crumpled or curled reservation cards, diagonal reservation cards, overlapping reservation cards, a loop with a gap or "
     "open ends, an incoming belt that is short or hidden, more than 4 benches, plates without clear coloured rims, "
-    "text labels under buttons, extra buttons, " + TEXT_ALLOWLIST
+    "text labels under buttons, extra buttons, a bottom button bar, " + TEXT_ALLOWLIST
 )
 
 

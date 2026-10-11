@@ -18,6 +18,6 @@
     "obstacles": "a small folded umbrella, a soy sauce bottle and a small teacup",
     "mood": "snug, calm and cozy, sheltered from the rain, with everyone happily eating",
     "lighting": "Soft overcast light with warm glow from the shop",
-    "extra_avoid": "rain or raindrops over the belts, the counter or the board, wet reflections on the tickets, dark grey backgrounds behind the tickets, readable shop signs"
+    "extra_avoid": "rain or raindrops over the belts, the counter or the board, wet reflections on the reservation cards, dark grey backgrounds behind the reservation cards, readable shop signs"
   }
 }

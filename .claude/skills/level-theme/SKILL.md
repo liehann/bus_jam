@@ -1,11 +1,11 @@
 ---
 name: level-theme
-description: Creates or updates a themed Kitten Jumble level-art image prompt from a theme name or short description (e.g. "/level-theme ski lodge"). Renders art/themes/<id>.json through the shared level-mock template and returns a ready-to-paste prompt.
+description: Creates or updates a themed Critter Café level-art image prompt from a theme name or short description (e.g. "/level-theme ski lodge"). Renders art/themes/<id>.json through the shared level-mock template and returns a ready-to-paste prompt.
 ---
 
 # level-theme
 
-Every Kitten Jumble theme (sushi bar, spa, luau, brunch, ...) shares one identical game layout. A theme only swaps
+Every Critter Café theme (sushi bar, spa, luau, brunch, ...) shares one identical game layout. A theme only swaps
 the setting, food and decorations. The layout and rules live in the shared template; a theme is a small JSON file of
 slot values.
 
@@ -66,7 +66,7 @@ When invoked with a theme name or idea:
 ## Rules for drafting slots
 
 - The board surface must be pale and low-contrast (light wood, linen, tatami, woven mat). Never grainy or patterned
-  textures such as sand, gravel or busy prints, because the pastel tickets must stand out.
+  textures such as sand, gravel or busy prints, because the pastel reservation cards must stand out.
 - The background is pale and neutral, and theme colour goes in the frame decorations around the edges, never behind
   the board.
 - The loop interior is one calm element (water, a garden bed, a fire pit) and must not compete with the plates.

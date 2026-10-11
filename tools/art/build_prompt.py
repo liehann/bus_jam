@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render Kitten Jumble level-mock image prompts from theme files.
+"""Render Critter Café level-mock image prompts from theme files.
 
     python3 tools/art/build_prompt.py luau            # render one theme, print it
     python3 tools/art/build_prompt.py sushi spa       # several
@@ -45,8 +45,8 @@ NIGHT_ANCHOR = "Layout from top to bottom:"
 # Prepended to extra_avoid for night themes.
 NIGHT_AVOID = (
     "a dark or night-tinted board, darkness or shadow over the belts, the loop, the counter or the board, "
-    "plate rims, tickets or animals tinted by coloured light, light sources or night effects covering any plate, "
-    "ticket or bench"
+    "plate rims, reservation cards or animals tinted by coloured light, light sources or night effects covering any plate, "
+    "reservation card or bench"
 )
 
 

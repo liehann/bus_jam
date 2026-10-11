@@ -133,3 +133,26 @@ Gotchas:
 - 2026-10-10 (architect): initial freeze. Deviations from DESIGN.md: compileSdk/targetSdk 37 (latest stable,
   required by current AndroidX). Additions: `Limits`, `Cell`, `Dir.dRow/dCol/opposite`, `Vehicle.tail()`,
   `Level.inBounds/colors/validate`, `GameState.isOnBoard/frontPassenger/queueRemaining/slotsUsed`, `IgnoreReason`.
+- 2026-10-10 (generator): additive only, all in `core/.../generator/`. `GenParams` gained defaulted fields
+  (`maxIntendedSlots`, `interleave`, `decoyFraction`, `maxTrapRatio`, `rejectSizeDominated`, `minVehicles`,
+  `analyzeMaxStates`, `skipAhead`, `crunches`, `crunchLength`) — queue/trap-shaping knobs and band filters.
+  `Generator` gained `generateScored(params, config): GeneratedLevel?` (level + `FullAnalysis` + `DifficultyReport`,
+  used by `:levelgen`), `construct(params): Level?` and `constructWithOrder(params): Pair<Level, List<Int>>?`
+  (solver-free construction + intended extraction order, for tests). `generate()` is unchanged in signature.
+  Internal `LineSim` (independent replay of an intended line). Campaign test: `core/src/test/.../campaign/CampaignPackTest.kt`.
+  Note: `:core:test` does not declare `levels.json` as an input, so after regenerating the pack run
+  `./gradlew :core:test --rerun` (or add `inputs.file("../app/src/main/assets/levels.json")` to core's test task).
+- 2026-10-10 (gamestate): additive only. `FullAnalysis` gained a trailing defaulted field `capped: Boolean = false`;
+  `Solver.analyze(level, maxStates: Int)` overload plus `Solver.DEFAULT_MAX_STATES` (2,000,000; the 1-arg
+  `analyze(level)` uses it). On exceeding the cap analyze returns `solvable = false, capped = true,
+  reachableStates = maxStates` (other metrics 0) so callers can reject. `Engine.computeStatus(state)` is public
+  (status as a pure function of the fields). Internal: `engine/LevelData.kt` (per-level precompute cached per thread
+  by `Level` identity, packed state, bitmask ray tests), `solver/LongPairMap.kt`.
+  Metric definitions pinned down where DESIGN.md is loose (KDoc on `FullAnalysis`): path states = states before
+  each move of the min-pressure line (final WON state excluded); `peakSlots` counts slots right after each exit,
+  before boarding (so 1..4); min-pressure ties broken by lowest vehicle id; trap depth = longest play *after* the
+  mistake until DEADLOCK/STUCK (0 = the mistake ends the game); `reachableStates` = memoized states (lost states
+  proven by the front-colour lookahead are scored in closed form and not counted).
+  Memo key deviation: DESIGN.md's sorted (colour, seatsLeft) multiset is not lossless when two untouched
+  same-colour vehicles of different types are both parked (arrival order decides which fills first), so the key
+  sorts slots by (colour, arrival) and keeps (colour, seatsLeft) in that order. Still compact: two Longs.

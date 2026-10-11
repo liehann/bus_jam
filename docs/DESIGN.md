@@ -57,8 +57,9 @@ Engine.apply(state, move): Transition(state, events)   // pure
 ```
 Row 0 is the top. UP = row-1.
 
-Solver key: `onBoard` + sorted (colour, seatsLeft) of slots + `queueIndex`. Sorting is lossless because per colour
-only the earliest-arrived vehicle can be partly filled.
+Solver key: `onBoard` + slots sorted by (colour, arrival order) with seatsLeft + `queueIndex`, packed into two Longs.
+(Sorting by (colour, seatsLeft) alone is lossy: two untouched same-colour vehicles of different types can't be told
+apart by arrival.)
 
 ## Solver
 

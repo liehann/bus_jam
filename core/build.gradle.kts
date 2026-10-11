@@ -16,4 +16,6 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // CampaignPackTest reads the shipped pack; re-run when it is regenerated.
+    inputs.file("../app/src/main/assets/levels.json")
 }

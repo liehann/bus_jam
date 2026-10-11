@@ -120,3 +120,10 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - For us: engine unchanged (knows colours); UI hides colour until the container's exit lane is clear; solver checks
   solvability with full information; bots/difficulty scoring must be information-limited (can't see hidden colours);
   hints must not leak hidden colours. Generator can hide stall dummies or a chain link so the trap reveals late.
+
+### Level 11 — new world (2026-10-11)
+- New theme (cherry blossom: pink ground, stone lantern, bamboo fountain) — worlds appear to change every 10 levels.
+- Hidden colours again, now with 7 visible colours (pink, yellow, purple, green, blue, cyan, brown): ~13 hidden
+  vehicles in a radial ring inside an outer ring of coloured ones; ~40 vehicles; mirror-symmetric radial layout with
+  a short central spine (brown → blue, facing up) and an upright row at the bottom.
+- Queue: pink-heavy front, then cyan, green, purple, blue.

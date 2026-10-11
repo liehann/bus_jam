@@ -160,3 +160,11 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - Variant of principle 11: the squatter's own containers are BIG and buried; relief comes from digging with other
   colours rather than small same-colour valves.
 - Readability note: their blue vs cyan are close in hue.
+
+### Level 15 — first "super hard" (2026-10-11)
+- ~70 vehicles packed into a diamond silhouette at ~100% density — almost no empty space; only the outer rim is free.
+- A 4-direction grid rotated ~30° (two diagonal axes), not free angles — same rules, harder to trace visually.
+- 9 colours (orange, yellow, green, red, blue, pink, brown, purple, light blue); very mixed queue of short blocks, no
+  dominant colour, no long runs. No hidden vehicles or special mechanics.
+- Super-hard recipe: max density + many colours + short mixed queue + large board.
+- For us: a "dense pack" recipe — 12×14 at ~95% density, 9 colours, mixed queue, ~70 containers (engine supports 128).

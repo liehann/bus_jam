@@ -248,3 +248,15 @@ Gotchas:
     (memoised; a relaxed loss proves a real loss), last-slot non-matching skip, free-leaf symmetry. `LongPairMap`
     was replaced by `StateMap`. `LevelData.toPacked` now writes (a, b) into an out array.
 
+- 2026-10-10 (generator): **v2 generator / levelgen / pack.** `GenParams` reworked for v2 (generator-owned, defaulted
+  fields): removed the v1 queue knobs (`maxIntendedSlots`, `interleave`, `skipAhead`, `crunches`, `crunchLength`);
+  added `maxContainers`, `blockBias`, `runs`, `runLength`, `runMaxBlockers`, `buriedPreference`, `chainLength`,
+  `hardLinkFraction`, `window`, `rejectBots`, `bounded`, `maxUnknownChildren`, `minRolloutLoss`; `maxSolveNodes` now
+  feeds `Solver.solve(state, maxNodes)`. `GeneratedLevel` gained `solveStats` and `rollout`. Construction: dense
+  inside-out placement, base topological order, 1–2 long single-colour runs whose targets are dug out through blocking
+  chains (hard links = late colours that wait in the dock), phase-separated colours, keyed queue; `LineSim` follows v2
+  rules (40 staging, left-to-right dock priority). New `core/.../generator/Bots.kt` (`Bot` ONE_OF_EACH / GREEDY_MATCH /
+  FIRST_FREE, `Bot.winners(level)`) and `core/.../scoring/RolloutDifficulty.kt` (`lossRate(level, config)`,
+  `evaluate(level, config)`; seeded from level content, settings in DifficultyConfig's rollout block; its value is
+  passed to `Scorer.score(..., rolloutLossRate)`). levelgen selects on solver node counts (no wall-clock),
+  `--preview <n>` writes a preview pack, curve CSV gained rollout/chain/deadWeight. Pack: version 2.

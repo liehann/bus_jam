@@ -113,6 +113,7 @@ class CampaignPackTest {
             assertEquals(emptyList(), Bot.winners(l), "level ${l.id} is won by a naive bot")
             val loss = RolloutDifficulty.lossRate(l, config)
             assertTrue(loss >= config.floorMinRolloutLoss, "level ${l.id}: rollout loss $loss")
+            assertTrue(!Scorer.isTooEasy(l, assertNotNull(p.metrics), config), "level ${l.id}: Scorer.isTooEasy")
         }
     }
 

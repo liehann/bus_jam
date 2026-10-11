@@ -149,3 +149,14 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
   yellow buses; inner arc of downward-facing vehicles above a bottom row.
 - 8 colours (blue, purple, pink, green, cyan, orange, brown, yellow); ~45 vehicles; queue in big blocks (cyan, pink,
   purple, blue, orange).
+
+### Level 14 mid-level — squatter in action (2026-10-11, user-highlighted)
+- Blue elements fill a large share of the loop (~20+ spots near the gate) → usable waiting area roughly halved.
+- Blue vehicles: two big buses buried in the lower arc (one inner facing down, one in the bottom row facing left),
+  boxed in by cyan/yellow/pink. Other colours (cyan, green, pink, yellow) are released to dig them out; cyan van
+  docked with 4 remaining.
+- Tension: each digger needs its colour to come round through the few free spots; digging slowly overflows; a digger
+  whose colour isn't coming parks as dead weight.
+- Variant of principle 11: the squatter's own containers are BIG and buried; relief comes from digging with other
+  colours rather than small same-colour valves.
+- Readability note: their blue vs cyan are close in hue.

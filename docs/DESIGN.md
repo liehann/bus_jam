@@ -146,6 +146,8 @@ colour does not matter, so staging is a count vector.
     area for that level (e.g. 25 squatters → ~15 usable spots). Relief valves: a few small (S/M) containers of that
     colour, moderately buried, which can be dug out at a cost to free some spots "just enough to get through".
     Decision: when to spend moves/dock slots on a valve. Effective staging size becomes a per-level difficulty dial.
+    Variant seen in the reference game (L14): no small valves — the squatter's containers are big and buried and the
+    relief is digging them out with other colours whose elements must squeeze through the few free spots.
 5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 

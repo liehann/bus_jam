@@ -149,7 +149,7 @@ class RingLayout(
     }
 
     companion object {
-        const val QUEUE_MAX = 20
+        const val QUEUE_MAX = 10
 
         /** Regular layout, or the compact one when that keeps the board near [PlayLayout.TARGET_CELL_DP]. */
         fun fit(width: Float, height: Float, levelWidth: Int, levelHeight: Int, density: Density, seats: Int): RingLayout {

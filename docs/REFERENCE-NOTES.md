@@ -34,3 +34,12 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
   element.
 - Mood emoji on passengers (sleepy).
 - Idea for us (later): VIP as a 5th one-off dock slot, either as a booster or as a per-level planned mechanic.
+
+### Level 5 (2026-10-11)
+- Angled vehicles: most at ~45°, a straight vertical spine through the middle — effectively 8+ directions.
+- Radial "sunburst" layout with 180° rotational symmetry (not grid-based); two small cars at the centre.
+- Blocking = whether a diagonal exit path crosses another vehicle's body — harder to read, difficulty without more
+  vehicles.
+- 5 colours, ~32 vehicles; queue: yellow-heavy front, pink/orange middle, purple late.
+- For us (later): cheap step = 8 grid directions (diagonal lanes, same cell-based blocking); full step =
+  continuous geometry (swept-rectangle exit paths, free placement). Engine dock/staging/solver logic unchanged.

@@ -80,3 +80,13 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - Back to 4 directions, axis-aligned (slight perspective only); dense asymmetric cluster, ~30 vehicles.
 - 7 colours (yellow, cyan, orange, blue, red, pink, green); queue more mixed, shorter blocks, a large red block.
 - New booster "Arrange" (count 1) — likely reorders/sorts the waiting passengers. Boosters so far: VIP, Arrange.
+
+### Level 9 — first level labelled "hard" by the game (2026-10-11)
+- 9 colours (cyan, orange, red, green, blue, pink, brown, yellow, purple), up from 7.
+- ~40 vehicles, mostly long buses — big capacities sit longer in the dock → pressure from the vehicle mix.
+- Queue: very mixed, short blocks of many colours, no long single-colour runs → docked buses fill gradually.
+- Dense central core: three upright columns of 3 stacked vehicles all facing up; horizontal clusters above on both
+  sides; a U-shaped wall of horizontal buses at the bottom sealing a downward-facing bus in the centre.
+- Mirror symmetry; angled cars in side pockets.
+- Calibration point: "hard" here = more colours + short mixed queue blocks + mostly large vehicles + dense core —
+  not special mechanics.

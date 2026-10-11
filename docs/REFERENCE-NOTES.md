@@ -168,3 +168,6 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
   dominant colour, no long runs. No hidden vehicles or special mechanics.
 - Super-hard recipe: max density + many colours + short mixed queue + large board.
 - For us: a "dense pack" recipe — 12×14 at ~95% density, 9 colours, mixed queue, ~70 containers (engine supports 128).
+- The game announces difficulty before the level ("Hard" at L9, "Super hard" at L15) — sets expectations, makes
+  losses feel fair. For us: "Hard"/"Super hard" badge on level tiles + a pre-level banner, label derived from the
+  difficulty score (bosses / top percentile), so it's consistent across the campaign.

@@ -361,3 +361,13 @@ Gotchas:
   now the window centre, plus `gateWidth`; `RtWalkerView.fromPosition`; `RingField` draws the window as a gold band.
   Tests: the convergence test settles the fill first (and a third of levels tap during the fill), checks fill timing,
   plus window tests (staggered front-first wave, space limits, leftmost container first).
+- 2026-10-11 (level designer): **level quality + Hybrid preview 4** (docs/LEVEL-QUALITY.md, DESIGN.md principles
+  16-17). Additive in `core/.../generator/reverse/`: `Quality.kt` (`QState`: b, w, per-loser horizons, free docks,
+  `bits`/`bitsBeyond(k)`; `QualityMetrics`: bits, hidden (h >= 2), deep (h > 3), thirds, chain lead / blind share,
+  climax slack; `Quality.measure`, `blockers`, `randomSurvival`), `HybridFitnessConfig.kt` (every fitness weight and
+  quality floor; fitness/fitness2/fitness3 take it as a defaulted parameter with the old constants as defaults).
+  `HybridGenerator`: `axes`, `blindShare`, `qualityBonus`, `fitness4` (one line or averaged over lines), `forksOf`;
+  `evaluate(..., quality = false, fc = DEFAULT)` and `HybridEval.quality/qualitySolver/fitness4` (defaulted).
+  `levelgen`: `QualityReport.kt` (labelled levels + packs -> TSV, optional per-state dump), `HybridPreview4.kt`,
+  `Calibrate.kt` prints fit4. Debug packs: Hybrid preview 2 moved to `levelgen/calibration/`; switcher = Campaign,
+  Motif preview 2, Hybrid preview 3, Hybrid preview 4.

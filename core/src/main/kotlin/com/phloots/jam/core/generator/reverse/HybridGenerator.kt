@@ -47,6 +47,12 @@ data class HybridEval(
     val scarce: ScarceMetrics? = null,
     /** Preview-3 fitness ([HybridGenerator.fitness3] on top of [fitness2]). */
     val fitness3: Double = fitness2,
+    /** Quality metrics of the intended line (docs/LEVEL-QUALITY.md), when evaluated with quality. */
+    val quality: QualityMetrics? = null,
+    /** Quality metrics of the solver's winning line (a second skilled line; the playtest labels were read on it). */
+    val qualitySolver: QualityMetrics? = null,
+    /** Preview-4 fitness ([HybridGenerator.fitness4] on top of [fitness3], averaged over both lines). */
+    val fitness4: Double = fitness3,
 )
 
 object HybridGenerator {
@@ -55,16 +61,18 @@ object HybridGenerator {
 
     fun wide(forks: List<Fork>): Int = forks.count { it.b >= 6 && it.w <= 2 && it.h >= 2 }
 
-    fun fitness(mass: Double, wide: Int, botEarly: Double) = mass + 0.5 * wide + 2.0 * botEarly
+    fun fitness(mass: Double, wide: Int, botEarly: Double, c: HybridFitnessConfig = HybridFitnessConfig.DEFAULT) =
+        mass + c.wWide * wide + c.wBotEarly * botEarly
 
     /**
      * Preview-2 fitness: [fitness] plus the principle-12 mismatch windows (longest window, number of windows), chained
-     * cascades and critical keystones (see [LevelMetrics]).
+     * cascades and critical keystones (see [LevelMetrics]). Weights: [HybridFitnessConfig].
      */
-    fun fitness2(mass: Double, wide: Int, botEarly: Double, m: LevelMetrics, meanB: Double = 0.0) = fitness(mass, wide, botEarly) +
-        0.3 * minOf(m.longestWindow, 15) + 0.2 * minOf(m.windows, 8) + 0.5 * minOf(m.chainCascades, 4) +
-        0.5 * minOf(m.criticalKeystones, 3) + 0.6 * minOf(m.steals, 10) + 0.3 * maxOf(0.0, meanB - 8.0) +
-        10.0 * maxOf(0.0, m.density - 0.6)
+    fun fitness2(mass: Double, wide: Int, botEarly: Double, m: LevelMetrics, meanB: Double = 0.0, c: HybridFitnessConfig = HybridFitnessConfig.DEFAULT) =
+        fitness(mass, wide, botEarly, c) +
+            c.wLongestWindow * minOf(m.longestWindow, c.capLongestWindow) + c.wWindows * minOf(m.windows, c.capWindows) +
+            c.wChainCascades * minOf(m.chainCascades, c.capChainCascades) + c.wCriticalKeystones * minOf(m.criticalKeystones, c.capCriticalKeystones) +
+            c.wSteals * minOf(m.steals, c.capSteals) + c.wMeanB * maxOf(0.0, meanB - c.meanBFrom) + c.wDensity * maxOf(0.0, m.density - c.densityFrom)
 
     /** Tight forks (w <= 2, b >= 3) in the first third of the line with a short horizon (2-4): stakes seen at once. */
     fun earlyForks(forks: List<Fork>, moves: Int): List<Fork> = forks.filter { it.step < moves / 3 && it.w <= 2 && it.b >= 3 && it.h in 2..4 }
@@ -79,12 +87,56 @@ object HybridGenerator {
      * spends of a scarce colour leading into a long chain), minus a long [JuggleMetrics.freeOpener] (pure free wins in
      * a row from the start: "find anything that works").
      */
-    fun fitness3(fit2: Double, jm: JuggleMetrics, forks: List<Fork>, moves: Int, scarce: ScarceMetrics? = null, freeOpener: Int = 0): Double {
+    fun fitness3(fit2: Double, jm: JuggleMetrics, forks: List<Fork>, moves: Int, scarce: ScarceMetrics? = null, freeOpener: Int = 0,
+                 c: HybridFitnessConfig = HybridFitnessConfig.DEFAULT): Double {
         val start = if (jm.start < 0) moves / 3 else jm.start
-        return fit2 + 4.0 * jm.firstThird + 3.0 * jm.middle - 0.5 * maxOf(0, start - 3).coerceAtMost(12) -
-            0.25 * maxOf(0, jm.longestFree - 3).coerceAtMost(30) - 0.8 * maxOf(0.0, jm.earlyFreeWins - 2.0) +
-            1.0 * minOf(earlyForks(forks, moves).size, 4) + 0.5 * minOf(lateDeepForks(forks, moves).size, 4) + 0.8 * (scarce?.score ?: 0.0) -
-            0.4 * maxOf(0, freeOpener - 3).coerceAtMost(25)
+        return fit2 + c.wJuggleFirst * jm.firstThird + c.wJuggleMiddle * jm.middle -
+            c.wLateStart * maxOf(0, start - c.lateStartFrom).coerceAtMost(c.capLateStart) -
+            c.wFreeRun * maxOf(0, jm.longestFree - c.freeRunFrom).coerceAtMost(c.capFreeRun) -
+            c.wEarlyFreeWins * maxOf(0.0, jm.earlyFreeWins - c.earlyFreeWinsFrom) +
+            c.wEarlyForks * minOf(earlyForks(forks, moves).size, c.capEarlyForks) +
+            c.wLateDeepForks * minOf(lateDeepForks(forks, moves).size, c.capLateDeepForks) + c.wScarce * (scarce?.score ?: 0.0) -
+            c.wFreeOpener * maxOf(0, freeOpener - c.freeOpenerFrom).coerceAtMost(c.capFreeOpener)
+    }
+
+    /** Quality axes of docs/LEVEL-QUALITY.md, each 0..1: information, opening share, readability, climax slack. */
+    data class QualityAxes(val info: Double, val opening: Double, val readable: Double, val slack: Double) {
+        fun summary() = "info %.2f opening %.2f readable %.2f slack %.2f".format(info, opening, readable, slack)
+    }
+
+    fun axes(q: QualityMetrics, c: HybridFitnessConfig = HybridFitnessConfig.DEFAULT): QualityAxes {
+        val info = minOf(1.0, q.hidden / c.hiddenCap)
+        val open = if (q.hidden <= 0.0) 0.0 else minOf(1.0, q.hiddenThirds[0] / q.hidden / c.openShareFull)
+        val hasChain = q.chainAt > 0 && q.chainLen >= 4
+        val readable = if (!hasChain) 0.0 else
+            0.5 * minOf(1.0, maxOf(0, q.chainLead).toDouble() / c.leadFull) + 0.5 * (1.0 - blindShare(q))
+        val slack = if (!hasChain) 0.0 else ((c.slackLoose - q.climaxSlack) / (c.slackLoose - c.slackTight)).coerceIn(0.0, 1.0)
+        return QualityAxes(info, open, readable, slack)
+    }
+
+    /** Share of the deep bits (h > 3) decided before the chain was on show. */
+    fun blindShare(q: QualityMetrics): Double = if (q.deep <= 0.0) 0.0 else minOf(1.0, q.blindDeep / q.deep)
+
+    /**
+     * Preview-4 fitness: [fit3] plus the weighted quality axes ([axes]). Information is the base; the opening share,
+     * readability and climax slack describe how that information is laid out, so they are scaled by it (a level
+     * with few decisions gains nothing from where they sit).
+     */
+    fun fitness4(fit3: Double, q: QualityMetrics, c: HybridFitnessConfig = HybridFitnessConfig.DEFAULT): Double = fit3 + qualityBonus(q, c)
+
+    /** The quality part of [fitness4] for one line. */
+    fun qualityBonus(q: QualityMetrics, c: HybridFitnessConfig = HybridFitnessConfig.DEFAULT): Double {
+        val a = axes(q, c)
+        return c.wHidden * a.info + a.info * (c.wOpening * a.opening + c.wReadable * a.readable + c.wSlack * a.slack)
+    }
+
+    /** [fitness4] averaged over several lines (intended + solver): no single route decides the quality. */
+    fun fitness4(fit3: Double, qs: List<QualityMetrics>, c: HybridFitnessConfig = HybridFitnessConfig.DEFAULT): Double =
+        fit3 + qs.map { qualityBonus(it, c) }.average()
+
+    /** Forks (principle 8) read off quality states: h = the deepest loser, capped at [cap]. */
+    fun forksOf(q: QualityMetrics, cap: Int = 8): List<Fork> = q.states.filter { it.b >= 2 }.map { s ->
+        Fork(s.step, s.b, s.w, if (s.loserH.isEmpty()) 0 else minOf(s.loserH.max(), cap))
     }
 
     private val LOST_H = Regex("""lost h=(>?\d+)""")
@@ -124,22 +176,31 @@ object HybridGenerator {
         return bots to early
     }
 
-    fun evaluate(sl: StallLevel, config: DifficultyConfig = DifficultyConfig.DEFAULT, withChecks: Boolean = true, juggleN: Int = 10): HybridEval {
+    /**
+     * Full evaluation of [sl] on its intended line. With [quality], the decision states are measured once by
+     * [Quality.measure] (per-loser horizons) and the forks are read off them; [HybridEval.fitness4] is then set.
+     */
+    fun evaluate(sl: StallLevel, config: DifficultyConfig = DifficultyConfig.DEFAULT, withChecks: Boolean = true, juggleN: Int = 10,
+                 quality: Boolean = false, fc: HybridFitnessConfig = HybridFitnessConfig.DEFAULT): HybridEval {
         val lv = sl.level
         val (bots, early) = quick(lv, sl.line) ?: error("hybrid line does not replay (seed ${sl.seed})")
-        val solvable = Solver.solve(lv, 2_000_000)?.solvable
-        val f = Forks.measure(lv, sl.line, config)
+        val solved = Solver.solve(lv, 2_000_000)
+        val solvable = solved?.solvable
+        val q = if (quality) Quality.measure(lv, sl.line, config.forkChildBudget) else null
+        val qs = if (quality && solvable == true) Quality.measure(lv, solved!!.solution, config.forkChildBudget) else null
+        val f = if (q != null) Forks.summarise(forksOf(q, config.forkHorizonCap), config) else Forks.measure(lv, sl.line, config)
         val p = Pressure.measure(lv, sl.line, config)
         val m = mass(f.forks)
         val w = wide(f.forks)
         val ch = if (withChecks) checks(sl) else emptyList()
         val lm = LevelMetrics.measure(lv, sl.line)
         val meanB = f.forks.map { it.b }.average()
-        val f2 = fitness2(m, w, early, lm, meanB) + verified(ch)
+        val f2 = fitness2(m, w, early, lm, meanB, fc) + verified(ch)
         val jm = JuggleMetrics.measure(lv, sl.line, juggleN)
         val sc = ScarceMetrics.measure(lv, sl.line)
-        return HybridEval(true, solvable, f, w, m, meanB, bots, early, p, fitness(m, w, early) + verified(ch), ch,
-            lm, f2, jm, sc, fitness3(f2, jm, f.forks, sl.line.size, sc, JuggleMetrics.freeOpener(lv)))
+        val f3 = fitness3(f2, jm, f.forks, sl.line.size, sc, JuggleMetrics.freeOpener(lv), fc)
+        return HybridEval(true, solvable, f, w, m, meanB, bots, early, p, fitness(m, w, early, fc) + verified(ch), ch,
+            lm, f2, jm, sc, f3, q, qs, if (q != null) fitness4(f3, listOfNotNull(q, qs), fc) else f3)
     }
 
     /**

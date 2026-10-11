@@ -177,6 +177,20 @@ colour does not matter, so staging is a count vector.
     the colour runs out later. Generator: pick a scarce colour, make several of its containers block the climax
     chain, and size its supply so that only a specific subset of those spends wins (a fork over subsets, not over
     a single move). This is what made L19 work despite its weak opening (principle 14).
+16. **Quality = hidden decision bits, spread from the opening (docs/LEVEL-QUALITY.md, 2026-10-11).** A state with b
+    legal moves and w winning ones carries log2(b/w) bits; count only losers whose loss is not visible at once
+    (horizon >= 2): hidden bits = Σ log2((w + losers with h >= 2) / w) along a winning line. Liked levels 23.7-59.6,
+    disliked 4.2-13.6 (the clearest separation of all metrics tried; mean dock occupancy does not separate). Hidden
+    bits need slack in the middle: per state they peak at 2 free docks (1.33 bits, 74% of states) and vanish at 1
+    (losses immediate) and 4 (anything works). A first third with no hidden bits is the "find anything that works"
+    opening. Generator: floors on hidden bits by tier and on the opening share, measured on the intended and the
+    solver line.
+17. **Herald the climax (Hybrid preview 3 L10, 2026-10-11: "I figured out the crazy chain, but it was too late").**
+    Deep decisions (horizon > 3) can only be planned from what is on show (board, carousel, the next 20 of the line).
+    L10's chain came on show 4 moves before it flooded, after 79% of its digging: the digging was blind. Put part of
+    the climax colour on the carousel early (~10 waiting from about move 8, its containers being the buried climax
+    run) and dig out one small container of it mid-level as a foreshadowing instance, so the chain can be planned
+    for. This is not a colour tally: the player still infers the size and timing of the run.
 5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 

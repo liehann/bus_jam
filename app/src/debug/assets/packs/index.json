@@ -10,13 +10,13 @@
   "description": "Chained stalls + pressure/fork scoring; dock 3+ on 10-25% of moves"
  },
  {
-  "file": "hybrid-preview-2.json",
-  "label": "Hybrid preview 2",
-  "description": "Reverse director + stalls: mismatch windows, just-enough cascades, keystones, left-slot steals, squatters, dense packs (L10 hard, L20 super hard)"
- },
- {
   "file": "hybrid-preview-3.json",
   "label": "Hybrid preview 3",
   "description": "Juggling from move 3 (2 partly filled docks, few free wins), scarce key colour spent precisely into a long single-colour climax (L10 hard, L19 scarce key, L20 super hard)"
+ },
+ {
+  "file": "hybrid-preview-4.json",
+  "label": "Hybrid preview 4",
+  "description": "Quality-tuned (docs/LEVEL-QUALITY.md): decisions from the first moves, climax colour heralded early so the chain can be planned (L10 hard, L19 scarce key, L20 super hard)"
  }
 ]

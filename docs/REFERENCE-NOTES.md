@@ -43,3 +43,12 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - 5 colours, ~32 vehicles; queue: yellow-heavy front, pink/orange middle, purple late.
 - For us (later): cheap step = 8 grid directions (diagonal lanes, same cell-based blocking); full step =
   continuous geometry (swept-rectangle exit paths, free placement). Engine dock/staging/solver logic unchanged.
+
+### Level 6 (2026-10-11; user reported "level 8", screen showed Level 6)
+- Themed silhouette board: a heart, vehicles at free angles throughout.
+- 7 colours (red, green, purple, blue, yellow, cyan, brown); ~40 vehicles (cars, vans, buses).
+- Squatter pattern: a large brown block near the front of the queue while most brown vehicles are packed in the
+  centre of the heart — brown fills the waiting area while the centre is dug out.
+- Mood emoji escalates (angry) — likely tied to waiting-area fill / difficulty.
+- For us: shaped boards (heart/star/letters; for Kitten Jumble paw prints, fish, cat heads) via a per-level cell
+  mask on our grid — visual variety without angles or engine changes.

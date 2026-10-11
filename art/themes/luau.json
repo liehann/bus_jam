@@ -1,0 +1,23 @@
+{
+  "name": "Beach Luau",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "warm tropical palette",
+    "setting": "a cheerful beach luau with a tiki BBQ for cute animals at golden hour",
+    "decorations": "Pale sand, light bamboo, thatched palm-leaf roofs, a few palm fronds and hibiscus flowers around the edges of the screen, small tiki torches with soft flames, and a warm sunset glow.",
+    "background_tones": "warm (sand, cream, light bamboo)",
+    "kitchen": "a small tiki grill hut with a thatched palm-leaf roof and a gently smoking BBQ grill",
+    "belt_material": "pale bamboo slats",
+    "loop_interior": "a calm turquoise lagoon with a few smooth stones and a floating hibiscus flower",
+    "foods": "a grilled pineapple ring, a small skewer, a grilled shrimp, a corn cob or a coconut cup",
+    "counter": "a light bamboo tiki bar counter with a short thatched fringe along its front edge",
+    "bench_material": "bamboo",
+    "accessory": "a small flower lei around its neck",
+    "board_surface": "a pale cream woven palm-leaf mat framed with a thin bamboo border",
+    "obstacles": "a coconut, a pineapple and a small ukulele",
+    "mood": "sunny, festive, relaxed and cozy, with everyone happily eating",
+    "lighting": "Warm soft golden light",
+    "extra_avoid": "large flames, smoke covering anything, animals in the water"
+  }
+}

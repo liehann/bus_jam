@@ -1,0 +1,26 @@
+{
+  "name": "Luau Night",
+  "variant": "night",
+  "status": "final",
+  "slots": {
+    "palette": "warm tropical palette with deep indigo night accents",
+    "setting": "a cheerful beach luau with a tiki BBQ for cute animals on a warm evening",
+    "decorations": "Pale sand, light bamboo, thatched palm-leaf roofs, and a few palm fronds and hibiscus flowers around the edges of the screen.",
+    "background_tones": "warm (sand, cream, light bamboo, glowing in torchlight)",
+    "kitchen": "a small tiki grill hut with a thatched palm-leaf roof, a gently smoking BBQ grill and a glowing lantern",
+    "belt_material": "pale bamboo slats",
+    "loop_interior": "a calm dark turquoise lagoon reflecting the moon and the festoon lights, with a floating hibiscus flower and a small floating candle",
+    "foods": "a grilled pineapple ring, a small skewer, a grilled shrimp, a corn cob or a coconut cup",
+    "counter": "a light bamboo tiki bar counter with a short thatched fringe along its front edge",
+    "bench_material": "bamboo",
+    "accessory": "a small flower lei around its neck",
+    "board_surface": "a pale cream woven palm-leaf mat framed with a thin bamboo border, lit by warm torchlight",
+    "obstacles": "a coconut, a pineapple and a small ukulele",
+    "mood": "festive, warm and cozy, a happy evening party with everyone eating",
+    "lighting": "Warm soft torchlight and festoon glow",
+    "night_sky": "a deep indigo sky with small twinkling stars and a soft moon glow, only around the outer edges",
+    "light_sources": "tall tiki torches along the left and right edges, strings of warm festoon bulbs above both belts, two lanterns on the tiki bar and a lantern on the grill hut",
+    "effects": "three tiki torches on each side at the left and right edges, evenly spaced over the belt and board areas, festoon strings over both belts, a few fireflies near the edges, and moonlight on the water inside the loop",
+    "extra_avoid": "large flames, smoke covering anything, animals in the water, torches or fireflies over the board"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Bamboo Spa",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "soft natural palette",
+    "setting": "a tranquil bamboo spa and onsen bathhouse with a sushi bar for cute animals",
+    "decorations": "Pale bamboo, light natural wood, smooth grey river stones, soft cream paper screens, a few bamboo stalks and leaves around the edges of the screen, small paper lanterns, and faint wisps of white steam.",
+    "background_tones": "neutral (cream, light bamboo, soft stone grey)",
+    "kitchen": "a kitchen hatch with a short noren curtain set in a bamboo-framed paper screen",
+    "belt_material": "pale bamboo slats",
+    "loop_interior": "a calm shallow pool of water with smooth river stones and a little steam",
+    "foods": "a nigiri, a maki roll or a gunkan",
+    "counter": "a light bamboo counter",
+    "bench_material": "bamboo",
+    "accessory": "a small folded white towel on its head like at a hot spring",
+    "board_surface": "a pale cream-gold tatami mat framed with a thin dark bamboo border",
+    "obstacles": "a smooth river stone, a small wooden bath bucket and a rolled white towel",
+    "mood": "calm, cozy, gentle and spa-like, with everyone happily eating",
+    "lighting": "Soft diffuse light",
+    "extra_avoid": "green or busy backgrounds behind the tickets, animals in water"
+  }
+}

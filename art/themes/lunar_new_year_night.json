@@ -1,0 +1,26 @@
+{
+  "name": "Lunar New Year",
+  "variant": "night",
+  "status": "final",
+  "slots": {
+    "palette": "warm festive pastel palette with deep red and gold accents",
+    "setting": "a Lunar New Year night street feast for cute animals",
+    "decorations": "Light wood, red paper cut-outs with simple flower shapes, small potted tangerine trees and a few firecracker strings around the edges of the screen.",
+    "background_tones": "warm (cream, light wood, soft gold)",
+    "kitchen": "a festive kitchen doorway with a red bead curtain",
+    "belt_material": "pale wooden slats",
+    "loop_interior": "a low round light wooden table with a small bowl of tangerines",
+    "foods": "a dumpling, a spring roll, a tangerine, a sesame ball or a small slice of nian gao",
+    "counter": "a light wooden counter with red lacquer trim",
+    "bench_material": "light wooden",
+    "accessory": "a small red scarf",
+    "board_surface": "a pale wooden table top framed with a thin red lacquer border, lit by warm lantern light",
+    "obstacles": "a small tangerine, a red envelope and a little lantern",
+    "mood": "festive, joyful and warm, with everyone happily eating",
+    "lighting": "Warm soft lantern light",
+    "night_sky": "a deep blue night sky with soft distant firework sparkles, only around the outer edges",
+    "light_sources": "strings of round red lanterns along the edges and above both belts, and small gold lanterns on the counter",
+    "effects": "a few soft firework bursts in the top corners, gently swaying lantern tassels, and a few drifting gold sparkles at the edges",
+    "extra_avoid": "Chinese characters or any writing, red light on the board, fireworks over the play area"
+  }
+}

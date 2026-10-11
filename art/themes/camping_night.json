@@ -1,0 +1,26 @@
+{
+  "name": "Campfire",
+  "variant": "night",
+  "status": "final",
+  "slots": {
+    "palette": "warm woodland palette with deep blue night accents",
+    "setting": "a cozy forest campsite at night for cute animals",
+    "decorations": "Pale birch logs, a few pine trees, a small tent and some ferns around the edges of the screen.",
+    "background_tones": "warm (cream canvas, pale birch, soft firelight)",
+    "kitchen": "a small wooden camp kitchen with a kettle",
+    "belt_material": "pale birch-log slats",
+    "loop_interior": "a small stone campfire ring with soft, small, contained flames",
+    "foods": "a toasted marshmallow, a s'more, a grilled corn cob, a hot dog or a cup of cocoa",
+    "counter": "a light log bench table",
+    "bench_material": "pale birch log",
+    "accessory": "a small knitted beanie",
+    "board_surface": "a pale cream canvas groundsheet framed with a thin birch-log border, lit by warm firelight",
+    "obstacles": "a pinecone, a small camp lantern and a tent peg",
+    "mood": "cozy, warm and peaceful, with everyone happily eating around the fire",
+    "lighting": "Warm soft firelight and lantern glow",
+    "night_sky": "a starry night sky seen through dark pine treetops, only around the outer edges",
+    "light_sources": "the small campfire inside the loop, camp lanterns hanging along the edges and above the counter",
+    "effects": "a few fireflies near the edges, faint sparks just above the campfire, and pine silhouettes framing the corners",
+    "extra_avoid": "large flames, smoke covering anything, fire outside the loop, a dark forest behind the board"
+  }
+}

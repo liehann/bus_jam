@@ -1,0 +1,23 @@
+{
+  "name": "Valentine's Café",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "sweet pink pastel palette",
+    "setting": "a cozy Valentine's café for cute animals",
+    "decorations": "White-painted wood, pink bunting, small heart garlands and a few vases of roses around the edges of the screen.",
+    "background_tones": "airy (cream, white, pale blush)",
+    "kitchen": "a café kitchen window with a pink scalloped awning",
+    "belt_material": "pale white-painted wooden slats",
+    "loop_interior": "a plain cream surface with a small heart-shaped bed of pale roses",
+    "foods": "a chocolate truffle, a slice of strawberry cake, a heart cookie, a chocolate-dipped strawberry or a macaron",
+    "counter": "a white-painted café counter with a pale pink top",
+    "bench_material": "white-painted wooden",
+    "accessory": "a little heart hair clip",
+    "board_surface": "a pale cream linen tablecloth framed with a thin light wood border",
+    "obstacles": "a small box of chocolates, a single rose in a vase and a little heart balloon",
+    "mood": "sweet, warm and cheerful, with everyone happily eating",
+    "lighting": "Soft warm afternoon light",
+    "extra_avoid": "hearts on the tickets, pink backgrounds behind the tickets"
+  }
+}

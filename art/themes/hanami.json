@@ -1,0 +1,23 @@
+{
+  "name": "Hanami Picnic",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "soft spring pastel palette",
+    "setting": "a cherry blossom picnic in a park for cute animals",
+    "decorations": "Cherry blossom branches and a few falling pink petals around the edges of the screen, and a small stone lantern in one corner.",
+    "background_tones": "soft (cream, pale blossom pink, light stone)",
+    "kitchen": "a small wooden food cart with a short noren curtain",
+    "belt_material": "pale wooden slats with a few scattered petals",
+    "loop_interior": "a small calm pond with two koi and a few floating petals",
+    "foods": "a mochi, a dango skewer, an onigiri, a sakura cookie or a slice of tamagoyaki",
+    "counter": "a long low light wooden picnic table",
+    "bench_material": "light wooden",
+    "accessory": "a small flower crown",
+    "board_surface": "a very pale blue plain picnic mat framed with a thin light wood border",
+    "obstacles": "a small sake cup, a short fallen blossom twig and a small bento box",
+    "mood": "gentle, dreamy and cheerful, with everyone happily eating",
+    "lighting": "Soft bright spring light",
+    "extra_avoid": "petals covering the plates or tickets, animals in the pond"
+  }
+}

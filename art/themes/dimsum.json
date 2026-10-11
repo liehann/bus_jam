@@ -1,0 +1,23 @@
+{
+  "name": "Dim Sum Teahouse",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "warm pastel palette with red lacquer accents",
+    "setting": "a cozy Chinese dim sum teahouse for cute hungry animals",
+    "decorations": "Light wood, red lacquer accents, round paper lanterns, carved wooden screens and a few potted orchids around the edges of the screen.",
+    "background_tones": "warm (cream, light wood, soft blush)",
+    "kitchen": "a steamy kitchen doorway with a bead curtain",
+    "belt_material": "pale wooden slats",
+    "loop_interior": "a low round light wooden tea table with a small teapot",
+    "foods": "a small bamboo steamer of dumplings, a bao bun, a sesame ball or an egg tart",
+    "counter": "a light wooden counter with red lacquer trim",
+    "bench_material": "light wooden",
+    "accessory": "a small paper fan tucked behind one ear",
+    "board_surface": "a pale wooden table top framed with a thin red lacquer border",
+    "obstacles": "a small teapot, a chopstick rest and a small tea cup",
+    "mood": "warm, bustling and cozy, with everyone happily eating",
+    "lighting": "Soft warm daylight",
+    "extra_avoid": "steam covering the plates or tickets, red backgrounds behind the tickets"
+  }
+}

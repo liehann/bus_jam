@@ -1,0 +1,26 @@
+{
+  "name": "Ramen Night Market",
+  "variant": "night",
+  "status": "final",
+  "slots": {
+    "palette": "warm pastel palette with deep blue night accents",
+    "setting": "a lively night market ramen stall for cute hungry animals",
+    "decorations": "Light wooden stall fronts, cloth awnings and a few tiled rooftops around the edges of the screen.",
+    "background_tones": "warm (cream, light wood, soft lantern glow)",
+    "kitchen": "a steaming ramen stall with a cloth awning",
+    "belt_material": "pale wooden slats",
+    "loop_interior": "a plain light wooden counter surface",
+    "foods": "a mini ramen bowl, a gyoza, a takoyaki ball, a small skewer or a soft-boiled egg half",
+    "counter": "a light wooden stall counter",
+    "bench_material": "light wooden",
+    "accessory": "a twisted cloth headband",
+    "board_surface": "a pale wooden counter top framed with a thin darker wood border, lit by warm lantern light",
+    "obstacles": "a soy sauce bottle, a chopstick holder and a small paper lantern",
+    "mood": "lively, warm and cozy, with everyone happily slurping and eating",
+    "lighting": "Warm soft lantern light",
+    "night_sky": "a dark blue night sky above the rooftops, only along the top and outer edges",
+    "light_sources": "strings of red paper lanterns along the edges, a glowing stall sign with a simple bowl icon and no text, and small table lanterns on the counter",
+    "effects": "soft curls of steam rising from the stall, lantern strings framing the screen edges, and a few warm windows glowing on the rooftops",
+    "extra_avoid": "readable signs or shop text, steam covering the plates or tickets, red light on the board"
+  }
+}

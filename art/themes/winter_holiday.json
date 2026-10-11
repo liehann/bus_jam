@@ -1,0 +1,23 @@
+{
+  "name": "Gingerbread Workshop",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "cozy festive pastel palette",
+    "setting": "a gingerbread workshop decorated for the winter holidays, for cute animals",
+    "decorations": "Pale wood, frosted windows, garlands with warm fairy lights, candy canes and a few small wrapped presents around the edges of the screen.",
+    "background_tones": "cozy (cream, pale wood, soft snow white)",
+    "kitchen": "a gingerbread oven hatch with a candy-cane frame",
+    "belt_material": "pale wooden slats",
+    "loop_interior": "a plain pale wooden surface with a small gingerbread house in the middle",
+    "foods": "a gingerbread cookie, a candy cane, a mug of cocoa, a frosted sugar cookie or a small slice of yule log",
+    "counter": "a light wooden workshop counter with a thin candy-cane stripe trim",
+    "bench_material": "light wooden",
+    "accessory": "a little Santa hat",
+    "board_surface": "a pale cream linen cloth framed with a thin light wood border",
+    "obstacles": "a rolling pin, a small wrapped present and a cookie cutter",
+    "mood": "festive, warm and cheerful, with everyone happily eating",
+    "lighting": "Soft warm light with a twinkle of fairy lights",
+    "extra_avoid": "red and white stripes behind the tickets, snow over the plates or tickets"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Beach Boardwalk",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "bright seaside pastel palette",
+    "setting": "a sunny seaside boardwalk snack bar for cute animals",
+    "decorations": "Striped beach umbrellas, a few seagulls and colourful bunting around the edges of the screen.",
+    "background_tones": "airy (cream, pale sand, bleached wood)",
+    "kitchen": "a little seaside snack shack with a striped awning",
+    "belt_material": "pale weathered wooden planks",
+    "loop_interior": "gentle blue sea water with a little white foam",
+    "foods": "a small cone of fish and chips, a shaved ice cup, a corn dog, a glass of lemonade or an ice cream cone",
+    "counter": "a light planked snack bar counter",
+    "bench_material": "weathered wooden",
+    "accessory": "a small pair of sunglasses",
+    "board_surface": "smooth pale bleached boardwalk planks with faint seams, framed with a thin rope border",
+    "obstacles": "a small beach ball, a sandcastle bucket and a seashell",
+    "mood": "sunny, breezy and cheerful, with everyone happily eating",
+    "lighting": "Bright soft seaside sunlight",
+    "extra_avoid": "sand texture on the board, seagulls over the plates or tickets, animals in the water"
+  }
+}

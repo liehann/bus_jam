@@ -1,0 +1,23 @@
+{
+  "name": "Patisserie",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "soft sugary pastel palette",
+    "setting": "a pastel French patisserie for cute hungry animals",
+    "decorations": "A striped awning along the top edge, glass display cases of little cakes and a few hanging copper pans around the edges of the screen.",
+    "background_tones": "airy (cream, vanilla, pale pink)",
+    "kitchen": "an oven hatch with a warm glow",
+    "belt_material": "pale white marble-look slats",
+    "loop_interior": "a single small tiered cake stand on a plain cream surface",
+    "foods": "a cupcake, a macaron, a slice of strawberry cake, a croissant or a cream puff",
+    "counter": "a white marble counter",
+    "bench_material": "white-painted wooden",
+    "accessory": "a tiny chef's hat",
+    "board_surface": "a pale pastry board lightly dusted with flour, framed with a thin light wood border",
+    "obstacles": "a rolling pin, a small flour sack and a whisk",
+    "mood": "sweet, cheerful and cozy, with everyone happily eating",
+    "lighting": "Soft warm morning light",
+    "extra_avoid": "flour clouds covering the plates or tickets, cakes on the board"
+  }
+}

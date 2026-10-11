@@ -11,3 +11,4 @@ captures/
 *.apk
 *.aab
 .claude/HANDOVER.md
+__pycache__/

@@ -1,0 +1,23 @@
+{
+  "name": "Tea Party",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "whimsical pastel palette",
+    "setting": "a whimsical garden tea party for cute animals",
+    "decorations": "Neat trimmed hedges, climbing roses, pastel bunting and a little white archway around the edges of the screen.",
+    "background_tones": "airy (cream, white, pale rose)",
+    "kitchen": "a little garden potting-shed kitchen with a striped door curtain",
+    "belt_material": "pale lace-edged wooden slats",
+    "loop_interior": "a neat pale green lawn with a small white fountain",
+    "foods": "a teacup, a scone, a finger sandwich, a petit four or a jam tart",
+    "counter": "a long garden table with a white lace cloth",
+    "bench_material": "white-painted wooden garden",
+    "accessory": "a tiny top hat",
+    "board_surface": "a pale floral tablecloth with a very faint, low-contrast print, framed with a thin white border",
+    "obstacles": "a small teapot, a sugar bowl and a small vase",
+    "mood": "whimsical, charming and cheerful, with everyone happily eating",
+    "lighting": "Soft bright afternoon light",
+    "extra_avoid": "a bold or busy floral pattern behind the tickets"
+  }
+}

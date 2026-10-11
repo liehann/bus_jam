@@ -1,0 +1,22 @@
+{
+  "name": "Sushi Bar",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "warm pastel palette",
+    "setting": "a cozy Japanese sushi bar for cute hungry animals",
+    "decorations": "Light natural wood, cream paper screens, a few small paper lanterns and noren curtains around the edges of the screen.",
+    "background_tones": "warm (cream, light wood)",
+    "kitchen": "a kitchen hatch with a short noren curtain",
+    "belt_material": "pale wooden slats",
+    "loop_interior": "a plain light wooden surface",
+    "foods": "a nigiri, a maki roll or a gunkan",
+    "counter": "a light wooden sushi counter",
+    "bench_material": "wooden",
+    "accessory": "a small napkin bib",
+    "board_surface": "a light wooden counter top framed with a thin darker wood border",
+    "obstacles": "a soy sauce bottle, a chopstick holder and a small wasabi dish",
+    "mood": "cheerful, cozy and playful, with everyone happily eating",
+    "lighting": "Soft natural light"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Rainy Ramen Alley",
+  "variant": "day",
+  "status": "draft",
+  "slots": {
+    "palette": "soft cool pastel palette with warm wood accents",
+    "setting": "a cozy little ramen shop in a narrow alley on a rainy afternoon, for cute hungry animals",
+    "decorations": "Pale wooden shop fronts, short cloth noren, a few colourful umbrellas, potted plants and soft rain streaks only around the edges of the screen.",
+    "background_tones": "soft (cream, light wood, pale rainy grey)",
+    "kitchen": "a steaming ramen kitchen hatch with a short noren curtain and a small umbrella stand beside it",
+    "belt_material": "pale wooden slats",
+    "loop_interior": "a calm shallow rain puddle on pale stone with a few gentle ripples",
+    "foods": "a mini ramen bowl, a gyoza, an onigiri, a soft-boiled egg half or a small skewer",
+    "counter": "a light wooden ramen counter under a small cloth awning",
+    "bench_material": "light wooden",
+    "accessory": "a tiny yellow rain hat",
+    "board_surface": "a pale wooden counter top framed with a thin darker wood border",
+    "obstacles": "a small folded umbrella, a soy sauce bottle and a small teacup",
+    "mood": "snug, calm and cozy, sheltered from the rain, with everyone happily eating",
+    "lighting": "Soft overcast light with warm glow from the shop",
+    "extra_avoid": "rain or raindrops over the belts, the counter or the board, wet reflections on the tickets, dark grey backgrounds behind the tickets, readable shop signs"
+  }
+}

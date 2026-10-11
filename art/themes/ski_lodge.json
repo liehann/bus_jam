@@ -1,0 +1,23 @@
+{
+  "name": "Ski Lodge",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "cozy winter pastel palette",
+    "setting": "a snowy mountain ski lodge for cute animals",
+    "decorations": "Pale pine wood, snowy frosted windows, knitted bunting along the top edge and a small stone fireplace at one side edge of the screen.",
+    "background_tones": "cozy (cream, pale pine, soft snow white)",
+    "kitchen": "a cocoa bar hatch with a small knitted curtain",
+    "belt_material": "pale pine slats",
+    "loop_interior": "a soft cream sheepskin rug with a faint warm glow from the fireplace",
+    "foods": "a hot cocoa mug, a cinnamon roll, a waffle, a small bowl of soup or a gingerbread cookie",
+    "counter": "a pale pine wood bar",
+    "bench_material": "pine",
+    "accessory": "a small striped knitted scarf",
+    "board_surface": "a pale cream knitted rug with a very soft, almost flat knit texture, framed with a thin pine border",
+    "obstacles": "a pair of short mini skis, a small log stack and a mitten",
+    "mood": "snug, warm and cheerful, with everyone happily eating",
+    "lighting": "Soft bright snowy daylight",
+    "extra_avoid": "falling snow over the plates or tickets, a dark fireplace wall behind the board"
+  }
+}

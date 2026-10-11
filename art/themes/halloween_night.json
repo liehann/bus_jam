@@ -1,0 +1,26 @@
+{
+  "name": "Pumpkin Patch",
+  "variant": "night",
+  "status": "final",
+  "slots": {
+    "palette": "warm autumn pastel palette with deep purple night accents",
+    "setting": "a cozy pumpkin patch harvest festival for cute animals on Halloween night",
+    "decorations": "Pale straw bales, a few pumpkins, autumn leaves and small wooden crates around the edges of the screen.",
+    "background_tones": "warm (cream, pale straw, soft pumpkin glow)",
+    "kitchen": "a little wooden harvest stand with a striped awning and a pumpkin on its roof",
+    "belt_material": "pale wooden slats",
+    "loop_interior": "a small bed of straw with a few little pumpkins",
+    "foods": "a candy corn, a caramel apple, a pumpkin cupcake, a slice of pumpkin pie or a ghost-shaped cookie",
+    "counter": "a light wooden harvest counter",
+    "bench_material": "light wooden",
+    "accessory": "a tiny witch hat",
+    "board_surface": "a pale cream wooden table top framed with a thin darker wood border, lit by warm lantern light",
+    "obstacles": "a small pumpkin, a little cauldron and a candle",
+    "mood": "playful, cozy and spooky-cute but never scary, with everyone happily eating",
+    "lighting": "Warm soft pumpkin-lantern light",
+    "night_sky": "a deep purple night sky with a big soft moon, only around the outer edges",
+    "light_sources": "glowing jack-o'-lanterns along the edges, strings of warm orange bulbs above both belts and small candles on the counter",
+    "effects": "a few tiny friendly bats near the top edge, autumn leaves drifting only at the edges, and a faint low mist in the bottom corners",
+    "extra_avoid": "scary faces, skulls, mist or leaves over the plates or tickets, orange-tinted tickets"
+  }
+}

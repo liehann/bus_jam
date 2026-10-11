@@ -1,0 +1,18 @@
+{
+  "status": "proposed",
+  "note": "The 'introduces' mechanics are proposals only, not decided game rules. Play order, names and themes are for art planning.",
+  "worlds": [
+    {"world": 1, "theme": "sushi", "name": "Sushi Bar", "levels": 20, "variant": "day", "introduces": null},
+    {"world": 2, "theme": "spa", "name": "Bamboo Spa", "levels": 20, "variant": "day", "introduces": "frozen tickets: can't move until N other tickets have left"},
+    {"world": 3, "theme": "brunch", "name": "Sunny Brunch", "levels": 20, "variant": "day", "introduces": "tied tickets: two tickets joined by a ribbon; one can't leave until the other has"},
+    {"world": 4, "theme": "luau_night", "name": "Luau Night", "levels": 20, "variant": "night", "introduces": "hidden tickets: colour shows as '?' until the ticket in front of it leaves"},
+    {"world": 5, "theme": "dimsum", "name": "Dim Sum Teahouse", "levels": 20, "variant": "day", "introduces": "two-slot big ticket: a wide ticket that needs 2 adjacent benches"},
+    {"world": 6, "theme": "bakery", "name": "Patisserie", "levels": 20, "variant": "day", "introduces": null},
+    {"world": 7, "theme": "hanami", "name": "Hanami Picnic", "levels": 20, "variant": "day", "introduces": "colour-restricted bench: one bench only seats one colour"},
+    {"world": 8, "theme": "ramen_night", "name": "Ramen Night Market", "levels": 20, "variant": "night", "introduces": "turntable: a ticket on it rotates 90 degrees every move"},
+    {"world": 9, "theme": "camping_night", "name": "Campfire", "levels": 20, "variant": "night", "introduces": "gate: a flap that opens and closes every other move"},
+    {"world": 10, "theme": "ski_lodge", "name": "Ski Lodge", "levels": 20, "variant": "day", "introduces": null},
+    {"world": 11, "theme": "boardwalk", "name": "Beach Boardwalk", "levels": 20, "variant": "day", "introduces": "impatient guest: a ticket that must be seated within N moves"},
+    {"world": 12, "theme": "tea_party", "name": "Tea Party", "levels": 20, "variant": "day", "introduces": null}
+  ]
+}

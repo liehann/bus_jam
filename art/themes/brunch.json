@@ -1,0 +1,22 @@
+{
+  "name": "Sunny Brunch",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "fresh pastel palette",
+    "setting": "a sunny garden café serving brunch to cute animals on a spring morning",
+    "decorations": "White-painted wood, a striped awning along the top edge, a few potted herbs, climbing roses and small hanging flower baskets around the edges of the screen.",
+    "background_tones": "airy (white, cream, pale sage)",
+    "kitchen": "a café kitchen window with a small striped awning and a coffee machine",
+    "belt_material": "pale white-painted wooden slats",
+    "loop_interior": "a small flower bed of low pastel tulips and daisies",
+    "foods": "a stack of pancakes, a croissant, a waffle, a slice of avocado toast or a small fruit cup",
+    "counter": "a white-painted café counter with a marble top",
+    "bench_material": "white-painted wooden",
+    "accessory": "a small checked napkin tucked under its chin",
+    "board_surface": "a pale cream linen tablecloth framed with a thin light wood border",
+    "obstacles": "a coffee cup, a jam jar and a small flower vase",
+    "mood": "bright, fresh and cheerful, with everyone happily eating",
+    "lighting": "Bright soft morning light"
+  }
+}

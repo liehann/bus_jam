@@ -66,9 +66,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val mode = GameModeStore(dataStore)
 
     /** Real-time carousel mode: debug builds only (default on, toggle on the home screen); release is turn-based. */
-    val realTime: StateFlow<Boolean> = mode.realTime
+    val realTime: StateFlow<Boolean?> = mode.realTime
         .map { BuildConfig.DEBUG && (it ?: true) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null) // null until the setting has been read
 
     fun setRealTime(on: Boolean) {
         viewModelScope.launch { mode.setRealTime(on) }

@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -239,6 +241,62 @@ class ScreenshotTest {
         show(GameUiState(1, isBoss = false, hasNext = true, state = state, anim = AnimJob(1, state, listOf(block!!))))
         rule.mainClock.advanceTimeBy(32 + 130)
         save("v2_anim_blocked")
+    }
+
+    /** Real-time carousel frames from real core states: release in flight, walkers at the gate, a dispatch. */
+    @Test
+    fun realTimeCarouselFrames() {
+        val level = denseLevel(12, 14, seed = 7)
+        val rules = com.phloots.busjam.game.rt.CoreRealTimeRules()
+        var st = rules.initial(level)
+        fun run(n: Int) = repeat(n) { st = rules.tick(st).state }
+        st = rules.tap(st, 0).state // S colour 0, queue starts with colour 0
+        run(6)
+        val frames = mutableListOf<Pair<String, com.phloots.jam.core.realtime.RealTimeState>>()
+        frames += "v2_rt_1_release" to st
+        run(22)
+        frames += "v2_rt_2_boarding" to st
+        // a second container of another colour while the first is still filling
+        val other = level.containers.first { it.id != 0 && com.phloots.jam.core.realtime.RealTime.isTappable(st, it.id) }
+        st = rules.tap(st, other.id).state
+        run(40)
+        frames += "v2_rt_3_dispatch" to st
+        var shown by androidx.compose.runtime.mutableStateOf(frames.first().second)
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            com.phloots.busjam.ui.game.RealTimeGameScreen(
+                ui = com.phloots.busjam.game.rt.RtUiState(1, false, true, rules.view(shown), nowMs = 0, tickFraction = 0.5f, canUndo = true),
+                onFrame = {}, onHostPause = {}, onTogglePause = {}, onTap = {}, onUndo = {}, onRestart = {}, onHint = {},
+                onNext = {}, onLevels = {}, onHome = {},
+                debugHeader = DebugHeader("Campaign", packColor(0), "score 12.0 · real-time", null),
+            )
+        }
+        for ((name, state) in frames) {
+            shown = state
+            rule.mainClock.advanceTimeBy(100)
+            save(name)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    fun realTimeSmallPhone() {
+        val level = denseLevel(12, 14, seed = 7)
+        val rules = com.phloots.busjam.game.rt.CoreRealTimeRules()
+        var st = rules.tap(rules.initial(level), 0).state
+        repeat(24) { st = rules.tick(st).state }
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            Box(Modifier.padding(top = 24.dp, bottom = 48.dp)) {
+                com.phloots.busjam.ui.game.RealTimeGameScreen(
+                    ui = com.phloots.busjam.game.rt.RtUiState(1, false, true, rules.view(st), nowMs = 0, tickFraction = 0f),
+                    onFrame = {}, onHostPause = {}, onTogglePause = {}, onTap = {}, onUndo = {}, onRestart = {},
+                    onHint = {}, onNext = {}, onLevels = {}, onHome = {},
+                )
+            }
+        }
+        rule.mainClock.advanceTimeBy(100)
+        save("v2_rt_small_phone")
     }
 
     @Test

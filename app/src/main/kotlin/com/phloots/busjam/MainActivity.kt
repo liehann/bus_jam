@@ -71,7 +71,8 @@ fun BusJamApp() {
             initializer { RealTimeViewModel(app.progressStore(PackInfo.CAMPAIGN), CoreRealTimeRules()) }
         },
     )
-    val realTime by app.realTime.collectAsStateWithLifecycle()
+    val realTimeOrNull by app.realTime.collectAsStateWithLifecycle()
+    val realTime = realTimeOrNull == true
     val commitWins = {
         game.commitPendingWin()
         rtGame.commitPendingWin()
@@ -118,7 +119,7 @@ fun BusJamApp() {
         val pack = levels
         when {
             screen == HOME -> HomeScreen(
-                nextLevel = pack?.let { progress.firstUnbeaten(it.size) }.takeIf { progressOrNull != null },
+                nextLevel = pack?.let { progress.firstUnbeaten(it.size) }.takeIf { progressOrNull != null && realTimeOrNull != null },
                 totalLevels = pack?.size ?: 0,
                 totalStars = progress.stars.values.sum(),
                 onPlay = { pack?.let { openLevel(progress.firstUnbeaten(it.size)) } },
@@ -126,7 +127,7 @@ fun BusJamApp() {
                 packs = if (BuildConfig.DEBUG) app.packs else emptyList(),
                 selectedPack = selectedPack?.file,
                 onSelectPack = app::selectPack,
-                realTime = if (BuildConfig.DEBUG) realTime else null,
+                realTime = if (BuildConfig.DEBUG) realTimeOrNull else null,
                 onRealTime = app::setRealTime,
             )
             screen == LEVELS && pack != null -> LevelSelectScreen(

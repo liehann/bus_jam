@@ -55,7 +55,7 @@ app/src/main/kotlin/com/phloots/busjam/...                                      
 
 | Agent | Owns |
 |---|---|
-| gamestate | engine, solver, scoring: `core/.../{engine,solver,scoring}/**` and their tests `core/src/test/.../{engine,solver,scoring}/**` (incl. `solver/TestLevels.kt`) |
+| gamestate | engine, solver, scoring, realtime: `core/.../{engine,solver,scoring,realtime}/**` and their tests `core/src/test/.../{engine,solver,scoring,realtime}/**` (incl. `solver/TestLevels.kt`) |
 | generator | generator, levelgen, pack: `core/.../generator/**`, `:levelgen/**`, `app/src/main/assets/levels.json` (regenerated output), `core/src/test/.../{generator,campaign}/**` |
 | UI | `:app/**` except `assets/levels.json` |
 | architect | `core/.../model/**`, `core/.../io/**`, `core/src/test/.../ModelAndCodecTest.kt`, Gradle files, this document |
@@ -311,3 +311,35 @@ Gotchas:
     `RunGroup` gained `decoy, coreDecision, links, spread`; up to 4 run groups. `MotifGenerator.generate` measures
     pressure + forks on the solver's line and applies the floors (`MotifFilter.pressureFloor`). `:levelgen
     --pressure-preview <n>` (and diagnostics `--pressure-explore`, `--stall-explore`, `--pressure-debug`).
+- 2026-10-11 (gamestate): **real-time carousel layer** (DESIGN.md "Real-time carousel (v3)"). Additive; Engine,
+  Solver, generator, scoring unchanged. New package `com.phloots.jam.core.realtime`, file `core/.../realtime/Carousel.kt`:
+  - `RtConfig(ticksPerSeat=4, releaseTicks=12, boardTicks=8, dispatchTicks=16, gatePosition=0, entryPosition=20)`
+    (all durations >= 1 tick; `secondsPerTick(seatSeconds=0.1)` = 0.025 s by default, i.e. ~4 s per rotation).
+  - `RealTimeState` (immutable value, content equality): `level, config, tick: Long, phase, ringCount, onBoard, dock:
+    List<RtSlot?>` (4, positional), `queueIndex, walkers: List<RtWalker>, settled, status`; `seatElement(seat)`,
+    `seatColor(seat)`, `positionOf(seat) = (seat + phase) % 40`, `seatAt(position)`, `subSeatFraction`,
+    `ringColors()`, `toGameState()` (settled only). Undo: the UI snapshots the state value before each tap and
+    restores it (tick, ring phase and in-flight items included).
+  - `RtSlot(containerId, color, capacity, spaceLeft /*unreserved*/, releasedAt, dockedAt, fullAt, dispatchAt, freeAt)`
+    + `phase(tick): SlotPhase {ARRIVING, DOCKED, FILLING, DISPATCHING}`; `RtWalker(elementIndex, color, seat, slot,
+    containerId, startTick, arriveTick)`.
+  - `RtEvent`: `Released(containerId, slot, dockedAt)`, `Blocked`, `Ignored` (as Engine), `Docked`, `BoardingStarted
+    (elementIndex, seat, slot, containerId)`, `Boarded(elementIndex, slot, containerId)`, `DispatchStarted`,
+    `Dispatched` (slot free), `SteppedOn(elementIndex, seat)`, `Settled(status)`.
+  - `RealTime.initial(level, config)`, `fromGameState(gs, config)`, `tick(state)`, `advance(state, n)`,
+    `tap(state, id)`, `isTappable`, `isSettled`, `runUntilSettled(state, maxTicks)`; tick/tap return
+    `Pair<RealTimeState, List<RtEvent>>`.
+  - Rules: seats are fixed to a turning ring; every `ticksPerSeat` ticks each seat moves one position. On each step the
+    seat arriving at the gate boards (reserving a space) the LEFTMOST docked-and-arrived same-colour container with
+    unreserved space, then an empty seat arriving at the entry takes the next queue element. Tick order: walkers
+    arrive, slot timers (docked / dispatch start = last walker in / slot freed `dispatchTicks` later), rotation + gate
+    + entry, status. Taps are legal at any tick; release takes the leftmost FREE slot, and a slot whose container is
+    arriving, filling or mid-dispatch counts as occupied (all 4 occupied -> `Ignored(DOCK_FULL)`). Arriving
+    containers accept no elements. Initial ring: queue element k at position `gate - 1 - k` (a line in queue order
+    just upstream of the gate). `settled` = no walkers, every docked container arrived and not full, ring full or
+    queue exhausted, no ring element matching a docked colour; `status` is PLAYING until settled, then
+    `Engine.computeStatus` of the equivalent GameState.
+  - Invariant (tested, `core/src/test/.../realtime/RealTimeTest.kt`): patient play (tap only when settled, any idle
+    time) gives exactly Engine.apply's state after every tap (positional dock incl. spaceLeft, staged multiset,
+    queueIndex, onBoard, status), over random/padded/big levels and four timing/geometry configs. Ring element
+    identities may differ from Engine's oldest-first choice; only the colour multiset is defined.

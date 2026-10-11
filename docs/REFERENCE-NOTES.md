@@ -137,3 +137,15 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - 5 visible colours (blue, red, pink, yellow, brown); blue dominant on board and at queue front; ~40 vehicles, many
   blue buses.
 - Use as a calibration target for our hybrid generator (same ingredients).
+- Level 12 played: "a bit more challenging — it's not always obvious what the right move is" (user).
+
+### Level 13 — Jumble (2026-10-11; no screenshot captured)
+- Introduces "Jumble": changes the colours of the vehicles (user saw it as a mechanic; at level 14 it appears as a
+  third booster with count 1, so it's most likely a consumable that re-colours/shuffles vehicles).
+
+### Level 14 (2026-10-11)
+- Boosters now VIP, Arrange, Jumble (each ×1).
+- Layout: a loose ring/swirl of vehicles mostly facing outward around a central "T" of two orange buses plus two
+  yellow buses; inner arc of downward-facing vehicles above a bottom row.
+- 8 colours (blue, purple, pink, green, cyan, orange, brown, yellow); ~45 vehicles; queue in big blocks (cyan, pink,
+  purple, blue, orange).

@@ -5,7 +5,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOff
-import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -37,10 +36,15 @@ class PlayLevelOneTest {
         // Play is enabled once the level pack and progress have loaded.
         rule.waitUntil(10_000) { runCatching { rule.onNodeWithTag("play").assertIsEnabled() }.isSuccess }
         // this test covers the turn-based mode (debug builds default to real-time)
-        rule.waitUntil(10_000) { runCatching { rule.onNodeWithTag("realtime-switch").assertIsOn() }.isSuccess }
-        rule.onNodeWithTag("realtime-switch").performClick()
+        rule.waitUntilAtLeastOneExists(hasTestTag("realtime-switch"), timeoutMillis = 10_000)
+        rule.waitForIdle()
+        if (runCatching { rule.onNodeWithTag("realtime-switch").assertIsOff() }.isFailure) {
+            rule.onNodeWithTag("realtime-switch").performClick()
+        }
         rule.waitUntil(10_000) { runCatching { rule.onNodeWithTag("realtime-switch").assertIsOff() }.isSuccess }
-        rule.onNodeWithTag("play").performClick()
+        // open level 1 explicitly ("Play" opens the first unbeaten level, which depends on stored progress)
+        rule.onNodeWithTag("levels").performClick()
+        rule.onNodeWithTag("level-1").performClick()
         rule.waitUntilAtLeastOneExists(hasTestTag("board"), timeoutMillis = 10_000)
 
         for (move in solution.solution) {

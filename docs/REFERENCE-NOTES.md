@@ -110,3 +110,13 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
   the pink run, not by digging for yellow. Top clusters mostly cleared → route into the core opening.
 - Badge semantics unclear: the van shows 24 while the bus showed 8 — maybe not "seats left in this vehicle"
   (to confirm with the user).
+- (Level 9 outcome: "it was easy after that" — one choke point, then straightforward.)
+
+### Level 10 — new mechanic: hidden colours (2026-10-11)
+- ~14 vehicles are dark grey with "?"; colour revealed only once the vehicle is unblocked (exit path clear). They form a
+  diagonal band through the centre, coloured vehicles around/between them.
+- Only 4 colours (pink, yellow, blue, purple) and a simple pink-heavy queue, right after the first hard level (9
+  colours) → sawtooth: hard level, then breather + new mechanic.
+- For us: engine unchanged (knows colours); UI hides colour until the container's exit lane is clear; solver checks
+  solvability with full information; bots/difficulty scoring must be information-limited (can't see hidden colours);
+  hints must not leak hidden colours. Generator can hide stall dummies or a chain link so the trap reveals late.

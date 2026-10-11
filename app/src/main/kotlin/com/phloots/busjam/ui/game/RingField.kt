@@ -20,6 +20,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
@@ -264,7 +265,7 @@ private fun DrawScope.drawRingField(lay: RingLayout, ui: RtUiState, pulse: Float
     // elements walking from the gate into their container
     for (w in view.walkers) {
         val p = FastOutSlowInEasing.transform(progress(w.startTick, w.arriveTick))
-        val start = lay.gatePoint
+        val start = lay.seatPoint(w.fromPosition, view.gate)
         val end = lay.slotCenter(w.slot)
         val pos = Offset(start.x + (end.x - start.x) * p, start.y + (end.y - start.y) * p - sin(p * PI).toFloat() * lay.seatR * 2.2f)
         drawElement(w.color, pos, lay.seatToken + (lay.dockedW * 0.34f - lay.seatToken) * p)
@@ -290,13 +291,22 @@ private fun DrawScope.drawCarousel(lay: RingLayout, view: RtView, fraction: Floa
     drawPath(path, trackColor, style = Stroke(width = lay.seatR * 2.5f))
     drawPath(path, Palette.slotLine, style = Stroke(width = 1.2f * density))
 
-    // gate (bottom centre, towards the dock)
+    // boarding window (gateWidth seats centred at the bottom, towards the dock): every matching element inside it
+    // boards, one after another
     val g = lay.gatePoint
-    val gw = lay.seatR * 2.6f
-    drawRoundRect(
-        Palette.gold, Offset(g.x - gw / 2, g.y - lay.seatR * 1.5f), Size(gw, lay.seatR * 3f),
-        CornerRadius(lay.seatR), style = Stroke(width = 2.5f * density),
-    )
+    val half = view.gateWidth / 2f * lay.pitch
+    val window = Path().apply {
+        val steps = 24
+        for (i in 0..steps) {
+            val p = lay.trackPoint(-half + 2 * half * i / steps)
+            if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+        }
+    }
+    drawPath(window, Palette.gold.copy(alpha = 0.45f), style = Stroke(width = lay.seatR * 3.2f, cap = StrokeCap.Round))
+    for (end in listOf(-half, half)) {
+        val p = lay.trackPoint(end)
+        drawLine(Palette.gold, Offset(p.x, p.y - lay.seatR * 1.5f), Offset(p.x, p.y + lay.seatR * 1.5f), strokeWidth = 2.5f * density, cap = StrokeCap.Round)
+    }
     val tri = Path().apply {
         moveTo(g.x - lay.seatR * 0.6f, g.y + lay.seatR * 1.7f)
         lineTo(g.x + lay.seatR * 0.6f, g.y + lay.seatR * 1.7f)

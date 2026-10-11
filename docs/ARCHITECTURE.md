@@ -351,3 +351,13 @@ Gotchas:
   pressure-free run, `botLines`) and `ScarceMetrics` (same-colour spend forks, chain colour/length, score).
   `HybridEval` gained `juggle`, `scarce`, `fitness3`; `HybridGenerator.fitness3/earlyForks/lateDeepForks`.
   Entry points: `levelgen/.../reverse/HybridPreview3.kt`, `JuggleReport.kt`; `Calibrate.kt` prints fit3.
+- 2026-10-11 (gamestate): **Real-time carousel: empty-ring start + wave-boarding gate window** (user playtest).
+  `RealTime.initial` now starts with an EMPTY ring (queueIndex 0, not settled); the ring fills through the entry, one
+  element per seat step, and taps are legal during the fill. `fromGameState` keeps the pre-placed layout (restores).
+  `RtConfig` gained `gateWidth` (default 6: window = positions gatePosition..+gateWidth-1; entry must lie outside it)
+  and `boardStaggerTicks` (default 3 = 75 ms). The gate is checked every tick: at most one boarding start per stagger
+  step, the most downstream matching element in the window first (leftmost same-colour container with unreserved
+  space), so a burst boards as a wave. `RealTimeState.nextBoardTick`, `RtWalker.position` added. App: `RtView.gate` is
+  now the window centre, plus `gateWidth`; `RtWalkerView.fromPosition`; `RingField` draws the window as a gold band.
+  Tests: the convergence test settles the fill first (and a third of levels tap during the fill), checks fill timing,
+  plus window tests (staggered front-first wave, space limits, leftmost container first).

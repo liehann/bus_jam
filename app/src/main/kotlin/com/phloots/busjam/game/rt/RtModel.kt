@@ -20,16 +20,16 @@ data class RtSlotView(
     val freeAt: Long = -1,
 )
 
-/** An element walking from the gate into the container in dock [slot]. */
-data class RtWalkerView(val color: Int, val slot: Int, val startTick: Long, val arriveTick: Long)
+/** An element walking from the gate window (track position [fromPosition]) into the container in dock [slot]. */
+data class RtWalkerView(val color: Int, val slot: Int, val startTick: Long, val arriveTick: Long, val fromPosition: Float)
 
 /**
  * Everything the real-time screen draws at one tick. Pure data mapped from the core real-time state by a
  * [RealTimeRules] adapter (no rules here). Motion between ticks is interpolated from the timestamps.
  *
  * Carousel: physical seat `i` sits at track position `(i + rotation) mod seats.size` (seat units, increasing in the
- * direction of travel = clockwise on screen). [gate] and [entry] are fixed track positions; the screen puts the gate
- * at the bottom centre, next to the dock.
+ * direction of travel = clockwise on screen). [gate] (the CENTRE of the boarding window, [gateWidth] seats wide) and
+ * [entry] are fixed track positions; the screen puts the gate at the bottom centre, next to the dock.
  */
 data class RtView(
     val level: Level,
@@ -44,6 +44,8 @@ data class RtView(
     /** Rotation added per tick, in seats. */
     val rotationPerTick: Float,
     val gate: Float,
+    /** Seats covered by the boarding window, centred on [gate]. */
+    val gateWidth: Int,
     val entry: Float,
     /** Next queue element not yet on the ring. */
     val queueIndex: Int,

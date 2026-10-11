@@ -87,6 +87,20 @@ class RealTimeViewModelTest {
     }
 
     @Test
+    fun levelStartsWithEverythingQueuedAndTheRingFills() {
+        vm.start(easy, 1, hasNext = true)
+        assertTrue(ui().view.seats.all { it == null })
+        assertEquals(easy.queue.size, ui().view.queueRemaining)
+        assertFalse(ui().view.settled)
+        vm.hint()
+        assertEquals(HINT_WAIT, ui().hintMessage)
+        settle()
+        assertEquals(easy.queue.size, ui().view.seats.count { it != null })
+        assertEquals(0, ui().view.queueRemaining)
+        assertEquals(Status.PLAYING, ui().status)
+    }
+
+    @Test
     fun theCarouselMovesWithTheClockAndInterpolates() {
         vm.start(easy, 1, hasNext = true)
         val r0 = ui().view.rotation
@@ -186,6 +200,7 @@ class RealTimeViewModelTest {
     fun nullHintKeepsStars() {
         vm = RealTimeViewModel({ n, s -> wins += n to s }, rules, main, findHint = { _, _ -> null })
         vm.start(easy, 1, hasNext = true)
+        settle() // the ring fills first
         vm.hint()
         assertEquals(NO_WINNING_MOVE, ui().hintMessage)
         assertEquals(3, ui().potentialStars)

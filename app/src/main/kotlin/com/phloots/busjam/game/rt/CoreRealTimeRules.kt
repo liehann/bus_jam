@@ -44,11 +44,16 @@ class CoreRealTimeRules(
                     )
                 }
             },
-            walkers = state.walkers.map { RtWalkerView(it.color, it.slot, it.startTick, it.arriveTick) },
+            walkers = state.walkers.map {
+                // the seat was moving: it left from its position plus the sub-seat fraction at the start tick
+                val frac = (it.startTick % config.ticksPerSeat).toFloat() / config.ticksPerSeat
+                RtWalkerView(it.color, it.slot, it.startTick, it.arriveTick, it.position + frac)
+            },
             seats = List(state.seatCount) { seat -> state.seatColor(seat).takeIf { it >= 0 } },
             rotation = state.phase + state.subSeatFraction,
             rotationPerTick = 1f / config.ticksPerSeat,
-            gate = config.gatePosition.toFloat(),
+            gate = config.gatePosition + (config.gateWidth - 1) / 2f,
+            gateWidth = config.gateWidth,
             entry = config.entryPosition.toFloat(),
             queueIndex = state.queueIndex,
             settled = state.settled,

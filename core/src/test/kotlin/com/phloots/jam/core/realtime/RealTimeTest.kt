@@ -21,10 +21,20 @@ import kotlin.test.assertTrue
 class RealTimeTest {
     private val configs = listOf(
         RtConfig.DEFAULT,
-        RtConfig(ticksPerSeat = 1, releaseTicks = 1, boardTicks = 1, dispatchTicks = 1, gatePosition = 0, entryPosition = 1),
-        RtConfig(ticksPerSeat = 3, releaseTicks = 7, boardTicks = 5, dispatchTicks = 11, gatePosition = 13, entryPosition = 12),
-        RtConfig(ticksPerSeat = 2, releaseTicks = 40, boardTicks = 1, dispatchTicks = 90, gatePosition = 5, entryPosition = 30),
+        RtConfig(ticksPerSeat = 1, releaseTicks = 1, boardTicks = 1, dispatchTicks = 1, gatePosition = 0, entryPosition = 1, gateWidth = 1, boardStaggerTicks = 1),
+        RtConfig(ticksPerSeat = 3, releaseTicks = 7, boardTicks = 5, dispatchTicks = 11, gatePosition = 13, entryPosition = 12, boardStaggerTicks = 2),
+        RtConfig(ticksPerSeat = 2, releaseTicks = 40, boardTicks = 1, dispatchTicks = 90, gatePosition = 5, entryPosition = 30, gateWidth = 10, boardStaggerTicks = 7),
+        RtConfig(ticksPerSeat = 4, gateWidth = 3, boardStaggerTicks = 1),
     )
+
+    /** The ring after the initial fill (patient start); checks the fill takes one seat step per element. */
+    private fun filled(level: Level, cfg: RtConfig): RealTimeState {
+        val (rt, ev) = RealTime.runUntilSettled(RealTime.initial(level, cfg))
+        val n = minOf(Limits.STAGING_SPOTS, level.queue.size)
+        assertEquals(n.toLong() * cfg.ticksPerSeat, rt.tick)
+        assertEquals((0 until n).toList(), ev.filterIsInstance<RtEvent.SteppedOn>().map { it.elementIndex })
+        return rt
+    }
 
     /** Settled RT state must equal the Engine state: positional dock incl. spaceLeft, staged multiset, queueIndex, onBoard, status. */
     private fun assertMatches(e: GameState, rt: RealTimeState, ctx: () -> String) {
@@ -63,11 +73,22 @@ class RealTimeTest {
         var won = 0
         var lost = 0
         var longest = 0
+        var fillTaps = 0
+        var bursts = 0
         for ((li, level) in levels(rnd, 500, 24).withIndex()) {
             val cfg = configs[li % configs.size]
             var e = GameState.initial(level)
-            var rt = RealTime.initial(level, cfg)
-            assertMatches(e, rt) { "initial $li" }
+            val start = RealTime.initial(level, cfg)
+            assertEquals(0, start.ringCount)
+            assertEquals(0, start.queueIndex)
+            assertFalse(start.settled)
+            val full = filled(level, cfg)
+            assertMatches(e, full) { "initial $li" }
+            // a third of the levels: the first tap lands during the initial fill (the ring is still filling)
+            var rt = if (rnd.nextInt(3) == 0) {
+                fillTaps++
+                RealTime.advance(start, rnd.nextInt(full.tick.toInt())).first
+            } else full
             var steps = 0
             while (e.status == Status.PLAYING && steps < 300) {
                 val legal = Engine.legalMoves(e)
@@ -93,9 +114,11 @@ class RealTimeTest {
                 assertMatches(e, rt) { "level $li step $steps tap $id cfg $cfg" }
                 assertEquals(t.events.count { it is com.phloots.jam.core.model.Event.Boarded }, ev.count { it is RtEvent.Boarded })
                 assertEquals(t.events.count { it is com.phloots.jam.core.model.Event.Dispatched }, ev.count { it is RtEvent.Dispatched })
-                assertEquals(t.events.count { it is com.phloots.jam.core.model.Event.Staged }, ev.count { it is RtEvent.SteppedOn })
+                // (a tap during the initial fill also sees the rest of the fill step on)
+                assertEquals(e.queueIndex - afterTap.queueIndex, ev.count { it is RtEvent.SteppedOn })
                 val firstFree = ev.indexOfFirst { it is RtEvent.Dispatched }
                 if (firstFree >= 0 && ev.drop(firstFree).any { it is RtEvent.BoardingStarted }) midSettleFrees++
+                if (ev.count { it is RtEvent.BoardingStarted } >= 3) bursts++
                 val docked = e.dock.filterNotNull().map { it.color }
                 if (docked.size != docked.toSet().size) sameColourDocked++
                 if (tapEv.single() is RtEvent.Released) taps++
@@ -105,9 +128,11 @@ class RealTimeTest {
             if (e.status == Status.WON) won++
             if (e.status == Status.DEADLOCK || e.status == Status.STUCK) lost++
         }
-        println("convergence: taps=$taps same=$sameColourDocked midFree=$midSettleFrees won=$won lost=$lost longest=$longest")
-        assertTrue(taps > 1500 && sameColourDocked > 150 && midSettleFrees > 100 && lost > 50 && longest >= 40,
-            "taps=$taps same=$sameColourDocked midFree=$midSettleFrees won=$won lost=$lost longest=$longest")
+        val stats = "taps=$taps same=$sameColourDocked midFree=$midSettleFrees won=$won lost=$lost longest=$longest " +
+            "fillTaps=$fillTaps bursts=$bursts"
+        println("convergence: $stats")
+        assertTrue(taps > 1500 && sameColourDocked > 90 && midSettleFrees > 100 && lost > 50 && longest >= 40 &&
+            fillTaps > 100 && bursts > 500, stats)
     }
 
     /** Long winning runs: the solver's (patient) line wins in real time with identical states throughout. */
@@ -121,7 +146,7 @@ class RealTimeTest {
             if (!sol.solvable) continue
             val cfg = configs[seed % configs.size]
             var e = GameState.initial(level)
-            var rt = RealTime.initial(level, cfg)
+            var rt = filled(level, cfg)
             for (m in sol.solution) {
                 e = Engine.apply(e, m).state
                 rt = RealTime.runUntilSettled(RealTime.tap(rt, m.containerId).first).first
@@ -152,16 +177,28 @@ class RealTimeTest {
     }
 
     @Test
-    fun initialPlacementIsQueueOrderUpstreamOfGate() {
+    fun levelStartsWithEverythingQueuedAndFillsThroughTheEntry() {
         val level = TestLevels.bigSolvable(seed = 3L, containers = 60)
         val cfg = RtConfig.DEFAULT
-        val rt = RealTime.initial(level, cfg)
+        val rt0 = RealTime.initial(level, cfg)
+        assertEquals(0, rt0.ringCount)
+        assertEquals(level.queue.size, rt0.queueRemaining)
+        assertFalse(rt0.settled)
+        assertEquals(Status.PLAYING, rt0.status)
+        assertTrue(rt0.dock.all { it == null })
+        // taps are legal during the fill
+        assertEquals(Engine.legalMoves(GameState.initial(level)).map { it.containerId },
+            level.containers.indices.filter { RealTime.isTappable(rt0, it) })
+        val rt = filled(level, cfg)
         assertEquals(Limits.STAGING_SPOTS, rt.ringCount)
+        // a line in queue order: the oldest element is the most downstream (first to reach the gate window)
+        val entrySeat = rt.seatAt(cfg.entryPosition)
         for (k in 0 until Limits.STAGING_SPOTS) {
-            assertEquals(k, rt.seatElement(rt.seatAt(Math.floorMod(cfg.gatePosition - 1 - k, Limits.STAGING_SPOTS))))
+            assertEquals(Limits.STAGING_SPOTS - 1 - k, rt.seatElement(Math.floorMod(entrySeat + k, Limits.STAGING_SPOTS)))
         }
         assertTrue(rt.settled)
         assertEquals(Status.PLAYING, rt.status)
+        assertMatches(GameState.initial(level), rt) { "fill" }
     }
 
     /** Taps during settling are legal; random impatient play never breaks invariants and is deterministic. */
@@ -269,12 +306,12 @@ class RealTimeTest {
         // Engine / patient real-time: wins.
         assertEquals(Status.WON, TestLevels.play(level, line.map { Move(it) }).status)
         val cfg = RtConfig.DEFAULT
-        var patient = RealTime.initial(level, cfg)
+        var patient = filled(level, cfg)
         for (id in line) patient = RealTime.runUntilSettled(RealTime.tap(patient, id).first).first
         assertEquals(Status.WON, patient.status)
 
         // Impatient: B tapped while A is dispatching.
-        var rt = RealTime.initial(level, cfg)
+        var rt = filled(level, cfg)
         rt = RealTime.tap(rt, 0).first
         while (rt.dock[0]?.phase(rt.tick) != SlotPhase.DISPATCHING) rt = RealTime.tick(rt).first
         val (afterB, evB) = RealTime.tap(rt, 1)
@@ -290,14 +327,16 @@ class RealTimeTest {
     }
 
     @Test
-    fun boardingRespectsGateLeftmostAndArrival() {
-        // Two red S containers; the right one docked first. Element at gate boards the leftmost ARRIVED container.
+    fun boardingWaitsForArrival() {
+        // Two red S containers; nothing boards before a container has docked.
         val vs = listOf(TestLevels.small(0, 0, 0, 0, Dir.UP), TestLevels.small(1, 0, 0, 1, Dir.UP))
         val level = Level(1, 10, 12, vs, List(8) { 0 })
-        val cfg = RtConfig(ticksPerSeat = 1, releaseTicks = 5, boardTicks = 2, dispatchTicks = 3)
-        var rt = RealTime.initial(level, cfg)
+        val cfg = RtConfig(ticksPerSeat = 1, releaseTicks = 5, boardTicks = 2, dispatchTicks = 3, boardStaggerTicks = 1)
+        var rt = filled(level, cfg)
+        // turn the ring until the oldest element is inside the window
+        while ((0 until cfg.gateWidth).none { rt.seatElement(rt.seatAt(cfg.gatePosition + it)) >= 0 }) rt = RealTime.tick(rt).first
         val (s1, e1) = RealTime.tap(rt, 0)
-        assertEquals(RtEvent.Released(0, 0, 5), e1.single())
+        assertEquals(RtEvent.Released(0, 0, rt.tick + 5), e1.single())
         rt = s1
         val evs = ArrayList<RtEvent>()
         repeat(4) { val (n, ev) = RealTime.tick(rt); evs += ev; rt = n }
@@ -310,6 +349,115 @@ class RealTimeTest {
         assertTrue(rt.dock.all { it == null })
         assertEquals(4, rt.ringCount)
         assertFalse(rt.status == Status.WON)
+    }
+
+    // ---------------------------------------------------------------- gate window
+
+    private val red = 0
+    private val blue = 1
+
+    /**
+     * 40-element queue. Once the ring has filled (gate 0, width 6, entry 20, phase 0) element k sits at position
+     * 19 - k for k < 20 and 59 - k for k >= 20: the window (positions 0..5, travel towards 5) holds elements 19..14
+     * (14 most downstream) and elements 20, 21, ... are next to enter it. [reds] = red queue indices; the rest blue.
+     */
+    private fun windowLevel(reds: Set<Int>, redContainers: List<ContainerSize>): Level {
+        val queue = List(40) { if (it in reds) red else blue }
+        val vs = ArrayList<com.phloots.jam.core.model.Container>()
+        for (sz in redContainers) vs += TestLevels.v(vs.size, sz, red, 0, vs.size, Dir.UP)
+        fun split(n: Int): List<ContainerSize>? = if (n == 0) emptyList() else
+            ContainerSize.entries.sortedByDescending { it.capacity }.firstNotNullOfOrNull { sz ->
+                if (sz.capacity > n) null else split(n - sz.capacity)?.let { listOf(sz) + it }
+            }
+        for (sz in split(queue.count { it == blue })!!) vs += TestLevels.v(vs.size, sz, blue, 0, vs.size, Dir.UP)
+        val level = Level(1, 10, 12, vs, queue)
+        assertEquals(emptyList(), level.validate())
+        return level
+    }
+
+    /** Default timing (4 ticks per seat, stagger 3, width 6) with a short release drive. */
+    private val windowCfg = RtConfig(releaseTicks = 2)
+
+    private fun windowElements(rt: RealTimeState, cfg: RtConfig) =
+        (0 until cfg.gateWidth).map { rt.seatElement(rt.seatAt(cfg.gatePosition + it)) }
+
+    private fun ringReds(rt: RealTimeState) =
+        (0 until rt.seatCount).map { rt.seatElement(it) }.filter { it >= 0 && rt.level.queue[it] == red }.sorted()
+
+    /** Ticks [rt0] until settled, collecting (tick, BoardingStarted) pairs. */
+    private fun boardings(rt0: RealTimeState): Pair<RealTimeState, List<Pair<Long, RtEvent.BoardingStarted>>> {
+        var rt = rt0
+        val out = ArrayList<Pair<Long, RtEvent.BoardingStarted>>()
+        do {
+            val (n, ev) = RealTime.tick(rt)
+            rt = n
+            for (e in ev) if (e is RtEvent.BoardingStarted) out += rt.tick to e
+        } while (!rt.settled)
+        return rt to out
+    }
+
+    @Test
+    fun burstInTheWindowBoardsAsAStaggeredWaveFrontFirst() {
+        // Six reds fill the window, four more are next to enter it; one red L (capacity 10).
+        val level = windowLevel((14..23).toSet(), listOf(ContainerSize.L))
+        val cfg = windowCfg
+        val rt = filled(level, cfg)
+        assertEquals(listOf(19, 18, 17, 16, 15, 14), windowElements(rt, cfg))
+        val (end, b) = boardings(RealTime.tap(rt, 0).first)
+        // one boarding per stagger step, starting the tick the container docks; the most downstream first (14), so
+        // the wave rolls back up the window, and the reds entering afterwards board as they arrive
+        val docked = rt.tick + cfg.releaseTicks
+        assertEquals(List(10) { docked + it * cfg.boardStaggerTicks }, b.map { it.first })
+        assertEquals((14..23).toList(), b.map { it.second.elementIndex })
+        assertTrue(b.all { it.second.slot == 0 })
+        assertTrue(end.dock.all { it == null })
+        assertEquals(Status.PLAYING, end.status)
+    }
+
+    @Test
+    fun windowBoardingRespectsSpace() {
+        // Six reds in the window but only a red S (capacity 4) is docked: exactly 4 board, the rest stay on the ring.
+        val level = windowLevel((14..21).toSet(), listOf(ContainerSize.S, ContainerSize.S))
+        val cfg = windowCfg
+        val rt = filled(level, cfg)
+        val (afterFirst, b) = boardings(RealTime.tap(rt, 0).first)
+        assertEquals(listOf(14, 15, 16, 17), b.map { it.second.elementIndex })
+        assertTrue(b.all { it.second.slot == 0 })
+        assertEquals(36, afterFirst.ringCount)
+        assertEquals(listOf(18, 19, 20, 21), ringReds(afterFirst))
+        val (afterSecond, b2) = boardings(RealTime.tap(afterFirst, 1).first)
+        assertEquals(4, b2.size)
+        assertEquals(emptyList(), ringReds(afterSecond))
+    }
+
+    @Test
+    fun windowBoardingFillsTheLeftmostContainerFirst() {
+        // Two red S containers dock at the same tick: the first four of the wave go to slot 0, the rest to slot 1.
+        val level = windowLevel((14..21).toSet(), listOf(ContainerSize.S, ContainerSize.S))
+        val cfg = windowCfg
+        var rt = filled(level, cfg)
+        rt = RealTime.tap(rt, 0).first
+        rt = RealTime.tap(rt, 1).first
+        val (end, b) = boardings(rt)
+        assertEquals(listOf(0, 0, 0, 0, 1, 1, 1, 1), b.map { it.second.slot })
+        assertEquals((14..21).toList(), b.map { it.second.elementIndex })
+        for (i in 1 until b.size) assertEquals(cfg.boardStaggerTicks.toLong(), b[i].first - b[i - 1].first)
+        assertTrue(end.dock.all { it == null })
+    }
+
+    @Test
+    fun walkersRecordTheirWindowPosition() {
+        val level = windowLevel((14..19).toSet(), listOf(ContainerSize.M))
+        val cfg = windowCfg
+        var rt = RealTime.tap(filled(level, cfg), 0).first
+        val positions = ArrayList<Int>()
+        while (!rt.settled || positions.isEmpty()) {
+            val (n, ev) = RealTime.tick(rt)
+            for (e in ev) if (e is RtEvent.BoardingStarted) positions += n.walkers.single { it.elementIndex == e.elementIndex }.position
+            rt = n
+        }
+        assertEquals(6, positions.size)
+        assertTrue(positions.all { it in cfg.gatePosition until cfg.gatePosition + cfg.gateWidth })
     }
 
     /** tick must be cheap: a full level of patient play plus long idle stretches runs well under budget. */

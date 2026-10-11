@@ -250,9 +250,12 @@ class ScreenshotTest {
         val rules = com.phloots.busjam.game.rt.CoreRealTimeRules()
         var st = rules.initial(level)
         fun run(n: Int) = repeat(n) { st = rules.tick(st).state }
+        val frames = mutableListOf<Pair<String, com.phloots.jam.core.realtime.RealTimeState>>()
+        run(60) // the ring is filling from the queue line
+        frames += "v2_rt_0_fill" to st
+        st = com.phloots.jam.core.realtime.RealTime.runUntilSettled(st).first
         st = rules.tap(st, 0).state // S colour 0, queue starts with colour 0
         run(6)
-        val frames = mutableListOf<Pair<String, com.phloots.jam.core.realtime.RealTimeState>>()
         frames += "v2_rt_1_release" to st
         run(22)
         frames += "v2_rt_2_boarding" to st
@@ -283,7 +286,7 @@ class ScreenshotTest {
     fun realTimeSmallPhone() {
         val level = denseLevel(12, 14, seed = 7)
         val rules = com.phloots.busjam.game.rt.CoreRealTimeRules()
-        var st = rules.tap(rules.initial(level), 0).state
+        var st = rules.tap(com.phloots.jam.core.realtime.RealTime.runUntilSettled(rules.initial(level)).first, 0).state
         repeat(24) { st = rules.tick(st).state }
         rule.mainClock.autoAdvance = false
         rule.setContent {

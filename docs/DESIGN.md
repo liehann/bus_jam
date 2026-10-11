@@ -181,14 +181,18 @@ colour does not matter, so staging is a count vector.
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 
 **Real-time carousel (v3, user decision 2026-10-11).** The waiting area is a rotating ring of 40 seats
-(~4 s per rotation, ~0.1 s per seat). One boarding gate for the dock: when an occupied seat passes the gate and a
-docked container of that colour has space, that element boards (leftmost such container first). The vacated seat
-travels on; an element from the queue line can only step on when an empty seat passes the entry point. The player may
-tap at any time, including while boarding/refill is still in progress (impatience can lose a level).
+(~4 s per rotation, ~0.1 s per seat). The boarding gate is a window of `RtConfig.gateWidth` (default 6) consecutive
+seats next to the dock: matching elements inside it board one after another, the most downstream first, at most one
+start per `boardStaggerTicks` (default 75 ms), so a burst rolls down the window as a wave; elements entering the
+window later board as they arrive (leftmost same-colour container with space first). The vacated seat travels on; an
+element from the queue line can only step on when an empty seat passes the entry point. A level starts with every
+element in the queue line and an empty ring, which fills through the entry (~4 s). The player may tap at any time,
+including during the fill and while boarding/refill is still in progress (impatience can lose a level).
 - **Patient play is the reference:** if the carousel runs undisturbed after a tap, it must converge to exactly
   `Engine.apply`'s settled state (same-colour elements are interchangeable; everything boardable boards; leftmost
   same-colour container first). Solver, generator and scoring keep operating on settled states; "solvable" means
-  solvable by patient play.
+  solvable by patient play. The initial fill ends in Engine's initial state (first 40 staged); a single tap during
+  the fill also converges to `Engine.apply` from that state.
 - Undo = rewind to just before the last tap, including carousel phase. Deterministic: real-time state is advanced
   by integer ticks; the UI maps wall-clock time to ticks.
 

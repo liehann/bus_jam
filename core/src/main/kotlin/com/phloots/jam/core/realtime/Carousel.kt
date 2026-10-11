@@ -16,13 +16,17 @@ import com.phloots.jam.core.model.Status
  * The waiting area is a ring of [Limits.STAGING_SPOTS] seats. Seats are fixed to the ring and the ring turns:
  * seat `s` stands at ring POSITION `(s + phase) mod N`; positions are fixed places on screen, numbered in the
  * direction of travel. Every [RtConfig.ticksPerSeat] ticks the phase advances by one (each seat moves to the next
- * position). Two positions are special:
- *  - the GATE ([RtConfig.gatePosition], default 0): when a seat arrives there holding an element of colour c and a
- *    docked (arrived) container of colour c has unreserved space, the element leaves the seat and walks to the
- *    LEFTMOST such container (one element per seat step);
- *  - the ENTRY ([RtConfig.entryPosition], default N/2 = 20): when a seat arrives there empty and the queue is not
- *    exhausted, the next queue element steps on.
- * Within one seat step the gate is processed before the entry.
+ * position). Two places are special:
+ *  - the GATE WINDOW: [RtConfig.gateWidth] consecutive positions starting at [RtConfig.gatePosition] (default 0..5;
+ *    elements enter it at gatePosition and leave it after gatePosition + gateWidth - 1). Whenever the stagger allows
+ *    (at most one boarding per [RtConfig.boardStaggerTicks] ticks), the most DOWNSTREAM element in the window whose
+ *    colour has a docked (arrived) container with unreserved space leaves its seat and walks to the LEFTMOST such
+ *    container. A burst of matching elements therefore boards as a wave rolling down the window, front first;
+ *  - the ENTRY ([RtConfig.entryPosition], default N/2 = 20, outside the window): when a seat arrives there empty
+ *    and the queue is not exhausted, the next queue element steps on.
+ * The gate is checked on every tick (after the rotation on a seat-step tick); the entry only on seat steps, after the
+ * gate. A level starts with an EMPTY ring: every element waits in the queue line and the ring fills through the entry
+ * (one element per seat step, ~4 s for 40), during which the player may already tap.
  *
  * Patient play converges to Engine.apply's settled state (see RealTimeTest): boarding fills same-colour containers
  * left to right (space is reserved at the gate, so a container stops being a target the moment its last space is
@@ -39,15 +43,21 @@ data class RtConfig(
     val boardTicks: Int = 8,
     /** Full container leaving the dock; its slot stays occupied until the drive completes. */
     val dispatchTicks: Int = 16,
-    /** Ring position of the boarding gate. */
+    /** Ring position of the boarding window's upstream end (where elements enter the window). */
     val gatePosition: Int = 0,
+    /** Number of consecutive ring positions in the boarding window. */
+    val gateWidth: Int = 6,
+    /** Minimum ticks between two boarding starts (the "wave" spacing; 3 ticks = 75 ms at 0.1 s per seat). */
+    val boardStaggerTicks: Int = 3,
     /** Ring position where queue elements step onto empty seats. */
     val entryPosition: Int = Limits.STAGING_SPOTS / 2,
 ) {
     init {
         require(ticksPerSeat >= 1 && releaseTicks >= 1 && boardTicks >= 1 && dispatchTicks >= 1) { "durations must be >= 1" }
         require(gatePosition in 0 until Limits.STAGING_SPOTS && entryPosition in 0 until Limits.STAGING_SPOTS)
-        require(gatePosition != entryPosition) { "gate and entry must differ" }
+        require(gateWidth in 1..Limits.STAGING_SPOTS / 2) { "gateWidth out of range" }
+        require(boardStaggerTicks >= 1) { "boardStaggerTicks must be >= 1" }
+        require(Math.floorMod(entryPosition - gatePosition, Limits.STAGING_SPOTS) >= gateWidth) { "entry inside the gate window" }
     }
 
     /** Seconds per tick when one seat step takes [seatSeconds]. */
@@ -103,6 +113,8 @@ data class RtWalker(
     val color: Int,
     /** Seat it left (now empty). */
     val seat: Int,
+    /** Ring position of that seat when it left (inside the gate window). */
+    val position: Int,
     val slot: Int,
     val containerId: Int,
     val startTick: Long,
@@ -123,7 +135,7 @@ sealed interface RtEvent {
     /** Released container reached its slot and starts accepting elements. */
     data class Docked(val containerId: Int, val slot: Int) : RtEvent
 
-    /** Element `queue[elementIndex]` left [seat] at the gate and starts walking to [containerId] in [slot]. */
+    /** Element `queue[elementIndex]` left [seat] in the gate window and starts walking to [containerId] in [slot]. */
     data class BoardingStarted(val elementIndex: Int, val seat: Int, val slot: Int, val containerId: Int) : RtEvent
 
     /** Element finished walking into the container. */
@@ -166,6 +178,8 @@ class RealTimeState internal constructor(
     val queueIndex: Int,
     /** Elements walking from the gate to a container. */
     val walkers: List<RtWalker>,
+    /** Earliest tick at which the next boarding may start (stagger). */
+    val nextBoardTick: Long,
     val settled: Boolean,
     val status: Status,
 ) {
@@ -215,7 +229,8 @@ class RealTimeState internal constructor(
         if (other !is RealTimeState) return false
         return level == other.level && config == other.config && tick == other.tick && phase == other.phase &&
             seats.contentEquals(other.seats) && onBoard == other.onBoard && dock == other.dock &&
-            queueIndex == other.queueIndex && walkers == other.walkers && settled == other.settled &&
+            queueIndex == other.queueIndex && walkers == other.walkers && nextBoardTick == other.nextBoardTick &&
+            settled == other.settled &&
             status == other.status
     }
 
@@ -227,6 +242,7 @@ class RealTimeState internal constructor(
         h = 31 * h + dock.hashCode()
         h = 31 * h + queueIndex
         h = 31 * h + walkers.hashCode()
+        h = 31 * h + nextBoardTick.hashCode()
         return h
     }
 
@@ -243,9 +259,12 @@ class RealTimeState internal constructor(
         dock: List<RtSlot?> = this.dock,
         queueIndex: Int = this.queueIndex,
         walkers: List<RtWalker> = this.walkers,
+        nextBoardTick: Long = this.nextBoardTick,
         settled: Boolean = this.settled,
         status: Status = this.status,
-    ) = RealTimeState(level, config, tick, phase, seats, ringCount, onBoard, dock, queueIndex, walkers, settled, status)
+    ) = RealTimeState(
+        level, config, tick, phase, seats, ringCount, onBoard, dock, queueIndex, walkers, nextBoardTick, settled, status,
+    )
 }
 
 /** Real-time rules. Pure functions over [RealTimeState]. */
@@ -253,18 +272,23 @@ object RealTime {
     private const val N = Limits.STAGING_SPOTS
 
     /**
-     * Start of a level: tick 0, phase 0, dock empty, the first min(N, queue.size) elements on the ring.
-     * Placement: element k (0 = queue front) sits at ring position `gate - 1 - k` (mod N), i.e. a line in queue
-     * order standing just upstream of the gate, oldest first — the oldest reaches the gate first. With a full ring
-     * the newest element sits on the gate position itself. Status PLAYING (as GameState.initial).
+     * Start of a level: tick 0, phase 0, dock empty, EMPTY ring, every element in the queue line (queueIndex 0).
+     * The ring fills through the entry, one element per seat step, so element k steps on at seat step k+1 and the
+     * oldest reaches the gate window first. Not settled until the ring is full (or the queue is exhausted); patient
+     * play from then on matches Engine from GameState.initial (first 40 staged). Taps during the fill are legal.
      */
-    fun initial(level: Level, config: RtConfig = RtConfig.DEFAULT): RealTimeState =
-        fromGameState(GameState.initial(level), config)
+    fun initial(level: Level, config: RtConfig = RtConfig.DEFAULT): RealTimeState {
+        val s = RealTimeState(
+            level, config, 0L, 0, IntArray(N) { -1 }, 0, GameState.initial(level).onBoard,
+            List(Limits.DOCK_SLOTS) { null }, 0, emptyList(), 0L, settled = false, status = Status.PLAYING,
+        )
+        return if (isSettled(s)) s.copy(settled = true, status = settledStatus(s)) else s
+    }
 
     /**
      * Builds a settled real-time state from a settled Engine state (e.g. a restored save): tick 0, phase 0, staged
-     * elements (by [GameState.stagedElementIndices], oldest first) placed as in [initial]; docked containers already
-     * arrived.
+     * elements (by [GameState.stagedElementIndices], oldest first) pre-placed as a line just upstream of the gate
+     * window (element k at position `gate - 1 - k`); docked containers already arrived.
      */
     fun fromGameState(state: GameState, config: RtConfig = RtConfig.DEFAULT): RealTimeState {
         val seats = IntArray(N) { -1 }
@@ -274,7 +298,7 @@ object RealTime {
             dc?.let { RtSlot(it.containerId, it.color, state.level.containers[it.containerId].size.capacity, it.spaceLeft, -config.releaseTicks.toLong(), 0L) }
         }
         val s = RealTimeState(
-            state.level, config, 0L, 0, seats, idx.size, state.onBoard, dock, state.queueIndex, emptyList(),
+            state.level, config, 0L, 0, seats, idx.size, state.onBoard, dock, state.queueIndex, emptyList(), 0L,
             settled = false, status = Status.PLAYING,
         )
         val settled = isSettled(s)
@@ -345,8 +369,8 @@ object RealTime {
 
     /**
      * Advances one tick (tick+1), in this order: walkers arriving (Boarded), slot timers (Docked / DispatchStarted /
-     * Dispatched); then, if `tick % ticksPerSeat == 0`, the ring turns one seat and the gate (BoardingStarted) and entry
-     * (SteppedOn) are processed. Finally, if anything happened, settledness/status are recomputed (Settled event on
+     * Dispatched); if `tick % ticksPerSeat == 0` the ring turns one seat; then the gate window (at most one
+     * BoardingStarted, when `tick >= nextBoardTick`); then, on a seat step, the entry (SteppedOn). Finally, if anything happened, settledness/status are recomputed (Settled event on
      * becoming settled). Allocation-light: a quiet tick allocates only the new state value and the Pair; the seat
      * array and lists are copied only when they change.
      */
@@ -384,21 +408,33 @@ object RealTime {
             }
         }
 
-        // 3. rotation, gate, entry
+        // 3. rotation, gate window (staggered), entry
         var phase = state.phase
         var seats = state.seatsRef()
         var ringCount = state.ringCount
         var qi = state.queueIndex
-        if (t % cfg.ticksPerSeat == 0L) {
-            phase = (phase + 1) % N
-            val queue = state.level.queue
-            val g = Math.floorMod(cfg.gatePosition - phase, N)
-            val e = seats[g]
-            if (e >= 0) {
-                val c = queue[e]
-                for (i in 0 until Limits.DOCK_SLOTS) {
-                    val s = dock[i] ?: continue
-                    if (s.color != c || !s.accepts(t)) continue
+        var nextBoard = state.nextBoardTick
+        val seatStep = t % cfg.ticksPerSeat == 0L
+        if (seatStep) phase = (phase + 1) % N
+        val queue = state.level.queue
+        if (t >= nextBoard && ringCount > 0) {
+            var accepting = 0 // colour mask of docked containers with unreserved space
+            for (i in 0 until Limits.DOCK_SLOTS) {
+                val s = dock[i] ?: continue
+                if (s.accepts(t)) accepting = accepting or (1 shl s.color)
+            }
+            if (accepting != 0) {
+                // most downstream first: the wave rolls from the window's exit back towards its entrance
+                for (k in cfg.gateWidth - 1 downTo 0) {
+                    val pos = (cfg.gatePosition + k) % N
+                    val g = Math.floorMod(pos - phase, N)
+                    val e = seats[g]
+                    if (e < 0) continue
+                    val c = queue[e]
+                    if ((accepting ushr c) and 1 == 0) continue
+                    var i = 0
+                    while (dock[i]?.let { it.color == c && it.accepts(t) } != true) i++ // leftmost; exists (mask)
+                    val s = dock[i]!!
                     seats = seats.copyOf()
                     seats[g] = -1
                     ringCount--
@@ -409,11 +445,14 @@ object RealTime {
                     } else s.copy(spaceLeft = left)
                     if (!dockCopied) { dock = dock.toMutableList(); dockCopied = true }
                     (dock as MutableList)[i] = ns
-                    walkers = walkers + RtWalker(e, c, g, i, s.containerId, t, t + cfg.boardTicks)
+                    walkers = walkers + RtWalker(e, c, g, pos, i, s.containerId, t, t + cfg.boardTicks)
                     emit(RtEvent.BoardingStarted(e, g, i, s.containerId))
+                    nextBoard = t + cfg.boardStaggerTicks
                     break
                 }
             }
+        }
+        if (seatStep) {
             val en = Math.floorMod(cfg.entryPosition - phase, N)
             if (seats[en] < 0 && qi < queue.size) {
                 if (seats === state.seatsRef()) seats = seats.copyOf()
@@ -426,6 +465,7 @@ object RealTime {
 
         var next = state.copy(
             tick = t, phase = phase, seats = seats, ringCount = ringCount, dock = dock, queueIndex = qi, walkers = walkers,
+            nextBoardTick = nextBoard,
         )
         val ev = events
         if (ev != null) {

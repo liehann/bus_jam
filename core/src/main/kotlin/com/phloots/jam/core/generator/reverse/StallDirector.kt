@@ -74,6 +74,18 @@ data class CascadeDef(val waits: Int = 2, val gap: Int = 2, val partial: Double 
 }
 
 /**
+ * Juggling (DESIGN.md v2 principle 14), forward order: [hold] partly filled containers are docked (colours absent from
+ * staging), then each of [taps] taps either docks a new partly filled container whose boardings reveal the elements
+ * that complete the oldest held one (a rolling hand-over: "dock one, finish one"), or, with probability [fill], is a
+ * filler that fills at once and whose refills trickle a few elements into the held containers. The dock therefore
+ * holds [hold] partly filled containers from the first moves while the carousel waits on other colours.
+ * [extend]: the plan may add taps here to reach the script's density (instead of a free opening).
+ */
+data class JuggleDef(val taps: Int = 6, val hold: Int = 2, val fill: Double = 0.3, val trickle: Double = 0.6, val extend: Boolean = true) : Segment {
+    override fun summary(): String = "J(t$taps h$hold f${(fill * 100).toInt()})"
+}
+
+/**
  * Interrupted run / multi-dummy unlock (DESIGN.md v2 principle 10), forward order:
  *
  *   dock [pre] of A's [aDummies] dummies, then [bDummies] (B's wall) -> [absorb] filler taps of other colours while
@@ -131,6 +143,22 @@ data class StallScript(
     val mismatch: Double = 0.0,
     /** Placement reward per reachable container of a staged colour that the new container hides. */
     val coverStaged: Double = 0.0,
+    /** Max extra opening fillers added to reach [density] (they are free wins in the opening). */
+    val topUp: Int = 60,
+    /** Forward taps counted as the opening (candidate selection favours juggling and short-horizon forks there). */
+    val openSpan: Int = 0,
+    /** Candidate-selection penalty per pure free win (tap that fills at once) available in an opening state. */
+    val freePenalty: Double = 0.0,
+    /** Candidate-selection reward per docked container (>= 2) in an opening state. */
+    val juggleBonus: Double = 0.0,
+    /** Minimum filler share of the juggle's density-extension taps (fillers are free wins; hand-overs need colours). */
+    val extendFill: Double = 0.65,
+    /** Juggle fillers reuse colours already staged (fewer colours on the carousel). */
+    val concentrate: Boolean = false,
+    /** Candidates per tap in the opening ([openSpan]); 0 = [candidates]. */
+    val openCandidates: Int = 0,
+    /** Fraction of the line from which taps count as the climax (deep forks favoured); 0 = none. */
+    val climaxAt: Double = 0.0,
 ) {
     fun summary(): String = "L$lead " + stalls.joinToString(" ") { it.summary() } + " X$exitFill" +
         (squat?.let { " Q(${it.squat}/${it.bigs}L v${it.valves.size})" } ?: "") +
@@ -264,11 +292,15 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         const val DUMMY_AVOID = 10
         /** Taps after a dummy completion whose batches avoid the colours reserved for those dummies. */
         const val RESERVE_SPAN = 6
+        /** Mean cells per container on dense boards (Hybrid preview 2 L19/L20: 1.92/1.95). */
+        const val AVG_CELLS = 2.25
     }
 
     private enum class PK { FILLER, DUMMY, TARGET, RUN, VALVE, BIG }
     private class PTap(val kind: PK, val group: Int, val dummy: Int = -1) {
         val completes = ArrayList<Int>()
+        /** Juggle filler: its refills trickle a few elements into held juggle containers of this group. */
+        var trickleGroup = -1
         /** Interrupted run island target: put its batch after this many elements of [refGroup]'s colour. */
         var afterRef = -1
         var refGroup = -1
@@ -291,6 +323,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         var squatRun = false
         var domino = false
         var cascade = false
+        var juggle = false
         var triggerStep = -1
         var late = 0
         var islandStep = -1
@@ -314,8 +347,25 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
 
     private fun cap(id: Int) = sizes[id].capacity
 
+    /** Extra juggle taps added to the first extendable [JuggleDef] (density without a free opening). */
+    private var juggleExtra = 0
+
     /** Builds the forward plan; false if the script is inconsistent (more than 3 dummies docked at once). */
     private fun plan(): Boolean {
+        if (!plan0()) return false
+        val ext = sc.stalls.indexOfFirst { it is JuggleDef && it.extend }
+        if (sc.density > 0 && ext >= 0) {
+            val deficit = (sc.density * sc.width * sc.height / AVG_CELLS).toInt() - taps.size
+            if (deficit > 0) {
+                juggleExtra = minOf(deficit, 40)
+                taps.clear(); dummies.clear(); groups.clear(); carriedInto.clear()
+                return plan0()
+            }
+        }
+        return true
+    }
+
+    private fun plan0(): Boolean {
         repeat(sc.lead) { taps += PTap(PK.FILLER, -1) }
         val docked = ArrayList<Int>()
         fun dock(g: Int) {
@@ -325,8 +375,10 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
             docked += d
         }
         fun newDummies(seg: Segment?) = when (seg) {
-            is StallDef -> seg.dummies; is IRunDef -> seg.bDummies + seg.pre; is CascadeDef -> seg.waits; null -> 0
+            is StallDef -> seg.dummies; is IRunDef -> seg.bDummies + seg.pre; is CascadeDef -> seg.waits; is JuggleDef -> seg.hold; null -> 0
         }
+        val prng = Rng(seed xor 0x7A11)
+        var extended = false
         val valvesAt = sc.squat?.valves.orEmpty().groupBy { it.second }
         for ((si, seg) in sc.stalls.withIndex()) {
             for (v in valvesAt[si].orEmpty()) taps += PTap(PK.VALVE, -1).also { it.afterRef = v.first.ordinal }
@@ -354,12 +406,40 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                         docked.remove(first)
                         val nextNew = newDummies(sc.stalls.getOrNull(si + 1))
                         while (docked.size + nextNew > 3) {
-                            val o = docked.first { it != first + 1 }
+                            val o = docked.firstOrNull { it != first + 1 } ?: run { failure = "plan: steal L cannot carry docked=$docked first=$first next=$nextNew si=$si"; return false }
                             taps.last().completes += o; docked.remove(o)
                         }
                         repeat(seg.gap) { taps += PTap(PK.FILLER, -1) }
                         continue
                     }
+                }
+                is JuggleDef -> {
+                    gA = groups.size; groups += Grp(1.0, false, 0).also { it.juggle = true }
+                    carriedInto[gA] = docked.size
+                    val mine = ArrayList<Int>()
+                    while (docked.size < seg.hold) { mine += dummies.size; dock(gA) }
+                    val n = seg.taps + (if (seg.extend && !extended) juggleExtra else 0)
+                    if (seg.extend) extended = true
+                    repeat(n) { k ->
+                        // Density extension taps lean on fillers (each juggle hand-over needs a fresh colour).
+                        val fill = if (k >= seg.taps) maxOf(seg.fill, sc.extendFill) else seg.fill
+                        if (prng.chance(fill) || mine.isEmpty()) {
+                            taps += PTap(PK.FILLER, -1).also { t -> if (prng.chance(seg.trickle)) t.trickleGroup = gA }
+                        } else {
+                            mine += dummies.size
+                            dock(gA)
+                            val old = docked.first()
+                            taps.last().completes += old; docked.remove(old); mine.remove(old)
+                        }
+                    }
+                    // Hand the held containers over to the next segment (completed on the last tap if it needs slots).
+                    val nextNew = newDummies(sc.stalls.getOrNull(si + 1))
+                    if (docked.size + nextNew > 3) {
+                        val t = PTap(PK.FILLER, -1)
+                        while (docked.isNotEmpty() && docked.size + nextNew > 3) t.completes += docked.removeAt(0)
+                        taps += t
+                    }
+                    continue
                 }
                 is CascadeDef -> {
                     gA = groups.size; groups += Grp(seg.partial, false, 0).also { it.cascade = true }
@@ -370,6 +450,13 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                     repeat(seg.gap) { taps += PTap(PK.FILLER, -1) }
                     taps += PTap(PK.FILLER, -1).also { t -> t.justEnough = true; t.refGroup = gA; t.completes += mine }
                     docked.removeAll(mine)
+                    // Carried containers make room for the next segment's dummies.
+                    val nextNewC = newDummies(sc.stalls.getOrNull(si + 1))
+                    if (docked.size + nextNewC > 3) {
+                        val t = PTap(PK.FILLER, -1)
+                        while (docked.isNotEmpty() && docked.size + nextNewC > 3) t.completes += docked.removeAt(0)
+                        taps += t
+                    }
                     continue
                 }
                 is IRunDef -> {
@@ -397,8 +484,8 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 }
             }
             val last = taps.last()
-            val roll = when (seg) { is StallDef -> seg.roll; is IRunDef -> seg.roll; is CascadeDef -> 0 }
-            val gap = when (seg) { is StallDef -> seg.gap; is IRunDef -> seg.gap; is CascadeDef -> 0 }
+            val roll = when (seg) { is StallDef -> seg.roll; is IRunDef -> seg.roll; else -> 0 }
+            val gap = when (seg) { is StallDef -> seg.gap; is IRunDef -> seg.gap; else -> 0 }
             val nextNew = newDummies(sc.stalls.getOrNull(si + 1))
             val k = if (roll > 0 && si + 1 < sc.stalls.size) maxOf(roll, docked.size + nextNew - 3).coerceAtMost(docked.size)
                 else docked.size
@@ -471,19 +558,20 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         if (sc.gutter) for (r in 0 until sc.height) board.reserved[r * sc.width + sc.width / 2] = true
         reserveColours()
         val n0 = taps.size
+        planTaps = n0
         for (i in n0 - 1 downTo 0) {
             val tap = taps[i]
-            val want = if (sc.fork > 0 && sc.candidates > 1) sc.candidates else 1
+            val want = if (sc.fork > 0 && sc.candidates > 1) (if (i < sc.openSpan && sc.openCandidates > 0) sc.openCandidates else sc.candidates) else 1
             val cands = ArrayList<Cand>()
             var tries = 0
             while (cands.size < want && tries++ < want * 4 + 8) build(tap, i)?.let { cands += it }
             if (cands.isEmpty()) { failure = "tap $i ${tap.kind} g${tap.group}: $lastWhy"; return null }
-            val best = if (cands.size == 1) cands[0] else cands.onEach { evaluate(it) }.maxBy { it.score }
+            val best = if (cands.size == 1) cands[0] else cands.onEach { evaluate(it, i) }.maxBy { it.score }
             commit(best, tap, n0 - 1 - i, i)
         }
         // Dense pack: extra opening fillers (the free outer rim) until the target density.
         var extra = 0
-        while (sc.density > 0 && board.cellsUsed().toDouble() / (sc.width * sc.height) < sc.density && extra < 60) {
+        while (sc.density > 0 && board.cellsUsed().toDouble() / (sc.width * sc.height) < sc.density && extra < sc.topUp) {
             val tap = PTap(PK.FILLER, -1)
             val c = (0 until 10).firstNotNullOfOrNull { build(tap, -1 - extra) } ?: break
             commit(c, tap, n0 + extra, -1 - extra)
@@ -522,6 +610,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         return StallLevel(level, line, infos, forks, sc, seed, sq)
     }
 
+    private var planTaps = 0
     private var lastWhy = ""
     private fun why(s: String): Cand? { lastWhy = s; return null }
 
@@ -545,13 +634,13 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
     }
 
     /** Lean filler colour: no other reachable container of it would fill from the batch; few already staged. */
-    private fun leanColor(allowed: List<Int>, head: List<Int>, cap: Int): Int? {
+    private fun leanColor(allowed: List<Int>, head: List<Int>, cap: Int, concentrate: Boolean = false): Int? {
         if (allowed.isEmpty()) return null
         val reach = board.placed.values.filter { board.rayClear(it) }
         return allowed.minByOrNull { c ->
             val n = head.count { it == c } + cap
             4.0 * reach.count { it.color == c && it.size.capacity <= n } - 1.0 * minOf(2, reach.count { it.color == c && it.size.capacity > n }) +
-                0.4 * (n - cap) + 0.5 * colorCount[c] + rng.nextDouble() * 1.5
+                (if (concentrate) -0.2 else 0.4) * (n - cap) + 0.5 * colorCount[c] + rng.nextDouble() * 1.5
         }
     }
 
@@ -578,7 +667,9 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
             // Stack: one colour per group (steal: only the forced S/L pair shares it).
             val stacked = if (gr.steal) di.forceSize != null else gr.stack
             val prev = stackColor[di.group] ?: dummies.firstOrNull { it.group == di.group && it.color >= 0 && (!gr.steal || it.forceSize != null) }?.color
+            // Fallback (juggling needs many short-lived colours): ignore the soon-docking avoidance.
             val ok = palette().filter { it !in hs && it != xColor && it !in used }
+                .ifEmpty { (0 until sc.colors).filter { it != q && it !in hs && it != xColor && it !in used } }
             val pref = ok.filter { it in reservedFor[fwd].orEmpty() }
             val c = if (stacked && prev != null && prev !in hs && prev != xColor) prev else weighted(pref.ifEmpty { ok }) ?: return null
             if (stacked) stackColor[di.group] = c
@@ -612,24 +703,38 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 if (d.id != di.id) return why("slot mismatch")
                 val jX = cap(d.id) - d.space
                 val head = after.w.subList(0, minOf(Limits.STAGING_SPOTS - jX, after.w.size))
-                val built = ReverseStep.build(after, XSpec.Existing(slot), emptyList(), rng, ::cap, insertAt = squatAt(head, fwd))
-                    ?: return why("dummy build")
                 val gr = groups[di.group]
+                // Juggle hand-over: this docking's boardings reveal the elements that complete older containers.
+                val specs = ArrayList<Pair<ContainerSize, Int>>()
+                val ids = HashMap<Int, Pair<Int, Int>>()
+                val rec = if (tap.completes.isEmpty()) emptyList() else {
+                    if (jX == 0) return why("juggle preload 0")
+                    if (after.w.size < Limits.STAGING_SPOTS - jX) return why("short w (juggle)")
+                    completions(tap, fwd, head, d.color, jX, base, specs, ids) ?: return why("juggle colour" + if (System.getenv("HDEBUG") != null) " head=${head.groupingBy { it }.eachCount()} dock=${after.dock.map { it?.color }} pal=${palette()} res=${reservedFor[fwd]}" else "")
+                }
+                // Juggle preloads arrive just before docking (newest staged), so the carousel holds few colours at once
+                // and each hand-over finds a colour that is absent from it.
+                val at = if (gr.juggle) maxOf(squatAt(head, fwd) ?: 0, head.size) else squatAt(head, fwd)
+                val built = ReverseStep.build(after, XSpec.Existing(slot), rec, rng, ::cap, insertAt = at)
+                    ?: return why("dummy build")
                 // Steal pair: both the S and the L sit on the target's exit ray, neither blocking the other, so either
                 // can be docked first.
                 val pair = gr.steal && di.forceSize != null
-                val wall = if (di.free || gr.cascade) null
+                val wall = if (di.free || gr.cascade || gr.juggle) null
                     else if (pair) stallTarget[di.group]?.let { board.placed[it] }
                     else wallHead[di.group]?.let { board.placed[it] }
                 val twin = if (pair) dummies.firstOrNull { it.group == di.group && it.forceSize != null && it !== di && it.id >= 0 }
                     ?.let { board.placed[it.id] } else null
                 // Keystone: the group's outermost wall link (first docked) blocks as many exit chains as it can.
                 val outermost = dummies.indexOfFirst { it.group == di.group && !it.free } == tap.dummy
-                fun put(avoid: Container?) = place(d.id, sizes[d.id], d.color, built.before, mustCover = wall?.let { listOf(it) }, chainBonus = null,
+                // Juggle containers loosely block the next juggle container (soft), so the order is a choice.
+                val soft = if (gr.juggle) listOfNotNull(dummies.lastOrNull { it.group == di.group && it.id >= 0 && it !== di && board.placed[it.id] != null && board.rayClear(board.placed[it.id]!!) }
+                    ?.let { board.placed[it.id] }) else null
+                fun put(avoid: Container?) = place(d.id, sizes[d.id], d.color, built.before, mustCover = wall?.let { listOf(it) }, chainBonus = soft,
                     wallLink = !di.free, keystoneW = if (gr.keystone && outermost) 2.5 else 0.0, avoidRayOf = avoid)
                 // A steal pair that cannot sit side by side falls back to a chained pair (no order choice).
                 val v = put(twin) ?: (if (twin != null) put(null) else null) ?: return why("dummy place")
-                return Cand(built, v, emptyList(), emptyMap(), null)
+                return Cand(built, v, specs, ids, null)
             }
             PK.TARGET, PK.RUN -> {
                 val g = tap.group
@@ -698,13 +803,23 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                 val head = after.w.subList(0, minOf(p0, after.w.size))
                 val res = reservedAt[fwd].orEmpty()
                 val allowed = palette().filter { it !in dcols }.let { l -> l.filter { it !in res }.ifEmpty { l } }
-                val xColor = leanColor(allowed, head, size.capacity) ?: return why("filler colour")
+                val xColor = (if (tap.trickleGroup >= 0 && sc.concentrate) leanColor(allowed.filter { it in head }.ifEmpty { allowed }, head, size.capacity, concentrate = true)
+                    else leanColor(allowed, head, size.capacity)) ?: return why("filler colour")
                 val specs = ArrayList<Pair<ContainerSize, Int>>()
                 val ids = HashMap<Int, Pair<Int, Int>>()
-                val rec = if (tap.completes.isEmpty()) emptyList() else {
+                val rec0 = if (tap.completes.isEmpty()) emptyList() else {
                     if (after.w.size < p0) return why("short w (exit)")
                     completions(tap, fwd, head, xColor, size.capacity, base + 1, specs, ids) ?: return why("exit dummy colour")
                 }
+                // Juggle trickle: a few refills go into held juggle containers (they stay docked, partly filled).
+                val trick = if (tap.trickleGroup < 0 || after.w.size < p0) emptyList() else after.dock.withIndex().mapNotNull { (k, dk) ->
+                    if (dk == null || rec0.any { it.slot == k }) return@mapNotNull null
+                    val di = dummies.firstOrNull { it.id == dk.id } ?: return@mapNotNull null
+                    if (di.group != tap.trickleGroup) return@mapNotNull null
+                    val load = cap(dk.id) - dk.space
+                    if (load < 2 || !rng.chance(0.7)) null else Recipient(k, 1 + rng.nextInt(minOf(2, load - 1)))
+                }
+                val rec = rec0 + trick
                 val built = ReverseStep.build(after, XSpec.New(base, size, xColor), rec, rng, ::cap, insertAt = squatAt(head, fwd))
                     ?: return why("filler build")
                 // Bury pending valves / squatter containers: prefer blocking them.
@@ -862,12 +977,25 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         return g.copy(status = Engine.computeStatus(g))
     }
 
-    private fun evaluate(c: Cand) {
+    private fun evaluate(c: Cand, fwd: Int) {
         val s = forwardState(c)
-        val d = ReverseAnalysis.decision(s, sc.candidateBudget, hCap = 5)
+        val opening = fwd in 0 until sc.openSpan
+        val climax = sc.climaxAt > 0 && fwd >= sc.climaxAt * planTaps
+        val d = ReverseAnalysis.decision(s, sc.candidateBudget, hCap = if (climax) 7 else 5)
         c.fb = d.b; c.fw = d.w; c.fh = d.hMax
         var score = 0.0
-        if (d.b >= 3 && d.w in 1..2) score += 1.5 + 0.1 * minOf(d.b - d.w, 12) + (if (d.hMax >= 2) 2.0 + d.hMax else 0.0)
+        // Stakes visible when the move is made: short horizons (2-4) in the opening, deep ones at the climax.
+        val hTerm = when {
+            d.hMax < 2 -> 0.0
+            opening -> 2.0 + (if (d.hMax <= 4) 4.0 else 1.0)
+            else -> 2.0 + d.hMax
+        }
+        if (d.b >= 3 && d.w in 1..2) score += 1.5 + 0.1 * minOf(d.b - d.w, 12) + hTerm
+        if (opening && (sc.freePenalty > 0 || sc.juggleBonus > 0)) {
+            val js = JuggleMetrics.state(s)
+            score -= sc.freePenalty * maxOf(0, js.freeWins - 1)
+            if (js.docked >= 2) score += sc.juggleBonus * minOf(js.docked, 3)
+        }
         score -= 0.4 * maxOf(0, d.w - 2)
         for ((name, m) in ReverseAnalysis.botChoices(s)) {
             if (m != null && d.outcome[m.containerId] == false) score += if (name.startsWith("look")) 1.5 else 0.5

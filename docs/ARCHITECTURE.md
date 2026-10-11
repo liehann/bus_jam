@@ -343,3 +343,11 @@ Gotchas:
     time) gives exactly Engine.apply's state after every tap (positional dock incl. spaceLeft, staged multiset,
     queueIndex, onBoard, status), over random/padded/big levels and four timing/geometry configs. Ring element
     identities may differ from Engine's oldest-first choice; only the colour multiset is defined.
+- 2026-10-11 (level designer): **Hybrid preview 3** (DESIGN.md principles 14-15). Additive, all in
+  `core/.../generator/reverse/`. `JuggleDef` segment (opening juggle: partly filled docks, "dock one, finish one"
+  hand-overs, filler trickles; extends to reach the script density instead of a free opening). `StallScript` gained
+  defaulted `topUp`, `openSpan`, `openCandidates`, `freePenalty`, `juggleBonus`, `climaxAt`. `LevelMetrics.kt` gained
+  `JuggleMetrics` (docked / stranded / free wins per state, juggle start, first-third and middle shares, longest
+  pressure-free run, `botLines`) and `ScarceMetrics` (same-colour spend forks, chain colour/length, score).
+  `HybridEval` gained `juggle`, `scarce`, `fitness3`; `HybridGenerator.fitness3/earlyForks/lateDeepForks`.
+  Entry points: `levelgen/.../reverse/HybridPreview3.kt`, `JuggleReport.kt`; `Calibrate.kt` prints fit3.

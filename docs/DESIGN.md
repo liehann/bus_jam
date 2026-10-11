@@ -170,6 +170,13 @@ colour does not matter, so staging is a count vector.
     opening whose choices only bite ~8 moves later is the failure to avoid: the stakes must be felt when the move
     is made. Metric: per state on the winning and bot lines, count partly filled docked containers and staged
     elements; reject levels whose first ~third has long stretches below the target.
+15. **Scarce key colour, spent precisely (Hybrid preview 2 L19, 2026-10-11: stumped the user twice, "this is good,
+    it's difficult").** One colour (light blue in L19) is the scarce resource, but some of it must be spent as dummies
+    to dig towards a long mid-game chain of another colour (red). The strategy is to work out exactly which
+    containers of the scarce colour to dock: too few and the chain stays buried, the wrong ones (or too many) and
+    the colour runs out later. Generator: pick a scarce colour, make several of its containers block the climax
+    chain, and size its supply so that only a specific subset of those spends wins (a fork over subsets, not over
+    a single move). This is what made L19 work despite its weak opening (principle 14).
 5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
    decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
 

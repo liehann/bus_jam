@@ -2,6 +2,7 @@ package com.phloots.jam.levelgen.reverse
 
 import com.phloots.jam.core.generator.reverse.HybridGenerator
 import com.phloots.jam.core.generator.reverse.LevelMetrics
+import com.phloots.jam.core.generator.reverse.JuggleMetrics
 import com.phloots.jam.core.generator.reverse.ReverseAnalysis
 import com.phloots.jam.core.io.LevelPackCodec
 import com.phloots.jam.core.model.Level
@@ -16,9 +17,12 @@ fun calibrateOne(name: String, lv: Level): Double {
     val bots = ReverseAnalysis.runBots(lv)
     val early = bots.filter { !it.won }.map { 1.0 - it.moves.toDouble() / sol.size }.average().let { if (it.isNaN()) 0.0 else it }
     val lm = LevelMetrics.measure(lv, sol)
-    val fit = HybridGenerator.fitness2(HybridGenerator.mass(f.forks), HybridGenerator.wide(f.forks), early, lm)
-    println("%-28s n=%2d fit2=%5.1f fit1=%5.1f | %s".format(name, lv.containers.size, fit,
-        HybridGenerator.fitness(HybridGenerator.mass(f.forks), HybridGenerator.wide(f.forks), early), lm.summary()))
+    val fit2 = HybridGenerator.fitness2(HybridGenerator.mass(f.forks), HybridGenerator.wide(f.forks), early, lm)
+    val jm = JuggleMetrics.measure(lv, sol, 10)
+    val sc = com.phloots.jam.core.generator.reverse.ScarceMetrics.measure(lv, sol)
+    val fo = JuggleMetrics.freeOpener(lv)
+    val fit = HybridGenerator.fitness3(fit2, jm, f.forks, sol.size, sc, fo)
+    println("%-28s n=%2d fit3=%5.1f fit2=%5.1f scarce=%4.1f free-opener=%2d | %s | %s".format(name, lv.containers.size, fit, fit2, sc.score, fo, jm.summary(), sc.summary()))
     return fit
 }
 
@@ -34,6 +38,6 @@ fun main(args: Array<String>) {
     for (path in args) {
         val pack = LevelPackCodec.decode(File(path).readText())
         val fits = pack.levels.drop(1).mapIndexed { i, pl -> calibrateOne("${File(path).name} L${i + 2}", pl.level) }
-        println("${File(path).name}: mean fit2 %.1f (levels 2..)".format(fits.average()))
+        println("${File(path).name}: mean fit3 %.1f (levels 2..)".format(fits.average()))
     }
 }

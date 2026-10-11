@@ -41,6 +41,12 @@ data class HybridEval(
     val metrics: LevelMetrics? = null,
     /** Preview-2 fitness ([HybridGenerator.fitness2] + verified checks). */
     val fitness2: Double = fitness,
+    /** Juggling metrics of the intended line (principle 14). */
+    val juggle: JuggleMetrics? = null,
+    /** Scarce key colour metrics of the intended line (principle 15). */
+    val scarce: ScarceMetrics? = null,
+    /** Preview-3 fitness ([HybridGenerator.fitness3] on top of [fitness2]). */
+    val fitness3: Double = fitness2,
 )
 
 object HybridGenerator {
@@ -59,6 +65,27 @@ object HybridGenerator {
         0.3 * minOf(m.longestWindow, 15) + 0.2 * minOf(m.windows, 8) + 0.5 * minOf(m.chainCascades, 4) +
         0.5 * minOf(m.criticalKeystones, 3) + 0.6 * minOf(m.steals, 10) + 0.3 * maxOf(0.0, meanB - 8.0) +
         10.0 * maxOf(0.0, m.density - 0.6)
+
+    /** Tight forks (w <= 2, b >= 3) in the first third of the line with a short horizon (2-4): stakes seen at once. */
+    fun earlyForks(forks: List<Fork>, moves: Int): List<Fork> = forks.filter { it.step < moves / 3 && it.w <= 2 && it.b >= 3 && it.h in 2..4 }
+
+    /** Tight forks in the last third with a deep horizon (>= 6): the climax. */
+    fun lateDeepForks(forks: List<Fork>, moves: Int): List<Fork> = forks.filter { it.step >= 2 * moves / 3 && it.w <= 2 && it.b >= 3 && it.h >= 6 }
+
+    /**
+     * Preview-3 fitness (DESIGN.md principle 14): [fit2] plus juggling from the opening (share of juggling states in
+     * the first and middle thirds), minus late starts, pressure-free stretches and opening free wins, plus early
+     * short-horizon forks and deep forks near the climax, plus the principle-15 axis ([ScarceMetrics.score]: precise
+     * spends of a scarce colour leading into a long chain), minus a long [JuggleMetrics.freeOpener] (pure free wins in
+     * a row from the start: "find anything that works").
+     */
+    fun fitness3(fit2: Double, jm: JuggleMetrics, forks: List<Fork>, moves: Int, scarce: ScarceMetrics? = null, freeOpener: Int = 0): Double {
+        val start = if (jm.start < 0) moves / 3 else jm.start
+        return fit2 + 4.0 * jm.firstThird + 3.0 * jm.middle - 0.5 * maxOf(0, start - 3).coerceAtMost(12) -
+            0.25 * maxOf(0, jm.longestFree - 3).coerceAtMost(30) - 0.8 * maxOf(0.0, jm.earlyFreeWins - 2.0) +
+            1.0 * minOf(earlyForks(forks, moves).size, 4) + 0.5 * minOf(lateDeepForks(forks, moves).size, 4) + 0.8 * (scarce?.score ?: 0.0) -
+            0.4 * maxOf(0, freeOpener - 3).coerceAtMost(25)
+    }
 
     private val LOST_H = Regex("""lost h=(>?\d+)""")
     private val ALT = Regex("""alt lost (\d+) \(h<=(>?\d+)\)""")
@@ -97,7 +124,7 @@ object HybridGenerator {
         return bots to early
     }
 
-    fun evaluate(sl: StallLevel, config: DifficultyConfig = DifficultyConfig.DEFAULT, withChecks: Boolean = true): HybridEval {
+    fun evaluate(sl: StallLevel, config: DifficultyConfig = DifficultyConfig.DEFAULT, withChecks: Boolean = true, juggleN: Int = 10): HybridEval {
         val lv = sl.level
         val (bots, early) = quick(lv, sl.line) ?: error("hybrid line does not replay (seed ${sl.seed})")
         val solvable = Solver.solve(lv, 2_000_000)?.solvable
@@ -108,8 +135,11 @@ object HybridGenerator {
         val ch = if (withChecks) checks(sl) else emptyList()
         val lm = LevelMetrics.measure(lv, sl.line)
         val meanB = f.forks.map { it.b }.average()
+        val f2 = fitness2(m, w, early, lm, meanB) + verified(ch)
+        val jm = JuggleMetrics.measure(lv, sl.line, juggleN)
+        val sc = ScarceMetrics.measure(lv, sl.line)
         return HybridEval(true, solvable, f, w, m, meanB, bots, early, p, fitness(m, w, early) + verified(ch), ch,
-            lm, fitness2(m, w, early, lm, meanB) + verified(ch))
+            lm, f2, jm, sc, fitness3(f2, jm, f.forks, sl.line.size, sc, JuggleMetrics.freeOpener(lv)))
     }
 
     /**

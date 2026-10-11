@@ -58,6 +58,27 @@ class StallDirectorTest {
         }
     }
 
+    /**
+     * Preview-3 juggle opening (principle 14): replays to WON, and from the juggle's first hand-over on the dock holds
+     * >= 2 containers on most opening states.
+     */
+    @Test
+    fun juggleOpeningReplaysAndHoldsDocks() {
+        val sc = StallScript(12, 14, 9, lead = 1, stalls = listOf(JuggleDef(taps = 8, hold = 2, fill = 0.3), StallDef(3, 3, steal = true), StallDef(2, 5, partial = 0.7)),
+            exitFill = 10, sizeWeights = listOf(1.0, 1.0, 0.8), dummySizeWeights = listOf(0.4, 1.0, 1.2), candidates = 1, density = 0.8, topUp = 1)
+        var built = 0
+        for (seed in 0L until 16L) {
+            val sl = StallDirector(sc, seed).run() ?: continue
+            built++
+            assertTrue(sl.level.validate().isEmpty(), "seed $seed: ${sl.level.validate()}")
+            assertTrue(ReverseAnalysis.replay(sl.level, sl.line), "seed $seed does not replay")
+            val jm = JuggleMetrics.measure(sl.level, sl.line, 0)
+            assertTrue(jm.start in 0..6, "seed $seed: juggling starts at ${jm.start}")
+            assertTrue(jm.firstThird >= 0.6, "seed $seed: first third ${jm.firstThird}")
+        }
+        assertTrue(built >= 3, "only $built of 16 built")
+    }
+
     /** Every built level replays through the real Engine to WON along its intended line. */
     @Test
     fun hybridLinesReplayToWon() {

@@ -68,7 +68,7 @@ Invariants:
 
 - **Coordinates**: `(row, col)`, row 0 = top, col 0 = left. `UP = row-1`, `DOWN = row+1`, `LEFT = col-1`, `RIGHT = col+1` (`Dir.dRow/dCol`).
 - **Limits**: width 10..12 (`MIN_WIDTH`/`MAX_WIDTH`), height 12..14 (`MIN_HEIGHT`/`MAX_HEIGHT`), `MAX_CONTAINERS = 128`,
-  `DOCK_SLOTS = 4`, `STAGING_SPOTS = 7`, `MAX_COLORS = 8`.
+  `DOCK_SLOTS = 4`, `STAGING_SPOTS = 40`, `MAX_COLORS = 10`.
 - **ContainerSize**: `S(length 1, capacity 4)`, `M(2, 6)`, `L(3, 10)`. A length-1 container still faces a direction.
 - **Container**: `(row, col)` is the **front** cell; the body extends behind it (`dir.opposite`) for `size.length`
   cells. `cells()` returns front first. The exit ray is the cells from front+dir to the board edge.
@@ -81,12 +81,12 @@ Invariants:
   - `dock` has exactly 4 positional entries (index 0 = leftmost; null = free). Release takes the leftmost free slot;
     dispatches leave a hole (no compaction). Boarding scans slots left to right.
   - `DockedContainer(containerId, color, spaceLeft)` — no arrival stamp any more (priority is positional).
-  - `staging` = colours of the staged elements in age order (oldest first, list index = staging spot), size <= 7,
+  - `staging` = colours of the staged elements in age order (oldest first, list index = staging spot), size <= `STAGING_SPOTS` (40),
     compacted (after a boarding the later elements shift one spot left). Full unless the queue is exhausted.
   - `queueIndex` = next queue element **not yet staged** (`== queue.size` once everything is staged).
   - `stagedElementIndices()` = queue indices parallel to `staging` (derived; boarding always takes the oldest staged
     element of a colour). `queueRemaining` = unstaged count. `dockUsed`.
-  - `GameState.initial(level)` = all on board, empty dock, staging filled with the first min(7, queue.size) elements,
+  - `GameState.initial(level)` = all on board, empty dock, staging filled with the first min(STAGING_SPOTS, queue.size) elements,
     `queueIndex` = that count, PLAYING. (Implemented.)
   - `status` is set by the Engine (WON > DEADLOCK > STUCK > PLAYING, see `Engine` KDoc).
 - **Events** (chronological, for animation):
@@ -260,3 +260,9 @@ Gotchas:
   `evaluate(level, config)`; seeded from level content, settings in DifficultyConfig's rollout block; its value is
   passed to `Scorer.score(..., rolloutLossRate)`). levelgen selects on solver node counts (no wall-clock),
   `--preview <n>` writes a preview pack, curve CSV gained rollout/chain/deadWeight. Pack: version 2.
+- 2026-10-10 (gamestate, reviewer fixes): `Solver.hint(state, isCancelled: () -> Boolean = { false })` and
+  `Solver.solve(state, maxNodes, isCancelled = { false })`: the callback is polled every
+  `Solver.CANCEL_CHECK_NODES` (1024) search nodes; a cancelled search returns null (hint) / null (budgeted solve).
+  Source-compatible (defaulted). UI: pass `{ !coroutineContext.isActive }`. `RolloutDifficulty` softmax uses
+  `StrictMath.exp` (bit-identical across JVMs/CPUs; stored rollout scores may shift by an ulp-driven amount, so
+  regenerate packs). Invariant docs above updated to `STAGING_SPOTS = 40`, `MAX_COLORS = 10`.

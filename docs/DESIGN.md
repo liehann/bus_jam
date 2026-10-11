@@ -78,6 +78,20 @@ colour does not matter, so staging is a count vector.
 - **Heuristic-bot rejection:** from level 2, simulate deterministic naive players (one-of-each, greedy-match,
   first-free) via Engine; if any wins, discard the level.
 
+**Level-design principles (playtest, 2026-10-10 — level 20 of the preview was the first "good" level):**
+1. **Which container of this colour?** The core decision. Several same-colour containers of different sizes
+   (S4 / M6 / L10) in different positions. The player picks one *knowing how many of that colour are staged/coming*:
+   e.g. 6 staged reds → an M fills exactly and dispatches; an L sits with 4 empty spaces; an S leaves 2 waiting.
+   Deliberately set up counts that make one choice work and a tempting one fail.
+2. **Big vs small trade-off.** A big container holds a dock slot longer; a small one clears fast. Puzzles should
+   sometimes make the *big* one the right pick because releasing it unblocks a critical container.
+3. **Stacking to unlock.** Sometimes you must dock several same-colour containers at once (e.g. 3 purple) to free
+   enough of another colour (e.g. blues) to clear a long run — that's what made preview level 20 interesting.
+4. **Dense core, built outward.** Construct from the centre out: the centre is ~fully packed with only a handful
+   of unpacking orders that don't jam; the periphery is looser and gives early freedom.
+5. There is an art to this — prefer hand-tunable construction "recipes"/motifs (each encoding one of the above
+   decision patterns) composed into a level, over pure randomness. Verify each motif with the solver + bots.
+
 **UI (v2):** board, then a staging area of 40 spots (compact multi-row grid) between the dock and the two-lane queue preview
 (left lane = next ~12 after staging, right lane = ~12 from the halfway point). Keep current car art for now.
 

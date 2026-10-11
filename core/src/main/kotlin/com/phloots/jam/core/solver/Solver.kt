@@ -107,11 +107,15 @@ object Solver {
 
     fun solve(level: Level, maxNodes: Long): SolveResult? = solve(GameState.initial(level), maxNodes)
 
+    /** How often (in search nodes) the solver polls an `isCancelled` callback. */
+    const val CANCEL_CHECK_NODES: Long = 1024
+
     /**
-     * [solve] with a node budget (real + relaxed search nodes). Returns null if the budget was exceeded before the
-     * search finished (outcome unknown); otherwise the exact result.
+     * [solve] with a node budget (real + relaxed search nodes). Returns null if the budget was exceeded or
+     * [isCancelled] returned true (polled every [CANCEL_CHECK_NODES] nodes) before the search finished (outcome
+     * unknown); otherwise the exact result.
      */
-    fun solve(state: GameState, maxNodes: Long): SolveResult? {
+    fun solve(state: GameState, maxNodes: Long, isCancelled: () -> Boolean = { false }): SolveResult? {
         when (state.status) {
             Status.WON -> return SolveResult(true, emptyList(), SolveStats(0, 0))
             Status.DEADLOCK, Status.STUCK -> return SolveResult(false, emptyList(), SolveStats(0, 0))
@@ -119,6 +123,7 @@ object Solver {
         }
         val d = LevelData.of(state.level)
         val ctx = SolveCtx(d)
+        ctx.cancelled = isCancelled
         val p = LongArray(2)
         d.toPacked(state, p)
         val r = ctx.run(state.onBoard.lo and d.allLo, state.onBoard.hi and d.allHi, p[0], p[1], maxNodes)
@@ -130,11 +135,12 @@ object Solver {
     /**
      * Next move of a winning line from [state], or null if no win is reachable (or game over). Bounded by
      * [HINT_MAX_NODES]: if the search does not finish in budget it also returns null (callers cannot tell "lost" from
-     * "too hard to prove"; see [solve] with a budget for the distinction).
+     * "too hard to prove"; see [solve] with a budget for the distinction). [isCancelled] is polled every
+     * [CANCEL_CHECK_NODES] nodes (e.g. `{ !coroutineContext.isActive }`); a cancelled search returns null.
      */
-    fun hint(state: GameState): Move? {
+    fun hint(state: GameState, isCancelled: () -> Boolean = { false }): Move? {
         if (state.status != Status.PLAYING) return null
-        val r = solve(state, HINT_MAX_NODES) ?: return null
+        val r = solve(state, HINT_MAX_NODES, isCancelled) ?: return null
         return if (r.solvable) r.solution.firstOrNull() else null
     }
 
@@ -492,6 +498,13 @@ object Solver {
         var nodes = 0L
         var limit = Long.MAX_VALUE
         var totalNodes = 0L
+        var cancelled: () -> Boolean = { false }
+
+        /** Counts a node; aborts the search on budget exhaustion or cancellation. */
+        fun tick() {
+            if (++nodes > limit) throw CapExceeded()
+            if (nodes and (CANCEL_CHECK_NODES - 1) == 0L && cancelled()) throw CapExceeded()
+        }
         val relaxed = Relaxed(d, this)
         private val tmp = LongArray(2)
         private val tmp2 = LongArray(2)
@@ -532,7 +545,7 @@ object Solver {
         }
 
         private fun dfs(lo: Long, hi: Long, a: Long, b: Long, depth: Int): Boolean {
-            if (++nodes > limit) throw CapExceeded()
+            tick()
             if (lo == 0L && hi == 0L) {
                 if (a and LevelData.DOCK_MASK == 0L && b == 0L && LevelData.queueIndex(a) >= d.qSize) {
                     solLen = depth
@@ -628,7 +641,7 @@ object Solver {
         val size: Int get() = memo.size
 
         fun wins(r0: Long, r1: Long, a: Long, b: Long): Boolean {
-            if (++owner.nodes > owner.limit) throw CapExceeded()
+            owner.tick()
             if (r0 == 0L && r1 == 0L) {
                 return a and LevelData.DOCK_MASK == 0L && b == 0L && LevelData.queueIndex(a) >= d.qSize
             }

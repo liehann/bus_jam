@@ -167,6 +167,120 @@ class SolverTest {
         assertTrue(winnableMid > 100, "winnableMid=$winnableMid")
     }
 
+    /**
+     * Ids >= 64 (Bits128.hi): [shift] dummy containers take ids 0 until shift and start off the board (already
+     * dispatched), so the real containers sit at ids shift.. and straddle the lo/hi boundary.
+     */
+    private fun highIdState(level: Level, shift: Int): GameState {
+        val cols = level.width
+        val dummies = (0 until shift).map { small(it, 0, level.height + it / cols, it % cols, Dir.UP) }
+        val real = level.containers.map { it.copy(id = it.id + shift) }
+        val big = Level(level.id, level.width, level.height + (shift + cols - 1) / cols, dummies + real, level.queue)
+        val start = GameState.initial(big)
+        var onBoard = start.onBoard
+        for (i in 0 until shift) onBoard = onBoard.without(i)
+        val s = start.copy(onBoard = onBoard)
+        return s.copy(status = Engine.computeStatus(s))
+    }
+
+    @Test
+    fun solveAndHintMatchBruteForceWithHighIds() {
+        val rnd = Random(6464)
+        var states = 0
+        var crossing = 0
+        repeat(150) {
+            val base = rs(rnd, 6, 6, 9, 4, largeOdds = 4)
+            val shift = listOf(58, 60, 64, 100, 110)[rnd.nextInt(5)].coerceAtMost(128 - base.containers.size)
+            if (shift < 64 && shift + base.containers.size > 64) crossing++
+            val brute = Brute()
+            var s = highIdState(base, shift)
+            while (true) {
+                val truth = brute.wins(s)
+                val r = Solver.solve(s)
+                assertEquals(truth, r.solvable, "shift $shift state $s")
+                val h = Solver.hint(s)
+                if (s.status == Status.PLAYING && truth) {
+                    assertNotNull(h)
+                    assertTrue(h.containerId >= shift)
+                    assertTrue(brute.wins(Engine.apply(s, h).state))
+                    assertEquals(Status.WON, TestLevels.play(s, r.solution).status)
+                } else {
+                    assertNull(h)
+                }
+                states++
+                if (s.status != Status.PLAYING) break
+                val legal = Engine.legalMoves(s)
+                assertTrue(legal.all { it.containerId >= shift })
+                s = Engine.apply(s, if (h != null && rnd.nextInt(3) == 0) h else legal[rnd.nextInt(legal.size)]).state
+            }
+        }
+        assertTrue(states > 500 && crossing > 10, "states=$states crossing=$crossing")
+    }
+
+    @Test
+    fun cancellationAbortsSearch() {
+        // A large level with a shuffled queue: a search of a few thousand nodes.
+        val level = (0 until 50).asSequence().map { seed ->
+            val l = TestLevels.bigSolvable(seed = 300L + seed, containers = 110, perturb = 0)
+            l.copy(queue = l.queue.shuffled(Random(seed)))
+        }.first { Solver.solve(it, 1_000_000)!!.stats.nodesExpanded > 2 * Solver.CANCEL_CHECK_NODES }
+        var calls = 0
+        assertTrue(Solver.solve(GameState.initial(level), Long.MAX_VALUE) { ++calls; false }!!.solvable)
+        assertTrue(calls >= 2)
+        calls = 0
+        assertNull(Solver.solve(GameState.initial(level), Long.MAX_VALUE) { ++calls >= 2 })
+        assertEquals(2, calls)
+        calls = 0
+        assertNull(Solver.hint(GameState.initial(level)) { ++calls >= 1 })
+        assertEquals(1, calls)
+        // Cheap searches finish before the first poll.
+        val easy = column(3)
+        assertNotNull(Solver.hint(GameState.initial(easy)) { true })
+    }
+
+    /**
+     * Shipped pack: follow the solver line, deviate 1..3 random moves, and the hint-budget solve must decide
+     * (non-null) almost always; anything it reports is exact (checked against a bigger budget when lost).
+     */
+    @Test
+    fun hintBudgetOffPathOnShippedLevels() {
+        val f = java.io.File("../app/src/main/assets/levels.json")
+        org.junit.jupiter.api.Assumptions.assumeTrue(f.exists())
+        val pack = com.phloots.jam.core.io.LevelPackCodec.decode(f.readText())
+        org.junit.jupiter.api.Assumptions.assumeTrue(pack.version >= 2)
+        val levels = pack.levels.map { it.level }
+        val sample = levels.indices.filter { it % maxOf(1, levels.size / 60) == 0 }.map { levels[it] }
+        val rnd = Random(99)
+        var checked = 0
+        var undecided = 0
+        var lost = 0
+        for (l in sample) {
+            val sol = Solver.solve(l, Solver.HINT_MAX_NODES)?.solution ?: continue
+            repeat(3) {
+                var s = GameState.initial(l)
+                for (m in sol.take(rnd.nextInt(sol.size))) s = Engine.apply(s, m).state
+                repeat(1 + rnd.nextInt(3)) {
+                    val legal = Engine.legalMoves(s)
+                    if (legal.isNotEmpty()) s = Engine.apply(s, legal[rnd.nextInt(legal.size)]).state
+                }
+                if (s.status != Status.PLAYING) return@repeat
+                checked++
+                val r = Solver.solve(s, Solver.HINT_MAX_NODES)
+                when {
+                    r == null -> undecided++
+                    r.solvable -> assertEquals(Status.WON, TestLevels.play(s, r.solution).status)
+                    else -> {
+                        lost++
+                        assertNull(Solver.hint(s))
+                    }
+                }
+            }
+        }
+        println("hintBudgetOffPath: checked=$checked lost=$lost undecided=$undecided over ${sample.size} levels")
+        assertTrue(checked > 50, "checked=$checked")
+        assertTrue(undecided * 50 <= checked, "undecided=$undecided of $checked")
+    }
+
     @Test
     fun solveAndAnalyzeAgreeOnMediumLevels() {
         val rnd = Random(77)

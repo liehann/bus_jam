@@ -225,7 +225,7 @@ data class GameState(
 
     companion object {
         /**
-         * All containers on board, dock empty, staging filled from the queue (first min(7, queue.size) elements),
+         * All containers on board, dock empty, staging filled from the queue (first min([Limits.STAGING_SPOTS], queue.size) elements),
          * status PLAYING. No boarding can happen yet (the dock is empty).
          */
         fun initial(level: Level): GameState {

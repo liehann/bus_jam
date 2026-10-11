@@ -1,7 +1,11 @@
 package com.phloots.busjam
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -100,8 +104,10 @@ class ScreenshotTest {
         )
     }
 
-    private fun show(ui: GameUiState, debugInfo: String? = null) {
+    private fun show(ui: GameUiState, debugInfo: String? = null, bars: Boolean = false) {
         rule.setContent {
+            // [bars]: simulate a status bar + 3-button navigation bar (Robolectric reports no insets)
+            Box(if (bars) Modifier.padding(top = 24.dp, bottom = 48.dp) else Modifier) {
             GameScreen(
                 ui = ui,
                 onTap = {}, onAnimationFinished = {}, onUndo = {}, onRestart = {}, onHint = {},
@@ -109,6 +115,7 @@ class ScreenshotTest {
                 debugInfo = debugInfo,
                 stagingSpots = spots,
             )
+            }
         }
     }
 
@@ -140,6 +147,20 @@ class ScreenshotTest {
         show(GameUiState(30, isBoss = true, hasNext = true, state = state))
         rule.mainClock.advanceTimeBy(300)
         save("v2_game_10_colours")
+    }
+
+    /** Small phone (360x640dp with system bars): the 12x14 board must stay usable next to the 40-spot staging. */
+    @Test
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    fun smallPhone12x14() {
+        val level = denseLevel(12, 14, seed = 7)
+        rule.mainClock.autoAdvance = false
+        show(
+            GameUiState(10, isBoss = true, hasNext = true, state = stateWithDock(level), hintMessage = NO_WINNING_MOVE),
+            bars = true,
+        )
+        rule.mainClock.advanceTimeBy(300)
+        save("v2_small_phone_12x14")
     }
 
     @Test

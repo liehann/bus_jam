@@ -13,11 +13,15 @@ import com.phloots.jam.core.model.Status
 import com.phloots.jam.core.model.Transition
 import com.phloots.jam.core.solver.Solver
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -75,8 +79,13 @@ class GameViewModel(
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
     /** Rules; [Engine.apply] in the app (tests may substitute a recorded engine). */
     private val applyMove: (GameState, Move) -> Transition = Engine::apply,
-    /** Hint source; [Solver.hint] in the app. */
-    private val findHint: (GameState) -> Move? = Solver::hint,
+    /** Hint source; [Solver.hint] in the app. The second argument returns true once the search should stop. */
+    private val findHint: (GameState, () -> Boolean) -> Move? = { s, cancelled -> Solver.hint(s, cancelled) },
+    /**
+     * Scope for progress writes. Not the viewModelScope: a win committed from [onCleared] must still be written
+     * after the ViewModel is gone.
+     */
+    private val recordScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow<GameUiState?>(null)
@@ -106,6 +115,24 @@ class GameViewModel(
         )
     }
 
+    /**
+     * Records a win whose animation has not finished yet (the player is leaving the game, or the app is being
+     * stopped). Undo before this point still discards the win; after it the win is final.
+     */
+    fun commitPendingWin() {
+        val ui = _ui.value ?: return
+        if (ui.state.status != Status.WON || winRecorded) return
+        winRecorded = true
+        val n = ui.levelNumber
+        val stars = ui.earnedStars
+        recordScope.launch { progress.recordWin(n, stars) }
+    }
+
+    override fun onCleared() {
+        commitPendingWin()
+        super.onCleared()
+    }
+
     fun onContainerTapped(containerId: Int) {
         val ui = _ui.value ?: return
         if (ui.state.status == Status.WON) return
@@ -118,12 +145,7 @@ class GameViewModel(
         val ui = _ui.value ?: return
         if (ui.anim?.seq != seq) return
         _ui.value = ui.copy(anim = null)
-        if (ui.state.status == Status.WON && !winRecorded) {
-            winRecorded = true
-            val n = ui.levelNumber
-            val stars = ui.earnedStars
-            viewModelScope.launch { progress.recordWin(n, stars) }
-        }
+        commitPendingWin()
         pump()
     }
 
@@ -157,6 +179,11 @@ class GameViewModel(
         )
     }
 
+    /**
+     * Highlights the next move of a winning line for the current state. Any state change (tap, undo, restart, new
+     * level) cancels a running search through the solver's cancellation hook; a cancelled or outdated search costs
+     * nothing and shows no message.
+     */
     fun hint() {
         val ui = _ui.value ?: return
         if (ui.state.status != Status.PLAYING || ui.hintLoading) return
@@ -165,7 +192,11 @@ class GameViewModel(
         _ui.value = ui.copy(hintLoading = true, hintMessage = null, hintContainerId = null)
         hintJob?.cancel()
         hintJob = viewModelScope.launch {
-            val move = withContext(computeDispatcher) { findHint(target) }
+            val move = withContext(computeDispatcher) {
+                val ctx = coroutineContext
+                findHint(target) { !ctx.isActive }
+            }
+            ensureActive() // cancelled while searching: free, no message
             val now = _ui.value ?: return@launch
             _ui.value = when {
                 now.state !== target -> now.copy(hintLoading = false)
@@ -176,13 +207,19 @@ class GameViewModel(
     }
 
     private fun reset() {
+        commitPendingWin()
         cancelInFlight()
         undoStack.clear()
         winRecorded = false
     }
 
+    /** Drops queued taps and stops a running hint search. */
     private fun cancelInFlight() {
         pending.clear()
+        cancelHint()
+    }
+
+    private fun cancelHint() {
         hintJob?.cancel()
         hintJob = null
     }
@@ -203,7 +240,10 @@ class GameViewModel(
                 continue
             }
             val changed = t.state != before
-            if (changed) undoStack.addLast(before)
+            if (changed) {
+                undoStack.addLast(before)
+                cancelHint()
+            }
             val won = t.state.status == Status.WON
             _ui.value = ui.copy(
                 state = t.state,
@@ -211,6 +251,7 @@ class GameViewModel(
                 canUndo = undoStack.isNotEmpty(),
                 hintContainerId = if (changed) null else ui.hintContainerId,
                 hintMessage = if (changed) null else ui.hintMessage,
+                hintLoading = if (changed) false else ui.hintLoading,
                 earnedStars = if (won) starsFor(ui.usedUndo, ui.usedHint) else 0,
             )
             if (won) pending.clear()

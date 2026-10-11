@@ -118,31 +118,37 @@ fun GameScreen(
     Box(Modifier.fillMaxSize().background(Palette.background)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
             TopBar(ui, debugInfo, onLevels)
-            PlayField(
-                logical = ui.state,
-                snapshot = snapshot,
-                phase = phase.takeIf { playing },
-                progress = tProvider,
-                hintContainerId = ui.hintContainerId,
-                hintPulse = { pulse?.value ?: 0f },
-                shakeProgress = { shakeAnim.value },
-                onTap = onTap,
-                stagingSpots = stagingSpots,
-                modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 4.dp),
-            )
-            Box(Modifier.fillMaxWidth().height(22.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                PlayField(
+                    logical = ui.state,
+                    snapshot = snapshot,
+                    phase = phase.takeIf { playing },
+                    progress = tProvider,
+                    hintContainerId = ui.hintContainerId,
+                    hintPulse = { pulse?.value ?: 0f },
+                    shakeProgress = { shakeAnim.value },
+                    onTap = onTap,
+                    stagingSpots = stagingSpots,
+                    modifier = Modifier.fillMaxSize().padding(vertical = 4.dp),
+                )
+                // floats over the bottom of the play field instead of reserving a row
                 ui.hintMessage?.let {
                     Text(
                         it,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Palette.boss,
-                        modifier = Modifier.testTag("hint-message"),
+                        color = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 10.dp)
+                            .background(Palette.boss, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .testTag("hint-message"),
                     )
                 }
             }
             Row(
-                Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 GameButton("Restart", onRestart, Modifier.weight(1f).testTag("restart"))

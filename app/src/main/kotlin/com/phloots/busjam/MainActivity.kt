@@ -19,6 +19,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -60,8 +62,14 @@ fun BusJamApp() {
     val progressOrNull by app.progress.collectAsStateWithLifecycle()
     val progress = progressOrNull ?: Progress()
     var screen by rememberSaveable { mutableIntStateOf(HOME) }
+    // A win whose animation is still playing when the app goes to the background is recorded now: the process may
+    // be killed before the animation can finish.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { game.commitPendingWin() }
 
-    BackHandler(enabled = screen != HOME) { screen = HOME }
+    BackHandler(enabled = screen != HOME) {
+        game.commitPendingWin()
+        screen = HOME
+    }
     val openLevel: (Int) -> Unit = { n ->
         levels?.let { pack ->
             val number = n.coerceIn(1, pack.size)
@@ -105,8 +113,8 @@ fun BusJamApp() {
                         onRestart = game::restart,
                         onHint = game::hint,
                         onNext = { openLevel(number + 1) },
-                        onLevels = { screen = LEVELS },
-                        onHome = { screen = HOME },
+                        onLevels = { game.commitPendingWin(); screen = LEVELS },
+                        onHome = { game.commitPendingWin(); screen = HOME },
                         debugInfo = if (BuildConfig.DEBUG) pack[number - 1].headerInfo() else null,
                     )
                 }

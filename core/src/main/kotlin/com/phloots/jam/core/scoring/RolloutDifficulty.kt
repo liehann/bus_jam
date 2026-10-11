@@ -6,7 +6,6 @@ import com.phloots.jam.core.model.Level
 import com.phloots.jam.core.model.Limits
 import com.phloots.jam.core.model.Move
 import com.phloots.jam.core.model.Status
-import kotlin.math.exp
 import kotlin.random.Random
 
 /**
@@ -77,7 +76,7 @@ object RolloutDifficulty {
             fill - (if (dockSpace[v.color] > 0) starve else 0.0)
         }
         val max = values.max()
-        val w = DoubleArray(values.size) { exp((values[it] - max) / temp) }
+        val w = DoubleArray(values.size) { StrictMath.exp((values[it] - max) / temp) } // StrictMath: bit-identical on every JVM/CPU
         var x = rng.nextDouble() * w.sum()
         for (k in legal.indices) {
             x -= w[k]; if (x < 0) return legal[k]

@@ -122,7 +122,7 @@ class GameViewModelTest {
 
     @Test
     fun nullHintKeepsStarsAndExplains() {
-        vm = GameViewModel({ n, s -> wins += n to s }, main, findHint = { null })
+        vm = GameViewModel({ n, s -> wins += n to s }, main, findHint = { _, _ -> null })
         vm.start(easy, 1, hasNext = true)
         vm.hint()
         assertFalse(ui().hintLoading)
@@ -139,7 +139,7 @@ class GameViewModelTest {
     @Test
     fun hintInvalidatedByATapIsFree() {
         val compute = StandardTestDispatcher(scheduler)
-        vm = GameViewModel({ n, s -> wins += n to s }, compute, findHint = Solver::hint)
+        vm = GameViewModel({ n, s -> wins += n to s }, compute, findHint = { st, c -> Solver.hint(st, c) })
         vm.start(easy, 1, hasNext = true)
         vm.hint()
         assertTrue(ui().hintLoading)
@@ -249,5 +249,90 @@ class GameViewModelTest {
         finishAnimations()
         assertEquals(Status.WON, ui().state.status)
         assertEquals(listOf(2 to 3), wins)
+    }
+
+    @Test
+    fun leavingDuringTheWinAnimationStillRecordsTheWin() {
+        vm.start(easy, 1, hasNext = true)
+        tap(0)
+        vm.onContainerTapped(1) // winning move; its animation is "cancelled" by leaving the screen
+        assertNotNull(ui().anim)
+        vm.commitPendingWin() // Back / "< Levels" / ON_STOP
+        assertEquals(listOf(1 to 3), wins)
+        vm.undo() // the win is final now
+        assertEquals(Status.WON, ui().state.status)
+        finishAnimations() // late finish does not record twice
+        assertEquals(listOf(1 to 3), wins)
+    }
+
+    @Test
+    fun startingAnotherLevelDuringTheWinAnimationRecordsTheWin() {
+        vm.start(easy, 1, hasNext = true)
+        tap(0)
+        vm.onContainerTapped(1)
+        vm.start(blocked, 2, hasNext = false) // openLevel(fresh = true) without the animation finishing
+        assertEquals(listOf(1 to 3), wins)
+        assertEquals(2, ui().levelNumber)
+        assertEquals(Status.PLAYING, ui().state.status)
+    }
+
+    @Test
+    fun undoThenLeavingRecordsNothing() {
+        vm.start(easy, 1, hasNext = true)
+        tap(0)
+        vm.onContainerTapped(1)
+        vm.undo()
+        vm.commitPendingWin()
+        vm.start(blocked, 2, hasNext = false)
+        assertTrue(wins.isEmpty())
+    }
+
+    @Test
+    fun aTapCancelsTheRunningSearchForFree() {
+        val compute = StandardTestDispatcher(scheduler)
+        var sawCancel = false
+        var first = true
+        vm = GameViewModel(
+            { n, s -> wins += n to s }, compute,
+            findHint = { _, cancelled ->
+                if (first) {
+                    first = false
+                    tap(0) // the player taps while the search runs: the state change cancels it
+                    sawCancel = cancelled()
+                }
+                null // what Solver.hint returns when cancelled (and, for the second request, a lost position)
+            },
+        )
+        vm.start(easy, 1, hasNext = true)
+        vm.hint()
+        assertTrue(ui().hintLoading)
+        scheduler.advanceUntilIdle()
+        assertFalse(ui().hintLoading)
+        assertTrue("search saw the cancellation", sawCancel)
+        assertNull(ui().hintMessage) // a cancelled search is not "no winning move"
+        assertFalse(ui().usedHint)
+        assertEquals(3, ui().potentialStars)
+        vm.hint() // a new request works normally
+        scheduler.advanceUntilIdle()
+        assertEquals(NO_WINNING_MOVE, ui().hintMessage)
+    }
+
+    @Test
+    fun undoAndRestartCancelTheSearch() {
+        val compute = StandardTestDispatcher(scheduler)
+        var searches = 0
+        vm = GameViewModel({ n, s -> wins += n to s }, compute, findHint = { st, c -> searches++; Solver.hint(st, c) })
+        vm.start(easy, 1, hasNext = true)
+        tap(0)
+        vm.hint()
+        vm.undo()
+        assertFalse(ui().hintLoading)
+        vm.hint()
+        vm.restart()
+        scheduler.advanceUntilIdle()
+        assertFalse(ui().usedHint)
+        assertNull(ui().hintContainerId)
+        assertNull(ui().hintMessage)
+        assertEquals(3, ui().potentialStars)
     }
 }

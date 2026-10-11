@@ -72,9 +72,12 @@ data class QueueLanes(val remaining: Int, val leftCount: Int, val rightStart: In
 }
 
 /**
- * Pixel layout of the play field, top to bottom: two queue lanes, the 7 staging spots, the 4 dock slots, the board.
- * Spare height is split 1:4 above / below the stack; the board takes all remaining space (cell size limited by width
- * and height) and sits directly under the dock.
+ * Pixel layout of the play field, top to bottom: two queue lanes, the [stagingSpots] staging spots (a multi-row
+ * grid), the 4 dock slots, the board. Spare height is split 1:4 above / below the stack; the board takes all remaining
+ * space (cell size limited by width and height) and sits directly under the dock.
+ *
+ * [compact] (short screens, chosen by [fit]): no lane captions, thinner lanes, a denser staging grid, flatter dock
+ * slots and smaller gaps, so the board keeps its cell size.
  */
 class PlayLayout(
     val width: Float,
@@ -84,27 +87,28 @@ class PlayLayout(
     density: Density,
     /** Number of staging spots ([Limits.STAGING_SPOTS]). */
     val stagingSpots: Int = Limits.STAGING_SPOTS,
+    val compact: Boolean = false,
 ) {
     private val dp = density.density
 
     // queue lanes
-    val captionH = 12 * dp
+    val captionH = if (compact) 0f else 12 * dp
     val laneGap = 10 * dp
     val laneW = (width - laneGap) / 2
     val labelW = 28 * dp
     val spacing = (laneW - labelW) / LANE_SIZE
-    val queueToken = minOf(spacing * 0.92f, 22 * dp)
-    val laneH = maxOf(spacing * 1.5f, 22 * dp)
+    val queueToken = minOf(spacing * 0.92f, (if (compact) 18 else 22) * dp)
+    val laneH = if (compact) maxOf(spacing * 1.25f, 16 * dp) else maxOf(spacing * 1.5f, 22 * dp)
 
     // staging
-    // Staging grid: as few rows as keep a spot pitch >= 26dp, then columns balanced over the rows.
+    // Staging grid: as few rows as keep a spot pitch >= 26dp (17dp compact), then columns balanced over the rows.
     // Spots run in a snake (row 0 left->right, row 1 right->left, ...) in age order, so the one-spot shift after a
     // boarding always moves an element to a neighbouring spot.
     val stagingRows: Int
     val stagingCols: Int
     init {
         val n = stagingSpots.coerceAtLeast(1)
-        val maxCols = (width / (26 * dp)).toInt().coerceAtLeast(1)
+        val maxCols = (width / ((if (compact) 17 else 26) * dp)).toInt().coerceAtLeast(1)
         stagingRows = (n + maxCols - 1) / maxCols
         stagingCols = (n + stagingRows - 1) / stagingRows
     }
@@ -119,10 +123,10 @@ class PlayLayout(
     val slotW = (width - (Limits.DOCK_SLOTS - 1) * slotGap) / Limits.DOCK_SLOTS
     /** Body width of a docked container (an L must fit the slot lying down). */
     val dockedW = minOf(slotW * 0.92f / (0.9f + 0.48f * 5), 30 * dp)
-    val slotH = dockedW * 1.75f
+    val slotH = dockedW * (if (compact) 1.4f else 1.75f)
     val seatSize = dockedW * 0.34f
 
-    private val gap = 8 * dp
+    private val gap = (if (compact) 4 else 8) * dp
     private val fixedH = captionH + laneH + gap + stagingH + gap + slotH + gap
     val cell = minOf(width / levelWidth, (height - fixedH) / levelHeight)
     val boardW = cell * levelWidth
@@ -137,6 +141,23 @@ class PlayLayout(
     val slotsTop = laneTop + laneH + gap + stagingH + gap
     val dockBottom = slotsTop + slotH
     val board = Offset((width - boardW) / 2, dockBottom + gap)
+
+    companion object {
+        /** Cell size the board should keep if at all possible. */
+        const val TARGET_CELL_DP = 28f
+
+        /** The regular layout, or the compact one when that is what keeps the board near [TARGET_CELL_DP]. */
+        fun fit(
+            width: Float, height: Float, levelWidth: Int, levelHeight: Int, density: Density,
+            stagingSpots: Int = Limits.STAGING_SPOTS,
+        ): PlayLayout {
+            val normal = PlayLayout(width, height, levelWidth, levelHeight, density, stagingSpots)
+            val target = minOf(width / levelWidth, TARGET_CELL_DP * density.density)
+            if (normal.cell >= target) return normal
+            val compact = PlayLayout(width, height, levelWidth, levelHeight, density, stagingSpots, compact = true)
+            return if (compact.cell > normal.cell) compact else normal
+        }
+    }
 
     fun leftLaneX(pos: Float) = spacing * (pos + 0.5f)
     fun rightLaneX(pos: Float) = laneW + laneGap + spacing * (pos + 0.5f)
@@ -206,7 +227,7 @@ fun PlayField(
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
         val lay = remember(w, h, level.width, level.height, density, stagingSpots) {
-            PlayLayout(w, h, level.width, level.height, density, stagingSpots)
+            PlayLayout.fit(w, h, level.width, level.height, density, stagingSpots)
         }
         Canvas(
             Modifier
@@ -312,9 +333,11 @@ private fun DrawScope.drawQueueAndStaging(
     val captionStyle = TextStyle(fontSize = 10.sp, color = Palette.ink.copy(alpha = 0.6f), fontWeight = FontWeight.SemiBold)
     val plusStyle = TextStyle(fontSize = 12.sp, color = Palette.ink, fontWeight = FontWeight.Bold)
     val laneBg = Color(0xFFDCE2E8)
-    val captionY = lay.laneTop - lay.captionH - 1 * density
-    drawText(measurer, "NEXT", Offset(2 * density, captionY), captionStyle)
-    drawText(measurer, "LATER", Offset(lay.laneW + lay.laneGap + 2 * density, captionY), captionStyle)
+    if (lay.captionH > 0f) {
+        val captionY = lay.laneTop - lay.captionH - 1 * density
+        drawText(measurer, "NEXT", Offset(2 * density, captionY), captionStyle)
+        drawText(measurer, "LATER", Offset(lay.laneW + lay.laneGap + 2 * density, captionY), captionStyle)
+    }
     drawRoundRect(laneBg, Offset(0f, lay.laneTop), Size(lay.laneW, lay.laneH), CornerRadius(lay.laneH / 2))
     drawRoundRect(
         laneBg.copy(alpha = 0.6f), Offset(lay.laneW + lay.laneGap, lay.laneTop),

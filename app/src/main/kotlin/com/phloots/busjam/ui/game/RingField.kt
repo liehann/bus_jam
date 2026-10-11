@@ -16,6 +16,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -41,6 +42,7 @@ import com.phloots.jam.core.model.Event
 import com.phloots.busjam.game.rt.RtUiState
 import com.phloots.busjam.game.rt.RtView
 import com.phloots.busjam.ui.theme.Palette
+import com.phloots.busjam.ui.skin.FieldStyle
 import com.phloots.busjam.ui.skin.LocalSkin
 import com.phloots.busjam.ui.skin.Skin
 import androidx.compose.ui.graphics.layer.GraphicsLayer
@@ -59,6 +61,10 @@ import kotlin.math.sin
  * Real-time field, top to bottom: the carousel (an oval track of seats; the queue line runs inside the oval and
  * steps onto the ring at the entry point; the boarding gate is at the bottom centre, next to the dock), the 4 dock
  * slots with remaining-capacity badges, the board.
+ *
+ * With [FieldStyle.queueBelt] the queue instead runs on a belt from a kitchen hatch (top left) along the top of the
+ * field and drops into the loop's entry at its top centre; the dock band is [FieldStyle.dockBandDp] tall, and spare
+ * height (when the board is width-limited) goes partly to the dock band and the rest above and below the field.
  */
 class RingLayout(
     val width: Float,
@@ -68,16 +74,30 @@ class RingLayout(
     density: Density,
     val seatCount: Int,
     val compact: Boolean = false,
+    val style: FieldStyle = FieldStyle.FLAT,
 ) : FieldGeometry {
     private val dp = density.density
     private val gap = (if (compact) 4 else 8) * dp
+    private val belt = style.queueBelt && !compact
 
     // carousel. The oval's size depends only on the width (so the board keeps its size whatever the level's seat
     // count, 20..40); a smaller ring spaces its seats further apart and draws them up to 35% larger.
     val ringH = if (compact) 84 * dp else (width * 0.32f).coerceIn(100 * dp, 130 * dp)
     private val seatScale = kotlin.math.sqrt(Limits.MAX_STAGING_SPOTS.toFloat() / seatCount.coerceAtLeast(1)).coerceIn(1f, 1.35f)
     private val seatGuess = (if (compact) 8 else 11) * dp * seatScale
-    private val top0 = 2 * dp
+
+    // belt mode: kitchen + belt band above the loop, a taller dock band, spare height shared out
+    val beltH = if (belt) 54 * dp else 0f
+    private val baseDockH = if (belt) style.dockBandDp * dp else 0f
+    private val badgeRoom = if (belt) 12 * dp else 9 * dp
+    private val spare = if (!belt) 0f else {
+        val used = 2 * dp + beltH + ringH + gap + 6 * dp + baseDockH + badgeRoom + gap
+        (height - used - width / levelWidth * levelHeight).coerceAtLeast(0f)
+    }
+    private val extraDock = minOf(spare * 0.4f, 16 * dp)
+    private val padTop = (spare - extraDock) * 0.35f
+
+    private val top0 = 2 * dp + padTop + beltH
     val trackTop = top0 + seatGuess
     val trackBottom = top0 + ringH - seatGuess
     val radius = (trackBottom - trackTop) / 2
@@ -91,20 +111,59 @@ class RingLayout(
     val seatToken = minOf(pitch * 0.82f, seatR * 1.8f)
     // queue line inside the oval: a two-row snake starting under the entry point (row 1 towards the right end, then
     // row 2 back to the left), at most [QUEUE_MAX] shown, then "+N"
-    val queueToken = (if (compact) 11 else 14) * dp
-    val queuePitch = queueToken * 1.1f
+    private val insideToken = (if (compact) 11 else 14) * dp
     private val innerLeft = x0 - radius * 0.45f
     private val innerRight = x1 + radius * 0.45f
     val queueRow1Y = cy - (radius - seatR * 1.4f) / 2
     val queueRow2Y = cy + (radius - seatR * 1.4f) / 2
     val gatePoint = Offset(width / 2, trackBottom)
 
+    /** Kitchen hatch (belt mode), top left above the loop. */
+    val kitchen: Rect? = if (belt) Rect(Offset(6 * dp, 2 * dp + padTop), Size(46 * dp, 46 * dp)) else null
+
+    /** Belt centre-line from the kitchen hatch to the loop's entry (belt mode), as a dense polyline. */
+    val beltLine: List<Offset> = if (!belt) emptyList() else buildList {
+        val k = kitchen!!
+        val y = k.top + k.height * 0.62f
+        val r = 16 * dp
+        val cx = width / 2
+        val startX = k.right - 6 * dp
+        val steps = 24
+        for (i in 0..steps) add(Offset(startX + (cx - r - startX) * i / steps, y))
+        for (i in 1..12) {
+            val a = (PI / 2 * i / 12).toFloat()
+            add(Offset(cx - r + r * sin(a), y + r - r * cos(a)))
+        }
+        val endY = trackTop
+        for (i in 1..8) add(Offset(cx, y + r + (endY - y - r) * i / 8))
+    }
+    private val beltLengths: FloatArray = FloatArray(beltLine.size).also { acc ->
+        for (i in 1 until beltLine.size) acc[i] = acc[i - 1] + (beltLine[i] - beltLine[i - 1]).getDistance()
+    }
+    val beltLength: Float get() = beltLengths.lastOrNull() ?: 0f
+    val beltBand = 24 * dp
+
+    /** Spacing of the queue places: the belt holds [QUEUE_MAX] plates (belt mode), or the inside snake's spacing. */
+    val queuePitch = if (belt) (beltLength - beltBand * 0.4f) / (QUEUE_MAX + 0.3f) else insideToken * 1.1f
+    val queueToken = if (belt) minOf(queuePitch * 0.92f, seatToken, 20 * dp) else insideToken
+
+    /** Point on the belt [d] pixels upstream of the entry (towards the kitchen). */
+    fun beltPoint(d: Float): Offset {
+        val target = (beltLength - d).coerceIn(0f, beltLength)
+        var i = 1
+        while (i < beltLine.size - 1 && beltLengths[i] < target) i++
+        val a = beltLine[i - 1]
+        val b = beltLine[i]
+        val seg = (beltLengths[i] - beltLengths[i - 1]).coerceAtLeast(1e-3f)
+        val f = ((target - beltLengths[i - 1]) / seg).coerceIn(0f, 1f)
+        return a + (b - a) * f
+    }
+
     // dock
     override val slotW = (width - (Limits.DOCK_SLOTS - 1) * 8 * dp) / Limits.DOCK_SLOTS
     override val dockedW = minOf(slotW * 0.92f / (0.9f + 0.48f * 5), 30 * dp)
-    override val slotH = dockedW * (if (compact) 1.4f else 1.6f)
+    override val slotH = if (belt) baseDockH + extraDock else dockedW * (if (compact) 1.4f else 1.6f)
     val slotsTop = top0 + ringH + gap + 6 * dp
-    private val badgeRoom = 9 * dp
 
     // board
     private val boardTop = slotsTop + slotH + badgeRoom + gap
@@ -145,6 +204,7 @@ class RingLayout(
 
     /** Centres of the visible queue places, front first, for an entry point at [entry]. */
     fun queuePlaces(entry: Offset): List<Offset> {
+        if (belt) return List(QUEUE_MAX) { beltPoint(beltBand * 0.4f + queuePitch * (it + 0.5f)) }
         val out = ArrayList<Offset>()
         var x = entry.x.coerceIn(innerLeft + queuePitch / 2, innerRight - queuePitch / 2)
         while (x <= innerRight - queuePitch / 2 && out.size < QUEUE_MAX) { out += Offset(x, queueRow1Y); x += queuePitch }
@@ -156,12 +216,23 @@ class RingLayout(
     companion object {
         const val QUEUE_MAX = 10
 
+        /** Ticks after docking during which [Skin.dockSlot] gets an `arrive` progress below 1. */
+        const val ARRIVE_TICKS = 24
+
         /** Regular layout, or the compact one when that keeps the board near [PlayLayout.TARGET_CELL_DP]. */
-        fun fit(width: Float, height: Float, levelWidth: Int, levelHeight: Int, density: Density, seats: Int): RingLayout {
-            val normal = RingLayout(width, height, levelWidth, levelHeight, density, seats)
+        fun fit(
+            width: Float,
+            height: Float,
+            levelWidth: Int,
+            levelHeight: Int,
+            density: Density,
+            seats: Int,
+            style: FieldStyle = FieldStyle.FLAT,
+        ): RingLayout {
+            val normal = RingLayout(width, height, levelWidth, levelHeight, density, seats, style = style)
             val target = minOf(width / levelWidth, PlayLayout.TARGET_CELL_DP * density.density)
             if (normal.cell >= target) return normal
-            val compact = RingLayout(width, height, levelWidth, levelHeight, density, seats, compact = true)
+            val compact = RingLayout(width, height, levelWidth, levelHeight, density, seats, compact = true, style = style)
             return if (compact.cell > normal.cell) compact else normal
         }
     }
@@ -216,8 +287,8 @@ fun RingField(
     BoxWithConstraints(modifier) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
-        val lay = remember(w, h, level.width, level.height, density, view.seats.size) {
-            RingLayout.fit(w, h, level.width, level.height, density, view.seats.size)
+        val lay = remember(w, h, level.width, level.height, density, view.seats.size, skin) {
+            RingLayout.fit(w, h, level.width, level.height, density, view.seats.size, skin.field)
         }
         Canvas(
             Modifier
@@ -287,9 +358,13 @@ private fun DrawScope.drawRingField(
                         lay, s, SlotView(slot.containerId, slot.color, slot.seated, slot.capacity), slot.seated, measurer,
                         offset = Offset(e * lay.slotW * 0.35f, -e * lay.slotH * 0.9f),
                         alpha = 1f - FastOutLinearInEasing.transform(p),
+                        leave = p,
                     )
                 }
-                else -> dockSlot(lay, s, SlotView(slot.containerId, slot.color, slot.seated, slot.capacity), slot.seated, measurer)
+                else -> dockSlot(
+                    lay, s, SlotView(slot.containerId, slot.color, slot.seated, slot.capacity), slot.seated, measurer,
+                    arrive = progress(slot.dockedAt, slot.dockedAt + RingLayout.ARRIVE_TICKS),
+                )
             }
         }
     }
@@ -319,9 +394,9 @@ private fun DrawScope.drawRingField(
     for (w in view.walkers) {
         val p = FastOutSlowInEasing.transform(progress(w.startTick, w.arriveTick))
         val start = lay.seatPoint(w.fromPosition, view.gate)
-        val end = lay.slotCenter(w.slot)
+        val (end, endSize) = boardingTarget(lay, w.slot)
         val pos = Offset(start.x + (end.x - start.x) * p, start.y + (end.y - start.y) * p - sin(p * PI).toFloat() * lay.seatR * 2.2f)
-        element(w.color, pos, lay.seatToken + (lay.dockedW * 0.34f - lay.seatToken) * p)
+        element(w.color, pos, lay.seatToken + (endSize - lay.seatToken) * p)
     }
     // containers driving from the board to their slot
     for (a in arriving) {
@@ -342,7 +417,17 @@ private fun DrawScope.drawCarousel(lay: RingLayout, view: RtView, fraction: Floa
     val shown = minOf(places.size, view.queueRemaining)
     for (k in 0 until shown) element(queue[view.queueIndex + k], places[k], lay.queueToken)
     val more = view.queueRemaining - shown
-    if (more > 0) {
+    val kitchen = lay.kitchen
+    if (more > 0 && kitchen != null) {
+        // belt mode: "+N" on a tag under the kitchen hatch
+        val m = measurer.measure("+$more", TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Black, color = ink))
+        val h = m.size.height.toFloat()
+        val w = m.size.width + h * 0.7f
+        val tl = Offset(kitchen.center.x - w / 2, kitchen.bottom - h * 0.35f)
+        drawRoundRect(Color(0xFFFFF6E8), tl, Size(w, h), CornerRadius(h / 2))
+        drawRoundRect(ink, tl, Size(w, h), CornerRadius(h / 2), style = Stroke(width = 1.2f * density))
+        drawText(m, topLeft = Offset(tl.x + h * 0.35f, tl.y))
+    } else if (more > 0) {
         val m = measurer.measure("+$more", TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ink))
         val last = places[shown - 1]
         val x = if (last.y > front.y) last.x - lay.queuePitch / 2 - m.size.width - 2 * density else last.x + lay.queuePitch / 2 + 2 * density

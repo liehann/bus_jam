@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextMeasurer
 import com.phloots.busjam.game.SlotView
 import com.phloots.busjam.game.rt.RtView
+import com.phloots.busjam.ui.game.DOCKED_DEGREES
 import com.phloots.busjam.ui.game.FieldGeometry
 import com.phloots.busjam.ui.game.RingLayout
 import com.phloots.jam.core.model.Level
@@ -18,6 +19,9 @@ import com.phloots.jam.core.model.Level
  * restaurant skin. Provided through [LocalSkin].
  */
 interface Skin {
+    /** How the real-time field is laid out for this skin. */
+    val field: FieldStyle get() = FieldStyle.FLAT
+
     /** Screen background behind the field. */
     val background: Color
 
@@ -51,7 +55,8 @@ interface Skin {
 
     /**
      * Dock slot [slot]: its pad and, when [view] is set, the docked container with [filled] elements seated and the
-     * remaining count. [offset] / [alpha] animate a dispatching container.
+     * remaining count. [offset] / [alpha] animate a dispatching container; [arrive] runs 0..1 just after the container
+     * docks and [leave] 0..1 while it dispatches (skins that animate their own way use these instead).
      */
     fun DrawScope.dockSlot(
         geo: FieldGeometry,
@@ -61,7 +66,16 @@ interface Skin {
         measurer: TextMeasurer,
         offset: Offset = Offset.Zero,
         alpha: Float = 1f,
+        arrive: Float = 1f,
+        leave: Float = 0f,
     )
+
+    /** Where a container of [capacity] rests once docked in [slot]: the end of its release flight. */
+    fun dockedCard(geo: FieldGeometry, slot: Int, capacity: Int): DockedCard =
+        DockedCard(geo.slotCenter(slot), geo.dockedW, geo.dockedLength(capacity), DOCKED_DEGREES)
+
+    /** Where an element boarding the container in [slot] lands, and its size on arrival. */
+    fun boardingTarget(geo: FieldGeometry, slot: Int): Pair<Offset, Float> = geo.slotCenter(slot) to geo.dockedW * 0.34f
 
     /**
      * Carousel band, boarding window and entry marker. [rotation] is the ring rotation in seats (for moving
@@ -77,6 +91,19 @@ interface Skin {
 
     /** True when the board and its containers may be drawn through a cached layer. */
     val cacheBoard: Boolean get() = true
+}
+
+/** A docked container's pose: centre, width across, length along, front [degrees] clockwise from up. */
+data class DockedCard(val center: Offset, val width: Float, val length: Float, val degrees: Float)
+
+/**
+ * Real-time field layout options. [queueBelt]: the queue runs on a belt from a kitchen hatch above the loop (instead
+ * of inside it). [dockBandDp]: height of the dock band (tables), or 0 for the flat slot height.
+ */
+data class FieldStyle(val queueBelt: Boolean, val dockBandDp: Float) {
+    companion object {
+        val FLAT = FieldStyle(queueBelt = false, dockBandDp = 0f)
+    }
 }
 
 val LocalSkin = staticCompositionLocalOf<Skin> { FlatSkin }

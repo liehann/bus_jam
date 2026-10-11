@@ -210,21 +210,25 @@ internal fun TopBar(
         action?.invoke()
         StarRow(potentialStars, 18.dp, Modifier.padding(end = 12.dp))
     }
-    if (header != null) {
-        Column(
-            Modifier.fillMaxWidth().testTag("debug-header"),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            PackChip("${header.packLabel} · L${levelNumber}", header.packColor, Modifier.testTag("pack-chip"))
-            header.info?.let {
-                Text(it, fontSize = 11.sp, color = Palette.ink.copy(alpha = 0.7f), textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 2.dp).testTag("debug-info"))
-            }
-            header.tags?.let {
-                Text(it, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = header.packColor,
-                    textAlign = TextAlign.Center, maxLines = 2,
-                    modifier = Modifier.testTag("debug-tags"))
-            }
+    if (header != null) DebugHeaderLines(levelNumber, header)
+}
+
+/** Debug builds: pack chip and the level's generator info under the top bar. */
+@Composable
+internal fun DebugHeaderLines(levelNumber: Int, header: DebugHeader) {
+    Column(
+        Modifier.fillMaxWidth().testTag("debug-header"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        PackChip("${header.packLabel} · L${levelNumber}", header.packColor, Modifier.testTag("pack-chip"))
+        header.info?.let {
+            Text(it, fontSize = 11.sp, color = Palette.ink.copy(alpha = 0.7f), textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 2.dp).testTag("debug-info"))
+        }
+        header.tags?.let {
+            Text(it, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = header.packColor,
+                textAlign = TextAlign.Center, maxLines = 2,
+                modifier = Modifier.testTag("debug-tags"))
         }
     }
 }

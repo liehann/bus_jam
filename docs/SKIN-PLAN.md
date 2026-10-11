@@ -1,6 +1,6 @@
 # Kitten Jumble skin plan
 
-Status: M1 implemented (skin layer, Critter Café cards and plates); M2+ planned. Revised 2026-10-11 against the locked-in sushi-restaurant direction and the
+Status: M1 implemented (skin layer, Critter Café cards and plates); M2/M3 placeholder pass and the game-screen chrome done 2026-10-11; rest planned. Revised 2026-10-11 against the locked-in sushi-restaurant direction and the
 mocks `docs/skin/mocks/restaurant_level.jpeg` and `docs/skin/mocks/bamboo_spa_level.jpeg`. Rules, solver and level
 packs are untouched; the code keeps its neutral terms (Container / Element / Dock / Staging).
 
@@ -344,6 +344,14 @@ are lighter than this; plates need the darker values for the rim to read at 18 d
    Screenshots: `app/build/screenshots/p9p_critter_*.png`, `p9p_flat_*.png`. Emulator AVD `CritterCafe_Pixel9Pro`.
    Known M1 gaps: the release flight still ends at the slot centre at bus size, then pops into the bench card;
    top bar, buttons and the paused overlay are the old chrome; queue stays inside the loop.
+   **M2/M3 placeholder pass + game chrome (2026-10-11).** `FieldStyle` per skin: Critter Café puts the queue on a
+   belt from a kitchen hatch (top left) that runs right and drops into the loop's entry; 10 plates, "+N" tag under
+   the hatch. Counter band (92 dp + spare): counter strip with ticket holders (the release flight lands the card in
+   the holder via `Skin.dockedCard`), a table per slot, vector critters (1/2/3 per S/M/L party, fur = ticket colour
+   lightened, species from the container id) that hop in on docking and hop off to the right on dispatch, boarding
+   plates land on the table's stack (`Skin.boardingTarget`). Chrome: level pill, pause and settings buttons; pause
+   menu (resume, undo, restart, hint); settings card (level select, home); café win/lose cards. Still open: the loop
+   is the stadium (no `TrackSpec`), no idle animation, no Fredoka.
 2. **M2: `TrackSpec` + conveyor.** LUT-based track replacing `trackPoint()` (stadium spec = today), variable N plate
    sizing, themed band, boarding-window glow, queue belt above the loop with the kitchen stub, compact fallback
    inside the loop.

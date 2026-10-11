@@ -52,6 +52,20 @@ object CritterPalette {
     val bench = Color(0xFFD9A86C)
     val benchDark = Color(0xFFB98650)
 
+    /** Counter strip behind the tables, and its front edge. */
+    val counter = Color(0xFFE6C292)
+    val counterFront = Color(0xFFC8955E)
+
+    /** Kitchen hatch: dark opening, cream noren. */
+    val kitchenDark = Color(0xFF4A3426)
+    val noren = Color(0xFFFFF4E0)
+
+    /** Buttons and dialog cards: cream face, darker lip, scrim behind dialogs. */
+    val button = Color(0xFFFFF6E8)
+    val buttonLip = Color(0xFFD9B98E)
+    val card = Color(0xFFFBF1E1)
+    val scrim = Color(0x8C3A2618)
+
     /** Number pill. */
     val pill = Color(0xFFFFF6E8)
 

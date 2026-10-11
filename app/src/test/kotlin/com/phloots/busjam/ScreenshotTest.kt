@@ -329,14 +329,14 @@ class ScreenshotTest {
         return out
     }
 
-    private fun showRealTime(skin: com.phloots.busjam.ui.skin.Skin, frames: List<Pair<String, com.phloots.jam.core.realtime.RealTimeState>>, prefix: String, hint: Int? = null) {
+    private fun showRealTime(skin: com.phloots.busjam.ui.skin.Skin, frames: List<Pair<String, com.phloots.jam.core.realtime.RealTimeState>>, prefix: String, hint: Int? = null, paused: Boolean = false) {
         val rules = com.phloots.busjam.game.rt.CoreRealTimeRules()
         var shown by androidx.compose.runtime.mutableStateOf(frames.first().second)
         rule.mainClock.autoAdvance = false
         rule.setContent {
             androidx.compose.runtime.CompositionLocalProvider(com.phloots.busjam.ui.skin.LocalSkin provides skin) {
                 com.phloots.busjam.ui.game.RealTimeGameScreen(
-                    ui = com.phloots.busjam.game.rt.RtUiState(12, false, true, rules.view(shown), nowMs = 0, tickFraction = 0.5f, canUndo = true, hintContainerId = hint),
+                    ui = com.phloots.busjam.game.rt.RtUiState(12, false, true, rules.view(shown), nowMs = 0, tickFraction = 0.5f, canUndo = true, hintContainerId = hint, paused = paused),
                     onFrame = {}, onHostPause = {}, onTogglePause = {}, onTap = {}, onUndo = {}, onRestart = {}, onHint = {},
                     onNext = {}, onLevels = {}, onHome = {},
                 )
@@ -356,6 +356,12 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = "w427dp-h952dp-xxhdpi")
     fun pixel9ProCritterCafe() = showRealTime(com.phloots.busjam.ui.skin.critter.CritterCafeSkin, midLevelRealTime(), "p9p_critter")
+
+    /** Critter Café pause menu over the field. */
+    @Test
+    @Config(qualifiers = "w427dp-h952dp-xxhdpi")
+    fun pixel9ProCritterCafePaused() =
+        showRealTime(com.phloots.busjam.ui.skin.critter.CritterCafeSkin, midLevelRealTime().take(1), "p9p_critter_paused", paused = true)
 
     /** Hinted card drawn live on top of the cached board layer. */
     @Test

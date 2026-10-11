@@ -47,6 +47,8 @@ object FlatSkin : Skin {
         measurer: TextMeasurer,
         offset: Offset,
         alpha: Float,
+        arrive: Float,
+        leave: Float,
     ) = drawDockSlot(geo, slot, view, filled, measurer, offset, alpha)
 
     override fun DrawScope.track(lay: RingLayout, view: RtView, rotation: Float, entry: Offset, queueFront: Offset) =

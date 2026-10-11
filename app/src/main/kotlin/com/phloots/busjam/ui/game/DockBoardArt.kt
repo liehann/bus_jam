@@ -211,12 +211,13 @@ internal fun DrawScope.drawReleaseFlight(
         return@with
     }
     val p = FastOutSlowInEasing.transform((t - split) / (1f - split))
-    val end = geo.slotCenter(slot)
-    var turn = DOCKED_DEGREES - boardDeg
+    val docked = dockedCard(geo, slot, v.size.capacity)
+    val end = docked.center
+    var turn = docked.degrees - boardDeg
     if (turn > 180f) turn -= 360f
     if (turn < -180f) turn += 360f
-    val w = geo.boardBodyW + (geo.dockedW - geo.boardBodyW) * p
-    val l = geo.boardBodyL(v) + (geo.dockedLength(v.size.capacity) - geo.boardBodyL(v)) * p
+    val w = geo.boardBodyW + (docked.width - geo.boardBodyW) * p
+    val l = geo.boardBodyL(v) + (docked.length - geo.boardBodyL(v)) * p
     container(
         center = exit + (end - exit) * p,
         width = w,

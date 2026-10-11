@@ -130,8 +130,8 @@ fun DrawScope.drawAnimalBadge(center: Offset, r: Float, species: Species, alpha:
     drawAnimalFace(center, r * 0.8f, species, alpha)
 }
 
-/** Simple line-art face in unit coordinates of radius [f] around [c]. */
-fun DrawScope.drawAnimalFace(c: Offset, f: Float, species: Species, alpha: Float = 1f) {
+/** Simple line-art face in unit coordinates of radius [f] around [c]; head and ear shapes filled with [fill]. */
+fun DrawScope.drawAnimalFace(c: Offset, f: Float, species: Species, alpha: Float = 1f, fill: Color = Color.White) {
     val ink = CritterPalette.ink
     val sw = maxOf(f * 0.12f, 0.8f * density)
     val line = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
@@ -142,7 +142,7 @@ fun DrawScope.drawAnimalFace(c: Offset, f: Float, species: Species, alpha: Float
         while (i < xy.size) { lineTo(c.x + xy[i] * f, c.y + xy[i + 1] * f); i += 2 }
         if (close) close()
     }
-    fun shape(path: Path, fill: Color = Color.White) {
+    fun shape(path: Path) {
         drawPath(path, fill, alpha = alpha, style = Fill)
         drawPath(path, ink, alpha = alpha, style = line)
     }
@@ -257,4 +257,48 @@ fun DrawScope.drawPlateStack(rim: Color, base: Offset, w: Float, count: Int, ste
             drawOval(Color.White, Offset(base.x - w * 0.34f, cy - h * 0.34f), Size(w * 0.68f, h * 0.68f), alpha = alpha)
         }
     }
+}
+
+/**
+ * A seated critter of [species] with its feet at [base], [size] wide (about 1.25 x [size] tall), fur [fur]. Holds
+ * a little plate when [eating].
+ */
+fun DrawScope.drawCritter(base: Offset, size: Float, species: Species, fur: Color, alpha: Float = 1f, eating: Boolean = false) {
+    val ink = CritterPalette.ink
+    val line = Stroke(width = maxOf(size * 0.055f, 1f * density))
+    val bodyW = size * 0.78f
+    val bodyH = size * 0.62f
+    val bodyTl = Offset(base.x - bodyW / 2, base.y - bodyH)
+    // tail behind the body (kitten, fox, red panda, wolf all have one)
+    val tail = Path().apply {
+        moveTo(base.x + bodyW * 0.32f, base.y - bodyH * 0.18f)
+        quadraticTo(base.x + bodyW * 0.85f, base.y - bodyH * 0.1f, base.x + bodyW * 0.72f, base.y - bodyH * 0.75f)
+    }
+    val tailW = if (species == Species.KITTEN) size * 0.1f else size * 0.2f
+    drawPath(tail, ink, alpha = alpha, style = Stroke(width = tailW + line.width * 2, cap = StrokeCap.Round))
+    drawPath(tail, fur, alpha = alpha, style = Stroke(width = tailW, cap = StrokeCap.Round))
+    if (species == Species.FOX || species == Species.WOLF) {
+        drawCircle(Color.White, tailW * 0.45f, Offset(base.x + bodyW * 0.72f, base.y - bodyH * 0.75f), alpha = alpha)
+    }
+    // body with a light belly
+    drawOval(fur, bodyTl, Size(bodyW, bodyH), alpha = alpha)
+    drawOval(lerp(fur, Color.White, 0.55f), Offset(base.x - bodyW * 0.26f, base.y - bodyH * 0.78f), Size(bodyW * 0.52f, bodyH * 0.66f), alpha = alpha)
+    drawOval(ink, bodyTl, Size(bodyW, bodyH), alpha = alpha, style = line)
+    // paws in front, holding a plate when eating
+    val pawY = base.y - bodyH * 0.42f
+    if (eating) {
+        val pr = size * 0.17f
+        drawOval(Color.White, Offset(base.x - pr, pawY - pr * 0.45f), Size(pr * 2, pr * 0.9f), alpha = alpha)
+        drawOval(ink, Offset(base.x - pr, pawY - pr * 0.45f), Size(pr * 2, pr * 0.9f), alpha = alpha, style = line)
+        drawCircle(CritterPalette.salmon, pr * 0.35f, Offset(base.x, pawY - pr * 0.2f), alpha = alpha)
+    }
+    // feet peeking out under the body
+    for (sx in listOf(-1f, 1f)) {
+        val tl = Offset(base.x + sx * size * 0.17f - size * 0.1f, base.y - size * 0.08f)
+        drawOval(fur, tl, Size(size * 0.2f, size * 0.11f), alpha = alpha)
+        drawOval(ink, tl, Size(size * 0.2f, size * 0.11f), alpha = alpha, style = line)
+    }
+    // head
+    val headR = size * 0.36f
+    drawAnimalFace(Offset(base.x, base.y - bodyH - headR * 0.55f), headR, species, alpha, fill = fur)
 }

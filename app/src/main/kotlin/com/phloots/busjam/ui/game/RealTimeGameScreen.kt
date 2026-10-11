@@ -44,6 +44,15 @@ import com.phloots.busjam.ui.DebugHeader
 import com.phloots.busjam.ui.GameButton
 import com.phloots.busjam.ui.theme.Palette
 import com.phloots.busjam.ui.skin.LocalSkin
+import com.phloots.busjam.ui.skin.critter.CritterCafeSkin
+import com.phloots.busjam.ui.skin.critter.CritterPalette
+import com.phloots.busjam.ui.skin.critter.CritterPauseMenu
+import com.phloots.busjam.ui.skin.critter.CritterResult
+import com.phloots.busjam.ui.skin.critter.CritterSettings
+import com.phloots.busjam.ui.skin.critter.CritterToast
+import com.phloots.busjam.ui.skin.critter.CritterTopBar
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.phloots.jam.core.model.Status
 import kotlinx.coroutines.isActive
 
@@ -92,7 +101,12 @@ fun RealTimeGameScreen(
             .animateFloat(0f, 1f, infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "pulse")
     } else null
 
-    Box(Modifier.fillMaxSize().background(LocalSkin.current.background)) {
+    val skin = LocalSkin.current
+    if (skin === CritterCafeSkin) {
+        CritterGameScreen(ui, { pulse?.value ?: 0f }, { shakeAnim.value }, onTogglePause, onTap, onUndo, onRestart, onHint, onNext, onLevels, onHome, debugHeader)
+        return
+    }
+    Box(Modifier.fillMaxSize().background(skin.background)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
             TopBar(ui.levelNumber, ui.isBoss, ui.potentialStars, debugHeader, onLevels) {
                 PauseButton(ui.paused, onTogglePause)
@@ -171,5 +185,71 @@ private fun PauseButton(paused: Boolean, onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Text(if (paused) "▶" else "II", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Palette.ink)
+    }
+}
+
+/**
+ * Critter Café chrome around the same field: top bar with the level pill, pause and settings; restart, undo and hint
+ * live in the pause menu; level select and home in the settings card (opening it pauses the game).
+ */
+@Composable
+private fun CritterGameScreen(
+    ui: RtUiState,
+    hintPulse: () -> Float,
+    shakeProgress: () -> Float,
+    onTogglePause: () -> Unit,
+    onTap: (Int) -> Unit,
+    onUndo: () -> Unit,
+    onRestart: () -> Unit,
+    onHint: () -> Unit,
+    onNext: () -> Unit,
+    onLevels: () -> Unit,
+    onHome: () -> Unit,
+    debugHeader: DebugHeader?,
+) {
+    var settingsOpen by remember { mutableStateOf(false) }
+    var settingsPaused by remember { mutableStateOf(false) }
+    fun closeSettings() {
+        settingsOpen = false
+        if (settingsPaused && ui.paused) onTogglePause()
+        settingsPaused = false
+    }
+    Box(Modifier.fillMaxSize().background(CritterPalette.background)) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+            CritterTopBar(
+                ui.levelNumber, ui.isBoss, ui.paused,
+                onPause = onTogglePause,
+                onSettings = {
+                    settingsPaused = !ui.paused
+                    if (!ui.paused) onTogglePause()
+                    settingsOpen = true
+                },
+            )
+            debugHeader?.let { DebugHeaderLines(ui.levelNumber, it) }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                RingField(
+                    ui = ui,
+                    hintPulse = hintPulse,
+                    shakeProgress = shakeProgress,
+                    onTap = onTap,
+                    modifier = Modifier.fillMaxSize().padding(top = 4.dp, bottom = 8.dp),
+                )
+                ui.hintMessage?.let {
+                    CritterToast(it, Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp).testTag("hint-message"))
+                }
+            }
+        }
+        when {
+            ui.showResult -> CritterResult(ui.status, ui.earnedStars, ui.hasNext, ui.canUndo, onUndo, onRestart, onNext, onLevels)
+            settingsOpen -> CritterSettings(::closeSettings, { settingsOpen = false; onLevels() }, { settingsOpen = false; onHome() })
+            ui.paused -> CritterPauseMenu(
+                canUndo = ui.canUndo,
+                canHint = !ui.hintLoading && ui.status == Status.PLAYING,
+                onResume = onTogglePause,
+                onRestart = onRestart, // a restart starts unpaused
+                onUndo = { onUndo(); onTogglePause() },
+                onHint = { onHint(); onTogglePause() },
+            )
+        }
     }
 }

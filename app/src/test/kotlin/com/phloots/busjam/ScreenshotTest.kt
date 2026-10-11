@@ -8,12 +8,12 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.phloots.busjam.core.model.Dir
-import com.phloots.busjam.core.model.GameState
-import com.phloots.busjam.core.model.Level
-import com.phloots.busjam.core.model.ParkedVehicle
-import com.phloots.busjam.core.model.Vehicle
-import com.phloots.busjam.core.model.VehicleType
+import com.phloots.jam.core.model.Dir
+import com.phloots.jam.core.model.GameState
+import com.phloots.jam.core.model.Level
+import com.phloots.jam.core.model.DockedContainer
+import com.phloots.jam.core.model.Container
+import com.phloots.jam.core.model.ContainerSize
 import com.phloots.busjam.data.Progress
 import com.phloots.busjam.game.GameUiState
 import com.phloots.busjam.ui.game.GameScreen
@@ -44,27 +44,27 @@ class ScreenshotTest {
     }
 
     private val dense: Level = run {
-        val vs = mutableListOf<Vehicle>()
-        fun add(t: VehicleType, color: Int, r: Int, c: Int, d: Dir) { vs += Vehicle(vs.size, t, color, r, c, d) }
-        add(VehicleType.BUS, 0, 0, 0, Dir.UP)
-        add(VehicleType.CAR, 1, 0, 2, Dir.RIGHT)
-        add(VehicleType.VAN, 2, 1, 1, Dir.LEFT)
-        add(VehicleType.CAR, 3, 0, 5, Dir.UP)
-        add(VehicleType.BUS, 4, 4, 9, Dir.DOWN)
-        add(VehicleType.VAN, 5, 2, 6, Dir.RIGHT)
-        add(VehicleType.CAR, 6, 5, 2, Dir.DOWN)
-        add(VehicleType.CAR, 7, 5, 4, Dir.LEFT)
-        add(VehicleType.BUS, 1, 11, 4, Dir.RIGHT)
-        add(VehicleType.VAN, 3, 7, 6, Dir.UP)
-        add(VehicleType.CAR, 0, 7, 8, Dir.RIGHT)
-        add(VehicleType.VAN, 2, 8, 0, Dir.UP)
-        add(VehicleType.CAR, 5, 8, 4, Dir.DOWN)
-        add(VehicleType.CAR, 6, 6, 7, Dir.LEFT)
-        add(VehicleType.VAN, 4, 9, 9, Dir.UP)
-        add(VehicleType.CAR, 7, 4, 0, Dir.UP)
-        add(VehicleType.VAN, 1, 6, 3, Dir.DOWN)
-        add(VehicleType.CAR, 2, 9, 1, Dir.LEFT)
-        add(VehicleType.BUS, 3, 3, 4, Dir.LEFT)
+        val vs = mutableListOf<Container>()
+        fun add(t: ContainerSize, color: Int, r: Int, c: Int, d: Dir) { vs += Container(vs.size, t, color, r, c, d) }
+        add(ContainerSize.L, 0, 0, 0, Dir.UP)
+        add(ContainerSize.S, 1, 0, 2, Dir.RIGHT)
+        add(ContainerSize.M, 2, 1, 1, Dir.LEFT)
+        add(ContainerSize.S, 3, 0, 5, Dir.UP)
+        add(ContainerSize.L, 4, 4, 9, Dir.DOWN)
+        add(ContainerSize.M, 5, 2, 6, Dir.RIGHT)
+        add(ContainerSize.S, 6, 5, 2, Dir.DOWN)
+        add(ContainerSize.S, 7, 5, 4, Dir.LEFT)
+        add(ContainerSize.L, 1, 11, 4, Dir.RIGHT)
+        add(ContainerSize.M, 3, 7, 6, Dir.UP)
+        add(ContainerSize.S, 0, 7, 8, Dir.RIGHT)
+        add(ContainerSize.M, 2, 8, 0, Dir.UP)
+        add(ContainerSize.S, 5, 8, 4, Dir.DOWN)
+        add(ContainerSize.S, 6, 6, 7, Dir.LEFT)
+        add(ContainerSize.M, 4, 9, 9, Dir.UP)
+        add(ContainerSize.S, 7, 4, 0, Dir.UP)
+        add(ContainerSize.M, 1, 6, 3, Dir.DOWN)
+        add(ContainerSize.S, 2, 9, 1, Dir.LEFT)
+        add(ContainerSize.L, 3, 3, 4, Dir.LEFT)
         val queue = (0 until 60).map { (it * 5 + it / 7) % 8 }
         Level(1, 10, 12, vs, queue)
     }
@@ -73,14 +73,14 @@ class ScreenshotTest {
     fun gameScreenDense() {
         val state = GameState(
             level = dense,
-            onBoard = ((1L shl dense.vehicles.size) - 1) and (1L shl 7).inv() and (1L shl 3).inv(),
-            slots = listOf(ParkedVehicle(7, 7, 2, 0), null, ParkedVehicle(3, 3, 1, 1), null),
+            onBoard = ((1L shl dense.containers.size) - 1) and (1L shl 7).inv() and (1L shl 3).inv(),
+            dock = listOf(DockedContainer(7, 7, 2, 0), null, DockedContainer(3, 3, 1, 1), null),
             queueIndex = 0,
             arrivalCounter = 2,
         )
         rule.setContent {
             GameScreen(
-                ui = GameUiState(10, isBoss = true, hasNext = true, state = state, hintVehicleId = 5),
+                ui = GameUiState(10, isBoss = true, hasNext = true, state = state, hintContainerId = 5),
                 onTap = {}, onAnimationFinished = {}, onUndo = {}, onRestart = {}, onHint = {},
                 onNext = {}, onLevels = {}, onHome = {},
             )
@@ -95,8 +95,8 @@ class ScreenshotTest {
         val level = Level(
             1, 5, 5,
             listOf(
-                Vehicle(0, VehicleType.CAR, 0, 1, 1, Dir.UP),
-                Vehicle(1, VehicleType.VAN, 1, 3, 4, Dir.RIGHT),
+                Container(0, ContainerSize.S, 0, 1, 1, Dir.UP),
+                Container(1, ContainerSize.M, 1, 3, 4, Dir.RIGHT),
             ),
             listOf(0, 0, 0, 0, 1, 1, 1, 1, 1, 1),
         )
@@ -106,7 +106,7 @@ class ScreenshotTest {
             val ui by vm.ui.collectAsState()
             ui?.let {
                 GameScreen(
-                    ui = it, onTap = vm::onVehicleTapped, onAnimationFinished = vm::onAnimationFinished,
+                    ui = it, onTap = vm::onContainerTapped, onAnimationFinished = vm::onAnimationFinished,
                     onUndo = vm::undo, onRestart = vm::restart, onHint = vm::hint,
                     onNext = {}, onLevels = {}, onHome = {},
                 )
@@ -114,13 +114,13 @@ class ScreenshotTest {
         }
         rule.waitForIdle()
         rule.mainClock.autoAdvance = false
-        vm.onVehicleTapped(0)
+        vm.onContainerTapped(0)
         rule.mainClock.advanceTimeBy(160)
         save("anim_1_drive")
         rule.mainClock.advanceTimeBy(260)
         save("anim_2_boarding")
         rule.mainClock.advanceTimeBy(1000)
-        vm.onVehicleTapped(1)
+        vm.onContainerTapped(1)
         rule.mainClock.advanceTimeBy(2000)
         rule.mainClock.autoAdvance = true
         rule.waitForIdle()

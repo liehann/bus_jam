@@ -94,7 +94,7 @@ fun BusJamApp() {
                 if (current != null && current.levelNumber == number) {
                     GameScreen(
                         ui = current,
-                        onTap = game::onVehicleTapped,
+                        onTap = game::onContainerTapped,
                         onAnimationFinished = game::onAnimationFinished,
                         onUndo = game::undo,
                         onRestart = game::restart,

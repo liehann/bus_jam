@@ -27,11 +27,11 @@ All versions live in `gradle/libs.versions.toml`. `local.properties` (gitignored
 :app       Android, Compose, single MainActivity (portrait). Depends on :core. No game logic.
 ```
 
-Package root `com.phloots.busjam.core`:
+Package root `com.phloots.jam.core`:
 
 ```
-core/src/main/kotlin/com/phloots/busjam/core/
-  model/Model.kt                 Limits, Dir, VehicleType, Cell, Vehicle, Level, ParkedVehicle, Status,
+core/src/main/kotlin/com/phloots/jam/core/
+  model/Model.kt                 Limits, Dir, ContainerSize, Cell, Container, Level, DockedContainer, Status,
                                  GameState, Move, IgnoreReason, Event, Transition        (frozen, architect)
   engine/Engine.kt               Engine.apply / legalMoves / isTappable                  (gamestate)
   solver/Solver.kt               Solver.solve / hint / analyze, SolveResult, SolveStats,
@@ -40,7 +40,7 @@ core/src/main/kotlin/com/phloots/busjam/core/
   scoring/Scorer.kt              Scorer.score, DifficultyReport                          (gamestate)
   generator/Generator.kt         Generator(seed).generate(GenParams), GenParams          (generator)
   io/LevelPackCodec.kt           LevelPack, PackedLevel, LevelPackCodec                  (frozen, implemented)
-levelgen/src/main/kotlin/com/phloots/busjam/levelgen/Main.kt                             (generator)
+levelgen/src/main/kotlin/com/phloots/jam/levelgen/Main.kt                             (generator)
 app/src/main/kotlin/com/phloots/busjam/...                                               (UI)
 ```
 
@@ -60,18 +60,18 @@ Do not edit another agent's files; ask, or record a minimal change in the change
 Invariants:
 
 - **Coordinates**: `(row, col)`, row 0 = top, col 0 = left. `UP = row-1`, `DOWN = row+1`, `LEFT = col-1`, `RIGHT = col+1` (`Dir.dRow/dCol`).
-- **Vehicle**: `(row, col)` is the **front** cell; the body extends behind it (`dir.opposite`) for `type.length` cells.
+- **Container**: `(row, col)` is the **front** cell; the body extends behind it (`dir.opposite`) for `size.length` cells.
   `cells()` returns front first. The exit ray is the cells from front+dir to the board edge.
-- **Level**: `vehicles[i].id == i`, `n <= 64`, width <= 10, height <= 12, in bounds, no overlap, per-colour
-  passengers == seats. `Level.validate()` checks these structurally (not solvability). `queue` is front-first.
-- **GameState**: `onBoard` bit `i` = vehicle `i` on board (64-bit, hence <= 64 vehicles). `slots` has exactly 4
-  positional entries (index 0 = leftmost; null = free; exits take the leftmost free slot; departures leave a hole,
-  no compaction). `queueIndex` = front passenger index (== `queue.size` when empty). `arrivalCounter` = next arrival
-  stamp; boarding goes to the matching parked vehicle with the lowest `arrival`. `status` is set by the Engine.
+- **Level**: `containers[i].id == i`, `n <= 64`, width <= 10, height <= 12, in bounds, no overlap, per-colour
+  elements == capacity. `Level.validate()` checks these structurally (not solvability). `queue` is front-first.
+- **GameState**: `onBoard` bit `i` = container `i` on board (64-bit, hence <= 64 containers). `slots` has exactly 4
+  positional entries (index 0 = leftmost; null = free; exits take the leftmost free slot; dispatches leave a hole,
+  no compaction). `queueIndex` = front element index (== `queue.size` when empty). `arrivalCounter` = next arrival
+  stamp; boarding goes to the matching docked container with the lowest `arrival`. `status` is set by the Engine.
   `GameState.initial(level)` = all on board, empty slots, PLAYING.
-- **Events** (chronological, for animation): `Exited(vehicleId, slot)`, `Bumped(vehicleId, stopRow, stopCol, blockerId)`
-  (stop = front-cell position at the bump, i.e. the cell just before the blocker), `Boarded(passengerIndex, slot, vehicleId)`,
-  `Departed(slot, vehicleId)`, `Ignored(vehicleId, IgnoreReason)`.
+- **Events** (chronological, for animation): `Released(containerId, slot)`, `Blocked(containerId, stopRow, stopCol, blockerId)`
+  (stop = front-cell position at the block, i.e. the cell just before the blocker), `Boarded(elementIndex, slot, containerId)`,
+  `Dispatched(slot, containerId)`, `Ignored(containerId, IgnoreReason)`.
 
 Signatures:
 
@@ -79,7 +79,7 @@ Signatures:
 object Engine {
     fun apply(state: GameState, move: Move): Transition      // pure
     fun legalMoves(state: GameState): List<Move>             // ascending id; empty unless PLAYING
-    fun isTappable(state: GameState, vehicleId: Int): Boolean
+    fun isTappable(state: GameState, containerId: Int): Boolean
 }
 object Solver {
     fun solve(state: GameState): SolveResult                 // SolveResult(solvable, solution: List<Move>, stats)
@@ -101,7 +101,7 @@ object LevelPackCodec {
 
 ```json
 {"version":1,"levels":[{"level":{"id":1,"width":5,"height":5,
-  "vehicles":[{"id":0,"type":"CAR","color":0,"row":1,"col":1,"dir":"UP"}],
+  "containers":[{"id":0,"size":"S","color":0,"row":1,"col":1,"dir":"UP"}],
   "queue":[0,0,0,0]},"score":0.0}]}
 ```
 
@@ -131,10 +131,10 @@ Gotchas:
 ## API change log
 
 - 2026-10-10 (architect): initial freeze. Deviations from DESIGN.md: compileSdk/targetSdk 37 (latest stable,
-  required by current AndroidX). Additions: `Limits`, `Cell`, `Dir.dRow/dCol/opposite`, `Vehicle.tail()`,
-  `Level.inBounds/colors/validate`, `GameState.isOnBoard/frontPassenger/queueRemaining/slotsUsed`, `IgnoreReason`.
+  required by current AndroidX). Additions: `Limits`, `Cell`, `Dir.dRow/dCol/opposite`, `Container.tail()`,
+  `Level.inBounds/colors/validate`, `GameState.isOnBoard/frontElement/queueRemaining/dockUsed`, `IgnoreReason`.
 - 2026-10-10 (generator): additive only, all in `core/.../generator/`. `GenParams` gained defaulted fields
-  (`maxIntendedSlots`, `interleave`, `decoyFraction`, `maxTrapRatio`, `rejectSizeDominated`, `minVehicles`,
+  (`maxIntendedSlots`, `interleave`, `decoyFraction`, `maxTrapRatio`, `rejectSizeDominated`, `minContainers`,
   `analyzeMaxStates`, `skipAhead`, `crunches`, `crunchLength`) — queue/trap-shaping knobs and band filters.
   `Generator` gained `generateScored(params, config): GeneratedLevel?` (level + `FullAnalysis` + `DifficultyReport`,
   used by `:levelgen`), `construct(params): Level?` and `constructWithOrder(params): Pair<Level, List<Int>>?`
@@ -150,9 +150,9 @@ Gotchas:
   by `Level` identity, packed state, bitmask ray tests), `solver/LongPairMap.kt`.
   Metric definitions pinned down where DESIGN.md is loose (KDoc on `FullAnalysis`): path states = states before
   each move of the min-pressure line (final WON state excluded); `peakSlots` counts slots right after each exit,
-  before boarding (so 1..4); min-pressure ties broken by lowest vehicle id; trap depth = longest play *after* the
+  before boarding (so 1..4); min-pressure ties broken by lowest container id; trap depth = longest play *after* the
   mistake until DEADLOCK/STUCK (0 = the mistake ends the game); `reachableStates` = memoized states (lost states
   proven by the front-colour lookahead are scored in closed form and not counted).
-  Memo key deviation: DESIGN.md's sorted (colour, seatsLeft) multiset is not lossless when two untouched
-  same-colour vehicles of different types are both parked (arrival order decides which fills first), so the key
-  sorts slots by (colour, arrival) and keeps (colour, seatsLeft) in that order. Still compact: two Longs.
+  Memo key deviation: DESIGN.md's sorted (colour, spaceLeft) multiset is not lossless when two untouched
+  same-colour containers of different sizes are both docked (arrival order decides which fills first), so the key
+  sorts slots by (colour, arrival) and keeps (colour, spaceLeft) in that order. Still compact: two Longs.

@@ -19,26 +19,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
-import com.phloots.busjam.core.model.Dir
-import com.phloots.busjam.core.model.Event
-import com.phloots.busjam.core.model.Limits
+import com.phloots.jam.core.model.Dir
+import com.phloots.jam.core.model.Event
+import com.phloots.jam.core.model.Limits
 import com.phloots.busjam.game.Phase
 import com.phloots.busjam.game.PhaseKind
 import com.phloots.busjam.game.SlotView
 import com.phloots.busjam.game.Snapshot
 import com.phloots.busjam.ui.theme.Palette
-import com.phloots.busjam.ui.theme.drawPassenger
+import com.phloots.busjam.ui.theme.drawElement
 import kotlin.math.PI
 import kotlin.math.sin
 
-/** Passengers shown per queue lane. */
+/** Elements shown per queue lane. */
 const val LANE_SIZE = 12
 
-/** Which part of the remaining queue each lane shows (indices relative to the front passenger). */
+/** Which part of the remaining queue each lane shows (indices relative to the front element). */
 data class QueueLanes(val remaining: Int, val leftCount: Int, val rightStart: Int, val rightCount: Int) {
-    /** Passengers hidden between the two lanes. */
+    /** Elements hidden between the two lanes. */
     val leftPlus: Int get() = if (rightCount > 0) rightStart - leftCount else remaining - leftCount
-    /** Passengers hidden after the right lane. */
+    /** Elements hidden after the right lane. */
     val rightPlus: Int get() = if (rightCount > 0) remaining - rightStart - rightCount else 0
 
     companion object {
@@ -52,7 +52,7 @@ data class QueueLanes(val remaining: Int, val leftCount: Int, val rightStart: In
     }
 }
 
-/** Pixel layout of the dock (queue lanes above, 4 parking slots below) for a given width. */
+/** Pixel layout of the dock (queue lanes above, 4 dock slots below) for a given width. */
 class DockLayout(val width: Float, density: Density) {
     private val dp = density.density
     val pad = 8 * dp
@@ -67,7 +67,7 @@ class DockLayout(val width: Float, density: Density) {
     val laneY = laneTop + laneH / 2
     val slotGap = 8 * dp
     val slotsTop = laneTop + laneH + 12 * dp
-    val slotW = (width - 2 * pad - 3 * slotGap) / Limits.SLOT_COUNT
+    val slotW = (width - 2 * pad - 3 * slotGap) / Limits.DOCK_SLOTS
     val slotH = slotW * 1.15f
     val height = slotsTop + slotH + pad
 
@@ -75,9 +75,9 @@ class DockLayout(val width: Float, density: Density) {
     fun rightLaneX(pos: Float) = pad + laneW + laneGap + spacing * (pos + 0.5f)
     fun slotCenter(slot: Int) = Offset(pad + slotW * (slot + 0.5f) + slotGap * slot, slotsTop + slotH / 2)
 
-    /** Parked vehicle body size (width across, length along) for [seats]. */
-    fun parkedSize(seats: Int): Pair<Float, Float> {
-        val rows = (seats + 1) / 2
+    /** Docked container body size (width across, length along) for [capacity]. */
+    fun dockedSize(capacity: Int): Pair<Float, Float> {
+        val rows = (capacity + 1) / 2
         val w = minOf(slotW * 0.44f, slotH * 0.92f / (0.9f + 0.48f * 5))
         return w to w * (0.9f + 0.48f * rows)
     }
@@ -125,37 +125,37 @@ private fun DrawScope.drawDock(
         Size(lay.laneW, lay.laneH), CornerRadius(lay.laneH / 2),
     )
 
-    // left lane: the next passengers, sliding forward while others board
+    // left lane: the next elements, sliding forward while others board
     val shift = n * (1f - e)
     for (i in 0 until minOf(lanes.remaining, LANE_SIZE + n)) {
         val pos = i + shift
         if (pos > LANE_SIZE - 0.5f) continue
         val idx = qAfter + i
-        drawPassenger(queue[idx], Offset(lay.leftLaneX(pos), lay.laneY), lay.token)
+        drawElement(queue[idx], Offset(lay.leftLaneX(pos), lay.laneY), lay.token)
     }
     if (lanes.leftPlus > 0) plusLabel(measurer, "+${lanes.leftPlus}", lay.pad + lay.spacing * LANE_SIZE, lay, plusStyle)
 
     // right lane: preview from the halfway point
     for (j in 0 until lanes.rightCount) {
         val idx = qAfter + lanes.rightStart + j
-        drawPassenger(queue[idx], Offset(lay.rightLaneX(j.toFloat()), lay.laneY), lay.token, alpha = 0.7f)
+        drawElement(queue[idx], Offset(lay.rightLaneX(j.toFloat()), lay.laneY), lay.token, alpha = 0.7f)
     }
     if (lanes.rightPlus > 0) {
         plusLabel(measurer, "+${lanes.rightPlus}", lay.pad + lay.laneW + lay.laneGap + lay.spacing * LANE_SIZE, lay, plusStyle)
     }
 
-    // parking slots
+    // dock slots
     val shakeDx = shake(shakeT) * 8 * density
-    val arriving = (phase?.takeIf { it.kind == PhaseKind.EXIT }?.events?.firstOrNull() as? Event.Exited)
-    val departing = phase?.takeIf { it.kind == PhaseKind.DEPART }?.events
-        ?.filterIsInstance<Event.Departed>()?.map { it.slot }?.toSet().orEmpty()
+    val arriving = (phase?.takeIf { it.kind == PhaseKind.RELEASE }?.events?.firstOrNull() as? Event.Released)
+    val dispatching = phase?.takeIf { it.kind == PhaseKind.DISPATCH }?.events
+        ?.filterIsInstance<Event.Dispatched>()?.map { it.slot }?.toSet().orEmpty()
     val after = phase?.after
     val stagger = if (n > 1) minOf(0.18f, 0.5f / (n - 1)) else 0f
     val walk = 1f - stagger * (n - 1).coerceAtLeast(0)
     fun boarderProgress(k: Int) = ((t - k * stagger) / walk).coerceIn(0f, 1f)
 
     translate(left = shakeDx) {
-        for (s in 0 until Limits.SLOT_COUNT) {
+        for (s in 0 until Limits.DOCK_SLOTS) {
             val c = lay.slotCenter(s)
             val tl = Offset(c.x - lay.slotW / 2, c.y - lay.slotH / 2)
             drawRoundRect(Palette.slotFill, tl, Size(lay.slotW, lay.slotH), CornerRadius(lay.slotW * 0.14f))
@@ -171,24 +171,24 @@ private fun DrawScope.drawDock(
                 alpha = ((t - 0.5f) / 0.5f).coerceIn(0f, 1f)
                 dy = (1f - alpha) * lay.slotH * 0.25f
             }
-            if (s in departing) {
+            if (s in dispatching) {
                 alpha = 1f - e
                 dy = -e * lay.slotH * 0.6f
             }
             if (view == null) continue
             val landed = boarding.withIndex().count { (k, b) -> b.slot == s && boarderProgress(k) >= 1f }
-            val (w, l) = lay.parkedSize(view.capacity)
-            drawVehicle(
+            val (w, l) = lay.dockedSize(view.capacity)
+            drawContainer(
                 center = Offset(c.x, c.y + dy),
                 width = w,
                 length = l,
                 dir = Dir.UP,
                 color = view.color,
                 alpha = alpha,
-                seats = Seats(view.filled + landed, view.capacity),
+                fill = Fill(view.filled + landed, view.capacity),
             )
         }
-        // passengers walking from the front of the queue into their vehicle
+        // elements walking from the front of the queue into their container
         for ((k, b) in boarding.withIndex()) {
             val p = boarderProgress(k)
             if (p >= 1f) continue
@@ -199,7 +199,7 @@ private fun DrawScope.drawDock(
                 start.x + (end.x - start.x) * pe,
                 start.y + (end.y - start.y) * pe - sin(pe * PI).toFloat() * lay.spacing * 0.8f,
             )
-            drawPassenger(queue[b.passengerIndex], pos, lay.token * (1f - 0.3f * pe))
+            drawElement(queue[b.elementIndex], pos, lay.token * (1f - 0.3f * pe))
         }
     }
 }

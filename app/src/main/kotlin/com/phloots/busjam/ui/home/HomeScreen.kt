@@ -19,9 +19,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.phloots.busjam.core.model.Dir
+import com.phloots.jam.core.model.Dir
 import com.phloots.busjam.ui.GameButton
-import com.phloots.busjam.ui.game.drawVehicle
+import com.phloots.busjam.ui.game.drawContainer
 import com.phloots.busjam.ui.theme.Palette
 
 @Composable
@@ -40,9 +40,9 @@ fun HomeScreen(
         Canvas(Modifier.fillMaxWidth().height(120.dp)) {
             val cell = size.height / 4.2f
             val cx = size.width / 2
-            drawVehicle(Offset(cx - cell * 2.4f, size.height / 2), cell * 0.82f, cell * 1.84f, Dir.UP, 0, iconSize = cell * 0.46f)
-            drawVehicle(Offset(cx, size.height / 2), cell * 0.82f, cell * 3.84f, Dir.UP, 1, iconSize = cell * 0.46f)
-            drawVehicle(Offset(cx + cell * 2.4f, size.height / 2), cell * 0.82f, cell * 2.84f, Dir.DOWN, 2, iconSize = cell * 0.46f)
+            drawContainer(Offset(cx - cell * 2.4f, size.height / 2), cell * 0.82f, cell * 1.84f, Dir.UP, 0, iconSize = cell * 0.46f)
+            drawContainer(Offset(cx, size.height / 2), cell * 0.82f, cell * 3.84f, Dir.UP, 1, iconSize = cell * 0.46f)
+            drawContainer(Offset(cx + cell * 2.4f, size.height / 2), cell * 0.82f, cell * 2.84f, Dir.DOWN, 2, iconSize = cell * 0.46f)
         }
         Spacer(Modifier.height(16.dp))
         Text("Bus Jam", fontSize = 48.sp, fontWeight = FontWeight.Black, color = Palette.ink)

@@ -41,7 +41,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.phloots.busjam.core.model.Status
+import com.phloots.jam.core.model.Status
 import com.phloots.busjam.game.GameUiState
 import com.phloots.busjam.game.PhaseKind
 import com.phloots.busjam.game.Snapshot
@@ -75,7 +75,7 @@ fun GameScreen(
             phaseIndex = i
             playingSeq = anim.seq
             when (ph.kind) {
-                PhaseKind.BUMP -> haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                PhaseKind.BLOCK -> haptic.performHapticFeedback(HapticFeedbackType.Reject)
                 PhaseKind.BOARD -> haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
                 else -> Unit
             }
@@ -99,7 +99,7 @@ fun GameScreen(
     }
 
     // ---- hint pulse ----
-    val pulse = if (ui.hintVehicleId != null) {
+    val pulse = if (ui.hintContainerId != null) {
         val inf = rememberInfiniteTransition(label = "hint")
         inf.animateFloat(0f, 1f, infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "pulse")
     } else null
@@ -136,7 +136,7 @@ fun GameScreen(
                     snapshot = snapshot,
                     phase = phase.takeIf { playing },
                     progress = tProvider,
-                    hintVehicleId = ui.hintVehicleId,
+                    hintContainerId = ui.hintContainerId,
                     hintPulse = { pulse?.value ?: 0f },
                     cellSize = cell,
                     onTap = onTap,
@@ -241,14 +241,14 @@ private fun ResultOverlay(
                 }
             } else {
                 Text(
-                    if (ui.state.status == Status.DEADLOCK) "Parking full!" else "No moves left",
+                    if (ui.state.status == Status.DEADLOCK) "Dock full!" else "No moves left",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Palette.ink,
                 )
                 Text(
-                    if (ui.state.status == Status.DEADLOCK) "Nobody in line can board a parked vehicle."
-                    else "No vehicle can leave and the queue is stuck.",
+                    if (ui.state.status == Status.DEADLOCK) "Nobody in line can board a docked container."
+                    else "No container can leave and the queue is stuck.",
                     color = Palette.ink.copy(alpha = 0.7f),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

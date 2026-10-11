@@ -15,7 +15,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("com.phloots.busjam.levelgen.MainKt")
+    mainClass.set("com.phloots.jam.levelgen.MainKt")
 }
 
 tasks.named<JavaExec>("run") {

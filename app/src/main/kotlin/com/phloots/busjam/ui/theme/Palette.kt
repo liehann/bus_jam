@@ -130,7 +130,7 @@ fun DrawScope.drawShapeIcon(
     if (outline != null) drawPath(path, outline, alpha = alpha, style = Stroke(width = size * 0.09f))
 }
 
-/** A passenger token: the colour's shape filled with the colour, dark outline. */
-fun DrawScope.drawPassenger(color: Int, center: Offset, size: Float, alpha: Float = 1f) {
+/** A element token: the colour's shape filled with the colour, dark outline. */
+fun DrawScope.drawElement(color: Int, center: Offset, size: Float, alpha: Float = 1f) {
     drawShapeIcon(Palette.shape(color), center, size, Palette.color(color), Palette.ink, alpha)
 }

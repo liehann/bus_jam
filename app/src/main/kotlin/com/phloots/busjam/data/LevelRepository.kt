@@ -1,8 +1,8 @@
 package com.phloots.busjam.data
 
 import android.content.Context
-import com.phloots.busjam.core.io.LevelPackCodec
-import com.phloots.busjam.core.model.Level
+import com.phloots.jam.core.io.LevelPackCodec
+import com.phloots.jam.core.model.Level
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

@@ -1,4 +1,76 @@
-# Bus Jam — agreed design
+# Jam puzzle — agreed design (v2)
+
+> v2 (2026-10-10) supersedes v1 wherever they conflict. The game will be skinned as "Kitten Jumble" later; the code
+> stays theme-neutral. The v1 text below is kept for history; **read the v2 section first**.
+
+## v2 changes
+
+**Neutral terminology** (code, tests, docs, JSON — UI strings may keep placeholder art for now):
+
+| v1 | v2 |
+|---|---|
+| Vehicle | Container |
+| VehicleType CAR/VAN/BUS | ContainerSize S/M/L |
+| seats / seatsLeft | capacity / spaceLeft |
+| Passenger | Element |
+| Parking slot(s) | Dock / DockSlot (4 slots) |
+| (new) | Staging area (7 spots) |
+| Queue | Queue |
+| Exit / park | Release (leaves board, docks) |
+| Depart | Dispatch (full container leaves dock) |
+| Bump | Blocked |
+
+Packages: `:core` is `com.phloots.jam.core.*` and `:levelgen` is `com.phloots.jam.levelgen`. The `:app` namespace, its packages and the applicationId stay `com.phloots.busjam` until the re-skin.
+
+**Sizes:** S = length 1 / capacity 4, M = length 2 / capacity 6, L = length 3 / capacity 10. No length-4 containers.
+A length-1 container still faces a direction.
+
+**Board:** rectangle, minimum 10 wide × 12 tall, maximum 12 wide × 14 tall. Up to 128 containers per level
+(onBoard bitmask = two Longs). Any edge is an exit.
+
+**Staging area (replaces "front of queue only"):**
+- 7 staging spots. Whenever a spot is free and the queue is non-empty, the next queue element moves into staging
+  (auto-refill, in queue order). Staging is therefore always full unless the queue is exhausted.
+- Boarding loop, run after every state change until nothing changes:
+  1. Scan dock slots **left to right** (positional, slot 0 first). For the leftmost docked container that has free
+     space and for which at least one staged element has its colour, the **oldest** such staged element boards it.
+  2. A container that becomes full dispatches immediately, freeing its slot.
+  3. Refill staging from the queue. Repeat.
+  Consequence: with two same-colour containers docked, the left one fills completely before the right one gets
+  anything — even if the right one needs only one more. Docking a second same-colour container is punished.
+- Release takes the **leftmost free** dock slot (unchanged), so a later same-colour container can end up left of an
+  earlier partially-filled one and then takes priority.
+- Win: board, dock, staging and queue all empty.
+- Lose (DEADLOCK): all 4 dock slots occupied and no staged element matches any docked container.
+- STUCK: no tappable container and the boarding loop can't progress (and not won).
+- Tap when all 4 dock slots are occupied: ignored (after the loop this implies DEADLOCK, so it's GAME_OVER).
+- Balance: per colour, total elements == total capacity of that colour's containers.
+
+**Solver key (v2):** onBoard (2 Longs) + dock slots **positional** (container id + spaceLeft per slot — position
+matters now) + staging as per-colour counts + queueIndex. Pack compactly (e.g. 4 Longs). Element identity within a
+colour does not matter, so staging is a count vector.
+
+**Difficulty (v2):**
+- Levels must have many containers from the start. Only **level 1** is a tutorial (10×12, sparse, no traps).
+  From level 2 on, levels must clear a "too easy" floor (minimum containers, minimum score, minimum sharp
+  decisions); the generator discards anything below it.
+- Replace P (it saturated at 1.0 in v1): P = mean over solution-path states of occupied dock slots / 4.
+- S normalisation: colours 4→8, containers 30→110, cells 120→168.
+- Campaign: fix the v1 boss bug — bosses must score meaningfully above level 9 of their cycle (target ≈ +6–10
+  points), levels 1→9 must span a visible range, and level 1 of the next cycle drops back. Tests assert these.
+- Colours start at 4 (level 2) and ramp to 8.
+
+**UI (v2):** board, then a staging row of 7 spots between the dock and the two-lane queue preview
+(left lane = next ~12 after staging, right lane = ~12 from the halfway point). Keep current car art for now.
+
+**Reviewer fixes to include:** record a win only when the WON animation finishes (undo mid-animation must not keep
+a recorded win); a hint that returns null must not cost stars and should say "no winning move — try undo";
+filter level selection on solver node counts, not wall-clock time; tests for ProgressStore; off-path
+solver/hint brute-force tests (from mid-game states after mistakes).
+
+---
+
+# v1 (history)
 
 Native Android puzzle game ("Bus Jam" / "Parking Jam" style). Kotlin, Jetpack Compose, single activity,
 minSdk 26, targetSdk = latest stable. No ads, analytics or network. Package / applicationId: `com.phloots.busjam`.

@@ -1,11 +1,11 @@
 package com.phloots.busjam.game
 
-import com.phloots.busjam.core.model.Dir
-import com.phloots.busjam.core.model.Event
-import com.phloots.busjam.core.model.Level
-import com.phloots.busjam.core.model.Status
-import com.phloots.busjam.core.model.Vehicle
-import com.phloots.busjam.core.model.VehicleType
+import com.phloots.jam.core.model.Dir
+import com.phloots.jam.core.model.Event
+import com.phloots.jam.core.model.Level
+import com.phloots.jam.core.model.Status
+import com.phloots.jam.core.model.Container
+import com.phloots.jam.core.model.ContainerSize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -26,22 +26,22 @@ class GameViewModelTest {
     private val wins = mutableListOf<Pair<Int, Int>>()
     private lateinit var vm: GameViewModel
 
-    /** Two free cars: 0 (colour 0) exits up, 1 (colour 1) exits right. */
+    /** Two free S containers: 0 (colour 0) exits up, 1 (colour 1) exits right. */
     private val easy = Level(
         id = 1, width = 5, height = 5,
-        vehicles = listOf(
-            Vehicle(0, VehicleType.CAR, 0, 1, 1, Dir.UP),
-            Vehicle(1, VehicleType.CAR, 1, 3, 3, Dir.RIGHT),
+        containers = listOf(
+            Container(0, ContainerSize.S, 0, 1, 1, Dir.UP),
+            Container(1, ContainerSize.S, 1, 3, 3, Dir.RIGHT),
         ),
         queue = listOf(0, 0, 0, 0, 1, 1, 1, 1),
     )
 
-    /** Car 0 faces up but car 1 (front (1,1), tail (1,0)) sits on its exit ray. */
+    /** S container 0 faces up but S container 1 (front (1,1), tail (1,0)) sits on its exit ray. */
     private val blocked = Level(
         id = 2, width = 5, height = 5,
-        vehicles = listOf(
-            Vehicle(0, VehicleType.CAR, 0, 2, 1, Dir.UP),
-            Vehicle(1, VehicleType.CAR, 1, 1, 1, Dir.RIGHT),
+        containers = listOf(
+            Container(0, ContainerSize.S, 0, 2, 1, Dir.UP),
+            Container(1, ContainerSize.S, 1, 1, 1, Dir.RIGHT),
         ),
         queue = listOf(1, 1, 1, 1, 0, 0, 0, 0),
     )
@@ -65,7 +65,7 @@ class GameViewModelTest {
     }
 
     private fun tap(id: Int) {
-        vm.onVehicleTapped(id)
+        vm.onContainerTapped(id)
         finishAnimations()
     }
 
@@ -86,7 +86,7 @@ class GameViewModelTest {
         tap(0)
         assertTrue(ui().canUndo)
         vm.undo()
-        assertEquals(easy.vehicles.size, Snapshot.of(ui().state).onBoard.size)
+        assertEquals(easy.containers.size, Snapshot.of(ui().state).onBoard.size)
         assertFalse(ui().canUndo)
         tap(0)
         tap(1)
@@ -96,13 +96,13 @@ class GameViewModelTest {
     }
 
     @Test
-    fun hintCostsTwoStarsAndHighlightsAVehicle() {
+    fun hintCostsTwoStarsAndHighlightsAContainer() {
         vm.start(easy, 1, hasNext = true)
         vm.hint()
-        assertNotNull(ui().hintVehicleId)
+        assertNotNull(ui().hintContainerId)
         assertEquals(1, ui().potentialStars)
-        tap(ui().hintVehicleId!!)
-        assertNull(ui().hintVehicleId)
+        tap(ui().hintContainerId!!)
+        assertNull(ui().hintContainerId)
         tap(if (ui().state.isOnBoard(0)) 0 else 1)
         assertEquals(1, ui().earnedStars)
     }
@@ -127,14 +127,14 @@ class GameViewModelTest {
     @Test
     fun tapsDuringAnimationAreQueuedInOrder() {
         vm.start(easy, 1, hasNext = true)
-        vm.onVehicleTapped(0)
-        vm.onVehicleTapped(1)
+        vm.onContainerTapped(0)
+        vm.onContainerTapped(1)
         val first = ui().anim!!
-        assertTrue(first.events.first() is Event.Exited)
-        assertEquals(0, (first.events.first() as Event.Exited).vehicleId)
+        assertTrue(first.events.first() is Event.Released)
+        assertEquals(0, (first.events.first() as Event.Released).containerId)
         vm.onAnimationFinished(first.seq)
         val second = ui().anim!!
-        assertEquals(1, (second.events.first() as Event.Exited).vehicleId)
+        assertEquals(1, (second.events.first() as Event.Released).containerId)
         assertFalse(ui().showResult) // result waits for the animation
         vm.onAnimationFinished(second.seq)
         assertTrue(ui().showResult)
@@ -142,13 +142,13 @@ class GameViewModelTest {
     }
 
     @Test
-    fun bumpAnimatesWithoutChangingStateOrUndo() {
+    fun blockAnimatesWithoutChangingStateOrUndo() {
         vm.start(blocked, 2, hasNext = false)
         val before = ui().state
-        vm.onVehicleTapped(0)
+        vm.onContainerTapped(0)
         val anim = ui().anim!!
-        assertTrue(anim.events.single() is Event.Bumped)
-        assertEquals(PhaseKind.BUMP, anim.phases.single().kind)
+        assertTrue(anim.events.single() is Event.Blocked)
+        assertEquals(PhaseKind.BLOCK, anim.phases.single().kind)
         vm.onAnimationFinished(anim.seq)
         assertEquals(before, ui().state)
         assertFalse(ui().canUndo)
@@ -161,10 +161,10 @@ class GameViewModelTest {
     @Test
     fun boardingPhasesReplayToFinalState() {
         vm.start(easy, 1, hasNext = true)
-        vm.onVehicleTapped(0)
+        vm.onContainerTapped(0)
         val anim = ui().anim!!
         val kinds = anim.phases.map { it.kind }
-        assertEquals(listOf(PhaseKind.EXIT, PhaseKind.BOARD, PhaseKind.DEPART), kinds)
+        assertEquals(listOf(PhaseKind.RELEASE, PhaseKind.BOARD, PhaseKind.DISPATCH), kinds)
         assertEquals(Snapshot.of(ui().state), anim.phases.last().after)
     }
 }

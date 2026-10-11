@@ -3,7 +3,7 @@ package com.phloots.busjam.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.phloots.busjam.core.model.Level
+import com.phloots.jam.core.model.Level
 import com.phloots.busjam.data.LevelRepository
 import com.phloots.busjam.data.Progress
 import com.phloots.busjam.data.ProgressStore

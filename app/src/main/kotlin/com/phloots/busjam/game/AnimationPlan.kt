@@ -1,11 +1,11 @@
 package com.phloots.busjam.game
 
-import com.phloots.busjam.core.model.Event
-import com.phloots.busjam.core.model.GameState
-import com.phloots.busjam.core.model.Level
+import com.phloots.jam.core.model.Event
+import com.phloots.jam.core.model.GameState
+import com.phloots.jam.core.model.Level
 
-/** A vehicle shown in a parking slot. [filled] seats of [capacity]. */
-data class SlotView(val vehicleId: Int, val color: Int, val filled: Int, val capacity: Int)
+/** A container shown in a dock slot. [filled] of [capacity] spots used. */
+data class SlotView(val containerId: Int, val color: Int, val filled: Int, val capacity: Int)
 
 /**
  * What the screen shows at a point in time. Built either from a [GameState] or by replaying an Engine event
@@ -18,12 +18,12 @@ data class Snapshot(
     val queueIndex: Int,
 ) {
     fun replay(e: Event): Snapshot = when (e) {
-        is Event.Exited -> {
-            val v = level.vehicles[e.vehicleId]
+        is Event.Released -> {
+            val v = level.containers[e.containerId]
             copy(
-                onBoard = onBoard - e.vehicleId,
+                onBoard = onBoard - e.containerId,
                 slots = slots.toMutableList().also {
-                    it[e.slot] = SlotView(v.id, v.color, 0, v.type.seats)
+                    it[e.slot] = SlotView(v.id, v.color, 0, v.size.capacity)
                 },
             )
         }
@@ -31,10 +31,10 @@ data class Snapshot(
             slots = slots.toMutableList().also { s ->
                 s[e.slot] = s[e.slot]?.let { it.copy(filled = it.filled + 1) }
             },
-            queueIndex = e.passengerIndex + 1,
+            queueIndex = e.elementIndex + 1,
         )
-        is Event.Departed -> copy(slots = slots.toMutableList().also { it[e.slot] = null })
-        is Event.Bumped, is Event.Ignored -> this
+        is Event.Dispatched -> copy(slots = slots.toMutableList().also { it[e.slot] = null })
+        is Event.Blocked, is Event.Ignored -> this
     }
 
     companion object {
@@ -42,11 +42,11 @@ data class Snapshot(
             val level = state.level
             return Snapshot(
                 level = level,
-                onBoard = level.vehicles.indices.filter { state.isOnBoard(it) }.toSet(),
-                slots = state.slots.map { p ->
+                onBoard = level.containers.indices.filter { state.isOnBoard(it) }.toSet(),
+                slots = state.dock.map { p ->
                     p?.let {
-                        val cap = level.vehicles[it.vehicleId].type.seats
-                        SlotView(it.vehicleId, it.color, cap - it.seatsLeft, cap)
+                        val cap = level.containers[it.containerId].size.capacity
+                        SlotView(it.containerId, it.color, cap - it.spaceLeft, cap)
                     }
                 },
                 queueIndex = state.queueIndex,
@@ -55,7 +55,7 @@ data class Snapshot(
     }
 }
 
-enum class PhaseKind { EXIT, BUMP, BOARD, DEPART }
+enum class PhaseKind { RELEASE, BLOCK, BOARD, DISPATCH }
 
 /** One animated step: [before] is the snapshot at the start, [events] are played during it. */
 data class Phase(val kind: PhaseKind, val before: Snapshot, val events: List<Event>) {
@@ -64,14 +64,14 @@ data class Phase(val kind: PhaseKind, val before: Snapshot, val events: List<Eve
     /** Duration in ms; every phase is <= 300 ms. */
     val durationMs: Int
         get() = when (kind) {
-            PhaseKind.EXIT -> 280
-            PhaseKind.BUMP -> 260
+            PhaseKind.RELEASE -> 280
+            PhaseKind.BLOCK -> 260
             PhaseKind.BOARD -> 300
-            PhaseKind.DEPART -> 240
+            PhaseKind.DISPATCH -> 240
         }
 }
 
-/** Groups an event list into phases: each Exited/Bumped alone, consecutive Boarded together, consecutive Departed together. */
+/** Groups an event list into phases: each Released/Blocked alone, consecutive Boarded together, consecutive Dispatched together. */
 fun planPhases(from: GameState, events: List<Event>): List<Phase> {
     val phases = mutableListOf<Phase>()
     var snap = Snapshot.of(from)
@@ -79,16 +79,16 @@ fun planPhases(from: GameState, events: List<Event>): List<Phase> {
     while (i < events.size) {
         val e = events[i]
         val kind = when (e) {
-            is Event.Exited -> PhaseKind.EXIT
-            is Event.Bumped -> PhaseKind.BUMP
+            is Event.Released -> PhaseKind.RELEASE
+            is Event.Blocked -> PhaseKind.BLOCK
             is Event.Boarded -> PhaseKind.BOARD
-            is Event.Departed -> PhaseKind.DEPART
+            is Event.Dispatched -> PhaseKind.DISPATCH
             is Event.Ignored -> null
         }
         if (kind == null) { i++; continue }
         val group = mutableListOf(e)
         i++
-        if (kind == PhaseKind.BOARD || kind == PhaseKind.DEPART) {
+        if (kind == PhaseKind.BOARD || kind == PhaseKind.DISPATCH) {
             while (i < events.size && events[i]::class == e::class) group += events[i++]
         }
         val phase = Phase(kind, snap, group)

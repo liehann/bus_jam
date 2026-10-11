@@ -8,8 +8,8 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.phloots.busjam.core.io.LevelPackCodec
-import com.phloots.busjam.core.solver.Solver
+import com.phloots.jam.core.io.LevelPackCodec
+import com.phloots.jam.core.solver.Solver
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -36,7 +36,7 @@ class PlayLevelOneTest {
         rule.waitUntilAtLeastOneExists(hasTestTag("board"), timeoutMillis = 10_000)
 
         for (move in solution.solution) {
-            rule.onNodeWithTag("vehicle-${move.vehicleId}").performClick()
+            rule.onNodeWithTag("container-${move.containerId}").performClick()
             rule.waitForIdle()
         }
         rule.waitUntilAtLeastOneExists(hasTestTag("win-dialog"), timeoutMillis = 10_000)

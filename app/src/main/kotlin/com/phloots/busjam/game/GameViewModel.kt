@@ -2,14 +2,14 @@ package com.phloots.busjam.game
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.phloots.busjam.core.engine.Engine
-import com.phloots.busjam.core.model.Event
-import com.phloots.busjam.core.model.GameState
-import com.phloots.busjam.core.model.IgnoreReason
-import com.phloots.busjam.core.model.Level
-import com.phloots.busjam.core.model.Move
-import com.phloots.busjam.core.model.Status
-import com.phloots.busjam.core.solver.Solver
+import com.phloots.jam.core.engine.Engine
+import com.phloots.jam.core.model.Event
+import com.phloots.jam.core.model.GameState
+import com.phloots.jam.core.model.IgnoreReason
+import com.phloots.jam.core.model.Level
+import com.phloots.jam.core.model.Move
+import com.phloots.jam.core.model.Status
+import com.phloots.jam.core.solver.Solver
 import com.phloots.busjam.data.ProgressSink
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +32,7 @@ data class GameUiState(
     /** Latest logical state (all applied moves). While [anim] is non-null the screen shows its playback instead. */
     val state: GameState,
     val anim: AnimJob? = null,
-    val hintVehicleId: Int? = null,
+    val hintContainerId: Int? = null,
     val hintLoading: Boolean = false,
     val usedUndo: Boolean = false,
     val usedHint: Boolean = false,
@@ -92,9 +92,9 @@ class GameViewModel(
         )
     }
 
-    fun onVehicleTapped(vehicleId: Int) {
+    fun onContainerTapped(containerId: Int) {
         if (_ui.value == null) return
-        pending.addLast(Move(vehicleId))
+        pending.addLast(Move(containerId))
         pump()
     }
 
@@ -115,7 +115,7 @@ class GameViewModel(
             anim = null,
             usedUndo = true,
             canUndo = undoStack.isNotEmpty(),
-            hintVehicleId = null,
+            hintContainerId = null,
             hintLoading = false,
             earnedStars = 0,
         )
@@ -145,7 +145,7 @@ class GameViewModel(
             val move = withContext(computeDispatcher) { Solver.hint(target) }
             val now = _ui.value ?: return@launch
             if (now.state === target) {
-                _ui.value = now.copy(hintVehicleId = move?.vehicleId, hintLoading = false)
+                _ui.value = now.copy(hintContainerId = move?.containerId, hintLoading = false)
             } else {
                 _ui.value = now.copy(hintLoading = false)
             }
@@ -173,7 +173,7 @@ class GameViewModel(
             val t = Engine.apply(before, move)
             val ignored = t.events.singleOrNull() as? Event.Ignored
             if (ignored != null || t.events.isEmpty()) {
-                if (ignored?.reason == IgnoreReason.SLOTS_FULL) {
+                if (ignored?.reason == IgnoreReason.DOCK_FULL) {
                     _ui.value = ui.copy(slotsFullSignal = ui.slotsFullSignal + 1)
                 }
                 continue
@@ -186,7 +186,7 @@ class GameViewModel(
                 state = t.state,
                 anim = AnimJob(++seq, before, t.events),
                 canUndo = undoStack.isNotEmpty(),
-                hintVehicleId = if (changed) null else ui.hintVehicleId,
+                hintContainerId = if (changed) null else ui.hintContainerId,
                 earnedStars = stars,
             )
             if (won) {

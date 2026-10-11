@@ -4,21 +4,22 @@ import androidx.compose.ui.graphics.Color
 import com.phloots.jam.core.model.Limits
 
 /**
- * Critter Café colours. The 10 piece colours are the pastel pack palette with the readability tweaks from
- * docs/SKIN-PLAN.md (lightness spread 48..90 so neighbours separate under colour-vision deficiency).
+ * Critter Café colours. The 10 piece colours are the pastel pack palette, tuned (2026-10-11) so the closest pair is
+ * CIEDE2000 22.8 apart for normal vision and 11.4 / 11.7 under simulated deuteranopia / protanopia (was 17.2, 9.5,
+ * 8.0), with mint a truer green and sky a clearer blue (mint/sky 24 -> 32: they were the pair players mixed up).
  */
 object CritterPalette {
     val colors = listOf(
-        Color(0xFFF4A6BE), // pink
-        Color(0xFFA0E2B2), // mint
-        Color(0xFFA4E0F2), // sky
-        Color(0xFFF9E096), // butter
-        Color(0xFFB8A4EC), // lavender
-        Color(0xFFF8A360), // tangerine
-        Color(0xFFE25864), // cherry
-        Color(0xFF6884DE), // blueberry
-        Color(0xFFA054A4), // plum
-        Color(0xFF787484), // charcoal
+        Color(0xFFFEB0C5), // pink
+        Color(0xFF85CB91), // mint
+        Color(0xFFA4E1FF), // sky
+        Color(0xFFF7E783), // butter
+        Color(0xFFB998F3), // lavender
+        Color(0xFFF38F56), // tangerine
+        Color(0xFFEA455C), // cherry
+        Color(0xFF3D7BDC), // blueberry
+        Color(0xFFA84C9D), // plum
+        Color(0xFF747378), // charcoal
     )
     val names = listOf("pink", "mint", "sky", "butter", "lavender", "tangerine", "cherry", "blueberry", "plum", "charcoal")
 

@@ -213,21 +213,23 @@ fun DrawScope.drawAnimalFace(c: Offset, f: Float, species: Species, alpha: Float
 }
 
 /**
- * A plate of diameter [size] (dominant coloured rim, ~32 % of the radius, white well) with a placeholder maki on it.
+ * A plate of diameter [size], coloured all over in [rim] (no white well, so the colour reads at carousel size and
+ * speed): a slightly darker well ring, a sheen on the upper left, a placeholder nigiri on top.
  */
 fun DrawScope.drawPlate(rim: Color, center: Offset, size: Float, alpha: Float = 1f) {
     val ink = CritterPalette.ink
     val r = size / 2
     drawCircle(ink, r, center + Offset(0f, r * 0.13f), alpha = alpha * 0.2f)
     drawCircle(rim, r, center, alpha = alpha)
+    // the well: a darker ring with a lighter floor, all in the plate colour
+    drawCircle(lerp(rim, ink, 0.22f), r * 0.66f, center, alpha = alpha * 0.55f, style = Stroke(width = r * 0.1f))
+    drawCircle(lerp(rim, Color.White, 0.18f), r * 0.6f, center, alpha = alpha)
     // rim sheen on the upper left
     drawArc(
         Color.White, 200f, 70f, false, center - Offset(r * 0.84f, r * 0.84f), Size(r * 1.68f, r * 1.68f),
-        alpha = alpha * 0.45f, style = Stroke(width = r * 0.11f, cap = StrokeCap.Round),
+        alpha = alpha * 0.5f, style = Stroke(width = r * 0.11f, cap = StrokeCap.Round),
     )
     drawCircle(ink, r, center, alpha = alpha, style = Stroke(width = maxOf(r * 0.085f, 0.8f * density)))
-    drawCircle(Color.White, r * 0.68f, center, alpha = alpha)
-    drawCircle(lerp(rim, ink, 0.35f), r * 0.68f, center, alpha = alpha * 0.7f, style = Stroke(width = r * 0.06f))
     // placeholder food: a salmon nigiri, slanted (food sprites come later)
     rotate(-28f, center) {
         val line = Stroke(width = maxOf(r * 0.06f, 0.6f * density))
@@ -254,7 +256,7 @@ fun DrawScope.drawPlateStack(rim: Color, base: Offset, w: Float, count: Int, ste
         drawOval(rim, tl, Size(w, h), alpha = alpha)
         drawOval(ink, tl, Size(w, h), alpha = alpha, style = Stroke(width = maxOf(w * 0.045f, 0.8f * density)))
         if (i == count - 1) {
-            drawOval(Color.White, Offset(base.x - w * 0.34f, cy - h * 0.34f), Size(w * 0.68f, h * 0.68f), alpha = alpha)
+            drawOval(lerp(rim, Color.White, 0.18f), Offset(base.x - w * 0.34f, cy - h * 0.34f), Size(w * 0.68f, h * 0.68f), alpha = alpha)
         }
     }
 }

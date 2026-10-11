@@ -171,3 +171,12 @@ Used to calibrate our generator and scorer. Never copy layouts into shipped leve
 - The game announces difficulty before the level ("Hard" at L9, "Super hard" at L15) — sets expectations, makes
   losses feel fair. For us: "Hard"/"Super hard" badge on level tiles + a pre-level banner, label derived from the
   difficulty score (bosses / top percentile), so it's consistent across the campaign.
+
+### Level 15 mid-level — dummy stall at super-hard density (2026-10-11, user-highlighted)
+- User: "I needed to park two dummy pink buses, so I only have two docks."
+- Dock: pink bus slot 1 badge 40, slot 2 empty, pink bus slot 3 badge 8, red van slot 4 badge 8. No pink on the ring
+  → both pinks are pure dummies; effectively 2 slots (one taken by a red van that red on the ring will fill).
+- Left-slot steal (catalogue e) live: when pink arrives, slot 1 (needs 40) fills first; the slot-3 pink (needs 8)
+  can't complete until slot 1 is full → both pinks hold their slots until ~48 pinks pass.
+- Badge semantics still unclear (40 vs 8 on two same-size pink buses).
+- Structure = principle 9 dummy stall + principle 8(e) on a ~70-vehicle, 9-colour board: the super-hard reference.

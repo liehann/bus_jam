@@ -39,7 +39,7 @@ import java.util.concurrent.Executors
  * Run: ./gradlew :levelgen:reversePreview -PreverseMain=com.phloots.jam.levelgen.reverse.HybridPreview4Kt
  *      [--args="--tries 400 --seed 1 --threads 8"] (the pack was built with the defaults, ~9 min)
  */
-private data class Recipe4(
+internal data class Recipe4(
     val name: String,
     val label: String, // "", "hard", "superhard"
     /** 0 gentle .. 3 super hard: juggling threshold, opening target and quality floors. */
@@ -60,7 +60,7 @@ private data class Recipe4(
 private val LIGHT4 = listOf(2.0, 1.0, 0.3)
 private val MIXED4 = listOf(1.0, 1.0, 0.8)
 private val HEAVY4 = listOf(0.5, 1.0, 1.6)
-private const val MAX4 = Double.MAX_VALUE
+internal const val MAX4 = Double.MAX_VALUE
 
 /** Experiment overrides (--exp key=value;key=value), for parameter sweeps only. */
 private val exp = HashMap<String, Double>()
@@ -92,7 +92,7 @@ private fun scarceKey4(run: Int, keystone: Boolean = true, herald: Boolean = fal
 private fun herald(count: Int, foreshadowAt: Int = -1, ramp: Int = 8) = if (!heraldOn) null else
     SquatDef(count, bigs = 0, valves = if (foreshadowAt >= 0) listOf(ContainerSize.S to foreshadowAt) else emptyList(), rampTaps = ramp, valveCover = 2)
 
-private fun recipes4(): List<Recipe4> = listOf(
+internal fun recipes4(): List<Recipe4> = listOf(
     Recipe4("tutorial", "", 0, 0.0) { StallScript(10, 12, 3, lead = 0, stalls = emptyList(), exitFill = 0) },
     // L2-6: one idea each.
     Recipe4("juggle intro", "", 0, 16.0) { _ -> jbase4(11, 13, 8, JuggleDef(taps = 6, hold = 2, fill = 0.3), listOf(StallDef(2, 3, partial = 0.5)), 12) },
@@ -182,7 +182,7 @@ private fun dense4(herald: Boolean) = jbase4(12, 14, 9, JuggleDef(taps = 10, hol
  * Quality floors (docs/LEVEL-QUALITY.md): hidden bits, opening share and climax slack averaged over the intended and the
  * solver line, herald readability on the intended line. The reasons it fails, empty if it passes.
  */
-private fun qualityFails(r: Recipe4, e: HybridEval, fc: HybridFitnessConfig): List<String> {
+internal fun qualityFails(r: Recipe4, e: HybridEval, fc: HybridFitnessConfig): List<String> {
     val out = ArrayList<String>()
     val qs = listOfNotNull(e.quality, e.qualitySolver)
     val hidden = qs.map { it.hidden }.average()

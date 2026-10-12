@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launch splash: the app icon on the café cream, held until the home screen's settings and levels are loaded. -->
+    <style name="Theme.CritterCafe.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/critter_cream</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.CritterCafe</item>
+    </style>
+
+    <style name="Theme.CritterCafe" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/critter_cream</item>
+    </style>
+</resources>

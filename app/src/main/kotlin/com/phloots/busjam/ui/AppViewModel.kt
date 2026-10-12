@@ -37,7 +37,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val dataStore = application.progressDataStore
     private val assets = AndroidAssetSource(application.assets)
     val repository = LevelRepository(assets)
-    val packs: List<PackInfo> = PackCatalog.discover(assets, includeExtra = BuildConfig.DEBUG)
+    val packs: List<PackInfo> = PackCatalog.discover(assets, includeExtra = false) // the official campaign only
     private val selection = PackSelectionStore(dataStore)
     private val stores = HashMap<String, ProgressStore>()
 
@@ -66,9 +66,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val mode = GameModeStore(dataStore)
 
-    /** Real-time carousel mode: debug builds only (default on, toggle on the home screen); release is turn-based. */
+    /** Real-time carousel mode: always on (the turn-based mode stays in the code, without a switch). */
     val realTime: StateFlow<Boolean?> = mode.realTime
-        .map { BuildConfig.DEBUG && (it ?: true) }
+        .map { true }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null) // null until the setting has been read
 
     fun setRealTime(on: Boolean) {
@@ -77,14 +77,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val skinStore = SkinStore(dataStore)
 
-    /** Critter Café skin: debug builds only (default off, toggle on the home screen). */
+    /** Critter Café skin: always on (the flat skin stays in the code, without a switch). */
     val critterCafe: StateFlow<Boolean?> = skinStore.critterCafe
-        .map { BuildConfig.DEBUG && (it ?: false) }
+        .map { true }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     fun setCritterCafe(on: Boolean) {
         viewModelScope.launch { skinStore.setCritterCafe(on) }
     }
+
+    /** Everything the first home frame needs has been read: skin, mode, the selected pack and its progress. */
+    fun isReady(): Boolean = critterCafe.value != null && realTime.value != null && loaded.value != null && progress.value != null
 
     fun selectPack(file: String) {
         viewModelScope.launch { selection.select(file) }

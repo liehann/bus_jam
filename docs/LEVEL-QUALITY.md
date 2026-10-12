@@ -167,5 +167,10 @@ Ring size test L2 is Hybrid preview 4 L5 (an early juggle level) replayed with 2
 The smaller ring nearly triples the hidden bits of a 37-move level without changing the layout: with 12 fewer seats
 a wrong release fills the carousel sooner, so more early choices become losses beyond the next move. Per move it
 sits with the liked HP2 L19 (0.30 vs 0.31 hidden bits per move) though its total is the lowest of the liked levels:
-a short level can be "hard but doable" at ~11 hidden bits. Proposal, not built: let the generator choose the ring
-size per level (20-40) as a dial towards a tier's hidden-bit target, after the layout is fixed.
+a short level can be "hard but doable" at ~11 hidden bits. Proposal: let the generator choose the ring size per
+level (20-40) as a dial towards a tier's hidden-bit target, after the layout is fixed.
+
+Built as a schedule (2026-10-11) in the official campaign (`reverse/OfficialPack.kt`, table in
+`levelgen/out/official.md`): 40 seats for cycles 1-2 and every breather, then 40 - 2(c-1) seats (floor 30, 2 fewer
+on levels 7-9) and 28 (cycles 3-6) or 24 seats on the hard closers, stepping up 4 seats when the solver cannot prove
+the level solvable at the planned size. The table lists hidden bits at 40 and at the chosen size.

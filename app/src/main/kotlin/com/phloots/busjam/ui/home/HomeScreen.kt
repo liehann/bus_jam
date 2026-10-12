@@ -76,37 +76,7 @@ fun HomeScreen(
         )
         if (packs.size > 1 || realTime != null || critterCafe != null) {
             Spacer(Modifier.height(20.dp))
-            if (packs.size > 1) PackSelector(packs, selectedPack, onSelectPack)
-            if (realTime != null) {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 8.dp).testTag("realtime-toggle"),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Real-time carousel", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Palette.ink)
-                        Text(
-                            if (realTime) "Waiting area rotates; tap any time" else "Turn-based staging (v2)",
-                            fontSize = 12.sp, color = Palette.ink.copy(alpha = 0.65f),
-                        )
-                    }
-                    Switch(checked = realTime, onCheckedChange = onRealTime, modifier = Modifier.testTag("realtime-switch"))
-                }
-            }
-            if (critterCafe != null) {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 8.dp).testTag("skin-toggle"),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Critter Café skin", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Palette.ink)
-                        Text(
-                            if (critterCafe) "Reservation cards and plates (real-time screen)" else "Original flat look",
-                            fontSize = 12.sp, color = Palette.ink.copy(alpha = 0.65f),
-                        )
-                    }
-                    Switch(checked = critterCafe, onCheckedChange = onCritterCafe, modifier = Modifier.testTag("skin-switch"))
-                }
-            }
+            HomeDebugOptions(packs, selectedPack, onSelectPack, realTime, onRealTime, critterCafe, onCritterCafe)
             Spacer(Modifier.height(20.dp))
         } else {
             Spacer(Modifier.height(40.dp))
@@ -129,6 +99,52 @@ fun HomeScreen(
             fontSize = 18,
         )
         Spacer(Modifier.size(48.dp))
+    }
+}
+
+/** Debug-build options: level pack, real-time carousel and skin switches (each hidden when not offered). */
+@Composable
+fun HomeDebugOptions(
+    packs: List<PackInfo>,
+    selectedPack: String?,
+    onSelectPack: (String) -> Unit,
+    realTime: Boolean?,
+    onRealTime: (Boolean) -> Unit,
+    critterCafe: Boolean?,
+    onCritterCafe: (Boolean) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        if (packs.size > 1) PackSelector(packs, selectedPack, onSelectPack)
+        if (realTime != null) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 8.dp).testTag("realtime-toggle"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Real-time carousel", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Palette.ink)
+                    Text(
+                        if (realTime) "Waiting area rotates; tap any time" else "Turn-based staging (v2)",
+                        fontSize = 12.sp, color = Palette.ink.copy(alpha = 0.65f),
+                    )
+                }
+                Switch(checked = realTime, onCheckedChange = onRealTime, modifier = Modifier.testTag("realtime-switch"))
+            }
+        }
+        if (critterCafe != null) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 8.dp).testTag("skin-toggle"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Critter Café skin", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Palette.ink)
+                    Text(
+                        if (critterCafe) "Reservation cards and plates (real-time screen)" else "Original flat look",
+                        fontSize = 12.sp, color = Palette.ink.copy(alpha = 0.65f),
+                    )
+                }
+                Switch(checked = critterCafe, onCheckedChange = onCritterCafe, modifier = Modifier.testTag("skin-switch"))
+            }
+        }
     }
 }
 

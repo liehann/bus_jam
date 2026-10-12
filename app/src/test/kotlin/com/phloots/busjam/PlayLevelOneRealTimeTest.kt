@@ -3,7 +3,6 @@ package com.phloots.busjam
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -47,12 +46,6 @@ class PlayLevelOneRealTimeTest {
 
         rule.waitUntilAtLeastOneExists(hasTestTag("play"), timeoutMillis = 10_000)
         rule.waitUntil(10_000) { runCatching { rule.onNodeWithTag("play").assertIsEnabled() }.isSuccess }
-        // set real-time mode (stored settings can leak between Robolectric tests: the DataStore is a process singleton)
-        rule.waitUntilAtLeastOneExists(hasTestTag("realtime-switch"), timeoutMillis = 10_000)
-        if (runCatching { rule.onNodeWithTag("realtime-switch").assertIsOn() }.isFailure) {
-            rule.onNodeWithTag("realtime-switch").performClick()
-        }
-        rule.waitUntil(10_000) { runCatching { rule.onNodeWithTag("realtime-switch").assertIsOn() }.isSuccess }
         // the game's frame loop never idles: drive the clock by hand from here on
         rule.mainClock.autoAdvance = false
         // open level 1 explicitly ("Play" opens the first unbeaten level, which depends on stored progress)

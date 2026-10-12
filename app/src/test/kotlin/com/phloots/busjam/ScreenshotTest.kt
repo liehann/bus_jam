@@ -478,4 +478,34 @@ class ScreenshotTest {
         }
         save("home")
     }
+
+    @Test
+    @Config(qualifiers = "w427dp-h952dp-xxhdpi")
+    fun pixel9ProCritterHome() {
+        rule.setContent {
+            com.phloots.busjam.ui.skin.critter.CritterHomeScreen(nextLevel = 13, totalLevels = 100, totalStars = 31, onPlay = {}, onLevels = {})
+        }
+        save("p9p_critter_home")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    fun smallCritterHome() {
+        rule.setContent {
+            com.phloots.busjam.ui.skin.critter.CritterHomeScreen(nextLevel = 1, totalLevels = 100, totalStars = 0, onPlay = {}, onLevels = {}, realTime = true)
+        }
+        save("small_critter_home")
+    }
+
+    @Test
+    @Config(qualifiers = "w427dp-h952dp-xxhdpi")
+    fun pixel9ProCritterLevels() {
+        val stars = (1..12).associateWith { if (it % 4 == 0) 2 else 3 }
+        rule.setContent {
+            com.phloots.busjam.ui.skin.critter.CritterLevelSelect(
+                count = 100, progress = com.phloots.busjam.data.Progress(highestUnlocked = 13, stars = stars), onPlay = {}, onBack = {},
+            )
+        }
+        save("p9p_critter_levels")
+    }
 }

@@ -1,6 +1,9 @@
 package com.phloots.busjam
 
 import android.os.Bundle
+import android.os.SystemClock
+import androidx.activity.viewModels
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -42,11 +45,19 @@ import com.phloots.busjam.ui.theme.Palette
 import com.phloots.busjam.ui.skin.FlatSkin
 import com.phloots.busjam.ui.skin.LocalSkin
 import com.phloots.busjam.ui.skin.critter.CritterCafeSkin
+import com.phloots.busjam.ui.skin.critter.CritterHomeScreen
+import com.phloots.busjam.ui.skin.critter.CritterLevelSelect
 import androidx.compose.runtime.CompositionLocalProvider
 
 /** Single activity, portrait only (manifest). */
 class MainActivity : ComponentActivity() {
+    private val app: AppViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // the launch splash stays up until the skin, mode, pack and progress are read (so the first frame is the
+        // right home screen), at most 4 s
+        val started = SystemClock.uptimeMillis()
+        installSplashScreen().setKeepOnScreenCondition { !app.isReady() && SystemClock.uptimeMillis() - started < 4000 }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -73,7 +84,8 @@ fun BusJamApp() {
         },
     )
     val critterCafe by app.critterCafe.collectAsStateWithLifecycle()
-    val skin = if (critterCafe == true) CritterCafeSkin else FlatSkin
+    // not read yet counts as Critter Café (the default), so the flat look never flashes on launch
+    val skin = if (critterCafe != false) CritterCafeSkin else FlatSkin
     val realTimeOrNull by app.realTime.collectAsStateWithLifecycle()
     val realTime = realTimeOrNull == true
     val commitWins = {
@@ -111,9 +123,16 @@ fun BusJamApp() {
     }
 
     CompositionLocalProvider(LocalSkin provides skin) {
-    Box(Modifier.fillMaxSize().background(if (screen > 0 && realTime) skin.background else Palette.background).safeDrawingPadding()) {
+    Box(Modifier.fillMaxSize().background(if ((screen > 0 && realTime) || (screen <= HOME && skin === CritterCafeSkin)) skin.background else Palette.background).safeDrawingPadding()) {
         val pack = levels
         when {
+            screen == HOME && skin === CritterCafeSkin -> CritterHomeScreen(
+                nextLevel = pack?.let { progress.firstUnbeaten(it.size) }.takeIf { progressOrNull != null && realTimeOrNull != null },
+                totalLevels = pack?.size ?: 0,
+                totalStars = progress.stars.values.sum(),
+                onPlay = { pack?.let { openLevel(progress.firstUnbeaten(it.size)) } },
+                onLevels = { screen = LEVELS },
+            )
             screen == HOME -> HomeScreen(
                 nextLevel = pack?.let { progress.firstUnbeaten(it.size) }.takeIf { progressOrNull != null && realTimeOrNull != null },
                 totalLevels = pack?.size ?: 0,
@@ -127,6 +146,12 @@ fun BusJamApp() {
                 onRealTime = app::setRealTime,
                 critterCafe = if (BuildConfig.DEBUG) critterCafe else null,
                 onCritterCafe = app::setCritterCafe,
+            )
+            screen == LEVELS && pack != null && skin === CritterCafeSkin -> CritterLevelSelect(
+                count = pack.size,
+                progress = progress,
+                onPlay = openLevel,
+                onBack = { screen = HOME },
             )
             screen == LEVELS && pack != null -> LevelSelectScreen(
                 count = pack.size,

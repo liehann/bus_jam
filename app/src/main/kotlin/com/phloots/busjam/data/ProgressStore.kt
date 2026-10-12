@@ -38,8 +38,9 @@ val Context.progressDataStore: DataStore<Preferences> by preferencesDataStore(na
 
 /**
  * DataStore Preferences backed progress of one level pack ([pack] = its asset file): highest unlocked level and best
- * stars per level. The campaign keeps the original un-prefixed keys (existing progress stays valid); every other pack
- * prefixes its keys with `pack[<file>]/`, so packs never collide.
+ * stars per level. The campaign's keys start with [CAMPAIGN_PREFIX] (the official 100 replaced the old 1000-level
+ * campaign, whose un-prefixed keys are ignored, so progress starts over); every other pack prefixes its keys with
+ * `pack[<file>]/`, so packs never collide.
  */
 class ProgressStore(
     private val dataStore: DataStore<Preferences>,
@@ -47,7 +48,7 @@ class ProgressStore(
 ) : ProgressSink {
     constructor(context: Context) : this(context.applicationContext.progressDataStore)
 
-    private val prefix = if (pack == PackInfo.CAMPAIGN_FILE) "" else "pack[$pack]/"
+    private val prefix = if (pack == PackInfo.CAMPAIGN_FILE) CAMPAIGN_PREFIX else "pack[$pack]/"
     private val starsPrefix = prefix + STARS
     private val highestUnlocked = intPreferencesKey(prefix + HIGHEST_UNLOCKED)
     private fun starsKey(levelNumber: Int) = intPreferencesKey(starsPrefix + levelNumber)
@@ -72,9 +73,11 @@ class ProgressStore(
         }
     }
 
-    private companion object {
-        const val STARS = "stars_"
-        const val HIGHEST_UNLOCKED = "highest_unlocked"
+    companion object {
+        /** Key prefix of the official campaign's progress. */
+        const val CAMPAIGN_PREFIX = "official/"
+        private const val STARS = "stars_"
+        private const val HIGHEST_UNLOCKED = "highest_unlocked"
     }
 }
 

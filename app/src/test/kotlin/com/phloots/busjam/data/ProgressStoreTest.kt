@@ -133,16 +133,16 @@ class ProgressStoreTest {
     }
 
     @Test
-    fun campaignKeepsTheOriginalKeys() = runBlocking {
-        // progress written before packs existed (un-prefixed keys) still belongs to the campaign
+    fun oldCampaignProgressIsIgnored() = runBlocking {
+        // un-prefixed keys belong to the old 1000-level campaign; the official campaign starts over
         val file = java.io.File(tmp.root, "legacy.preferences_pb")
         val ds = PreferenceDataStoreFactory.create(scope = scope) { file }
         ds.edit {
             it[intPreferencesKey("stars_1")] = 3
             it[intPreferencesKey("highest_unlocked")] = 2
         }
-        assertEquals(mapOf(1 to 3), ProgressStore(ds).progress.first().stars)
-        assertEquals(2, ProgressStore(ds).progress.first().highestUnlocked)
+        assertTrue(ProgressStore(ds).progress.first().stars.isEmpty())
+        assertEquals(1, ProgressStore(ds).progress.first().highestUnlocked)
         assertTrue(ProgressStore(ds, "packs/x.json").progress.first().stars.isEmpty())
     }
 

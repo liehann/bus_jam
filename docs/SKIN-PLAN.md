@@ -105,7 +105,7 @@ class TrackSpec(
 
 | Screen | Kitten Jumble |
 |---|---|
-| Home | logo (Fredoka, multicolour outline), hero: animals at a counter with a conveyor (raster), Play (mint pill), Levels (pink pill); debug pack list, real-time switch and a **Skin** switch |
+| Home | logo (raster), hero: the four critters at a sushi counter with a conveyor (raster, Gemini, gently breathing), star total, Play (mint pill, next level), Levels (pink pill); debug pack list, real-time and skin switches in a settings dialog (`CritterHome.kt`, done 2026-10-11) |
 | Level select | round cream nodes, current = butter, locked = beige with padlock; optional theme banner per chapter (restaurant, spa) |
 | Win dialog | "Delicious!" / "Purrfect!" card, 3 stars, Next; the level's animals happy with plate stacks |
 | Lose dialog | "Kitchen jammed!" (dock full) / "All stuck!" (no moves), a hungry animal with an empty plate, Undo + Restart |

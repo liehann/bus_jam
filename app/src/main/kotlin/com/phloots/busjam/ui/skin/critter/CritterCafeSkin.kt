@@ -152,8 +152,10 @@ object CritterCafeSkin : Skin {
         // critters sit behind the table: they arrive with a hop, and walk off to the right when the party leaves
         if (view != null) {
             val n = cellsFor(view.capacity)
-            val kittenH = minOf(t.h * 0.5f, t.w * 0.86f / n / CritterSprites.frontAspect)
-            val pitch = kittenH * CritterSprites.frontAspect
+            val species = Species.of(view.containerId)
+            val aspect = CritterSprites.frontAspect(species)
+            val critterH = minOf(t.h * 0.5f, t.w * 0.86f / n / aspect)
+            val pitch = critterH * aspect
             val span = pitch * (n - 1)
             val cx0 = t.left + t.w * 0.44f - span / 2
             for (i in 0 until n) {
@@ -169,9 +171,9 @@ object CritterCafeSkin : Skin {
                     x += l * l * t.w * 0.9f
                     critterAlpha *= 1f - ((l - 0.55f) / 0.45f).coerceIn(0f, 1f)
                 }
-                // a little bob while this kitten has plates to eat
+                // a little bob while this critter has plates to eat
                 if (filled > i && leave == 0f) y -= t.h * 0.015f
-                with(CritterSprites) { drawKitten(Offset(x, y), kittenH, view.color, walking = leave > 0f, alpha = critterAlpha) }
+                with(CritterSprites) { drawCritter(Offset(x, y), critterH, species, view.color, walking = leave > 0f, alpha = critterAlpha) }
             }
         }
 

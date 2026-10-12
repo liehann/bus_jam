@@ -1,5 +1,6 @@
 package com.phloots.busjam.ui.skin.critter
 
+import android.content.Context
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -119,6 +120,8 @@ object CritterCafeSkin : Skin {
         return Offset(t.stack.x, t.stack.y - t.stackW * 0.2f) to t.stackW * 0.9f
     }
 
+    override fun prepare(context: Context) = CritterSprites.load(context)
+
     override fun DrawScope.dockSlot(
         geo: FieldGeometry,
         slot: Int,
@@ -149,17 +152,16 @@ object CritterCafeSkin : Skin {
         // critters sit behind the table: they arrive with a hop, and walk off to the right when the party leaves
         if (view != null) {
             val n = cellsFor(view.capacity)
-            val size = minOf(t.w * 0.84f / n, t.h * 0.44f)
-            val fur = lerp(body!!, Color.White, 0.4f)
-            val species = Species.of(view.containerId)
-            val span = size * 1.02f * (n - 1)
+            val kittenH = minOf(t.h * 0.5f, t.w * 0.86f / n / CritterSprites.frontAspect)
+            val pitch = kittenH * CritterSprites.frontAspect
+            val span = pitch * (n - 1)
             val cx0 = t.left + t.w * 0.44f - span / 2
             for (i in 0 until n) {
                 val a = ((arrive - i * 0.12f) / 0.6f).coerceIn(0f, 1f)
                 if (a <= 0f) continue
                 val hop = sin(a * PI).toFloat() * t.h * 0.14f
-                var x = cx0 + i * size * 1.02f - (1f - a) * t.w * 0.18f
-                var y = t.tableTop + t.tableH * 0.4f - hop
+                var x = cx0 + i * pitch - (1f - a) * t.w * 0.18f
+                var y = t.tableTop + t.tableH * 0.5f - hop
                 var critterAlpha = minOf(1f, a * 2.5f)
                 if (leave > 0f) {
                     val l = ((leave - (n - 1 - i) * 0.08f) / 0.84f).coerceIn(0f, 1f)
@@ -167,7 +169,9 @@ object CritterCafeSkin : Skin {
                     x += l * l * t.w * 0.9f
                     critterAlpha *= 1f - ((l - 0.55f) / 0.45f).coerceIn(0f, 1f)
                 }
-                drawCritter(Offset(x, y), size, species, fur, critterAlpha, eating = filled > i && leave == 0f)
+                // a little bob while this kitten has plates to eat
+                if (filled > i && leave == 0f) y -= t.h * 0.015f
+                with(CritterSprites) { drawKitten(Offset(x, y), kittenH, view.color, walking = leave > 0f, alpha = critterAlpha) }
             }
         }
 

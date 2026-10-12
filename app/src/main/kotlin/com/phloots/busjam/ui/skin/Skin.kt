@@ -1,5 +1,6 @@
 package com.phloots.busjam.ui.skin
 
+import android.content.Context
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -21,6 +22,9 @@ import com.phloots.jam.core.model.Level
 interface Skin {
     /** How the real-time field is laid out for this skin. */
     val field: FieldStyle get() = FieldStyle.FLAT
+
+    /** Loads any raster art the skin draws; the field calls it before drawing. */
+    fun prepare(context: Context) {}
 
     /** Screen background behind the field. */
     val background: Color

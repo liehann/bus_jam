@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -328,6 +329,8 @@ fun RingField(
     val level = view.level
     val density = LocalDensity.current
     val skin = LocalSkin.current
+    val context = LocalContext.current
+    remember(skin) { skin.prepare(context) }
     val measurer = rememberTextMeasurer()
     val currentView by rememberUpdatedState(view)
     val currentOnTap by rememberUpdatedState(onTap)

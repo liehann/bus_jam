@@ -77,4 +77,7 @@ object CritterPalette {
     val nori = Color(0xFF34413A)
     val rice = Color(0xFFFFFDF7)
     val salmon = Color(0xFFF08A5D)
+
+    // chibi cheeks and kitten ear insides
+    val blush = Color(0xFFF7A1A8)
 }

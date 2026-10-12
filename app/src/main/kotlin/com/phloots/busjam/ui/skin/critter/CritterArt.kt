@@ -262,45 +262,132 @@ fun DrawScope.drawPlateStack(rim: Color, base: Offset, w: Float, count: Int, ste
 }
 
 /**
- * A seated critter of [species] with its feet at [base], [size] wide (about 1.25 x [size] tall), fur [fur]. Holds
- * a little plate when [eating].
+ * A seated chibi critter of [species] with its feet at [base], [size] wide (about 1.1 x [size] tall), fur [fur]:
+ * a big round head with the species' ears and markings, dot eyes, rosy cheeks, a small body with paws in front.
+ * Holds a piece of sushi when [eating].
  */
 fun DrawScope.drawCritter(base: Offset, size: Float, species: Species, fur: Color, alpha: Float = 1f, eating: Boolean = false) {
     val ink = CritterPalette.ink
-    val line = Stroke(width = maxOf(size * 0.055f, 1f * density))
-    val bodyW = size * 0.78f
-    val bodyH = size * 0.62f
-    val bodyTl = Offset(base.x - bodyW / 2, base.y - bodyH)
-    // tail behind the body (kitten, fox, red panda, wolf all have one)
+    val sw = maxOf(size * 0.045f, 1f * density)
+    val line = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    val light = lerp(fur, Color.White, 0.6f)
+    val dark = lerp(fur, ink, 0.35f)
+    fun shape(path: Path, color: Color = fur) {
+        drawPath(path, color, alpha = alpha)
+        drawPath(path, ink, alpha = alpha, style = line)
+    }
+    fun ovalPath(cx: Float, cy: Float, rx: Float, ry: Float) = Path().apply { addOval(Rect(cx - rx, cy - ry, cx + rx, cy + ry)) }
+
+    // body: a small rounded pear under the head
+    val bodyW = size * 0.66f
+    val bodyH = size * 0.5f
+    val bodyCy = base.y - bodyH / 2
+    // tail curling up behind the body
     val tail = Path().apply {
-        moveTo(base.x + bodyW * 0.32f, base.y - bodyH * 0.18f)
-        quadraticTo(base.x + bodyW * 0.85f, base.y - bodyH * 0.1f, base.x + bodyW * 0.72f, base.y - bodyH * 0.75f)
+        moveTo(base.x + bodyW * 0.3f, base.y - bodyH * 0.2f)
+        quadraticTo(base.x + bodyW * 0.95f, base.y - bodyH * 0.15f, base.x + bodyW * 0.78f, base.y - bodyH * 0.85f)
     }
-    val tailW = if (species == Species.KITTEN) size * 0.1f else size * 0.2f
-    drawPath(tail, ink, alpha = alpha, style = Stroke(width = tailW + line.width * 2, cap = StrokeCap.Round))
-    drawPath(tail, fur, alpha = alpha, style = Stroke(width = tailW, cap = StrokeCap.Round))
+    val tailW = if (species == Species.KITTEN) size * 0.09f else size * 0.17f
+    drawPath(tail, ink, alpha = alpha, style = Stroke(width = tailW + sw * 2, cap = StrokeCap.Round))
+    drawPath(tail, if (species == Species.RED_PANDA) dark else fur, alpha = alpha, style = Stroke(width = tailW, cap = StrokeCap.Round))
     if (species == Species.FOX || species == Species.WOLF) {
-        drawCircle(Color.White, tailW * 0.45f, Offset(base.x + bodyW * 0.72f, base.y - bodyH * 0.75f), alpha = alpha)
+        drawCircle(Color.White, tailW * 0.5f, Offset(base.x + bodyW * 0.78f, base.y - bodyH * 0.85f), alpha = alpha)
     }
-    // body with a light belly
-    drawOval(fur, bodyTl, Size(bodyW, bodyH), alpha = alpha)
-    drawOval(lerp(fur, Color.White, 0.55f), Offset(base.x - bodyW * 0.26f, base.y - bodyH * 0.78f), Size(bodyW * 0.52f, bodyH * 0.66f), alpha = alpha)
-    drawOval(ink, bodyTl, Size(bodyW, bodyH), alpha = alpha, style = line)
-    // paws in front, holding a plate when eating
-    val pawY = base.y - bodyH * 0.42f
-    if (eating) {
-        val pr = size * 0.17f
-        drawOval(Color.White, Offset(base.x - pr, pawY - pr * 0.45f), Size(pr * 2, pr * 0.9f), alpha = alpha)
-        drawOval(ink, Offset(base.x - pr, pawY - pr * 0.45f), Size(pr * 2, pr * 0.9f), alpha = alpha, style = line)
-        drawCircle(CritterPalette.salmon, pr * 0.35f, Offset(base.x, pawY - pr * 0.2f), alpha = alpha)
+    shape(ovalPath(base.x, bodyCy, bodyW / 2, bodyH / 2))
+    drawOval(light, Offset(base.x - bodyW * 0.25f, bodyCy - bodyH * 0.22f), Size(bodyW * 0.5f, bodyH * 0.6f), alpha = alpha)
+    // feet
+    for (sx in listOf(-1f, 1f)) shape(ovalPath(base.x + sx * bodyW * 0.24f, base.y - size * 0.03f, size * 0.1f, size * 0.06f))
+
+    // head: wide and round, sitting low on the body
+    val headRx = size * 0.5f
+    val headRy = size * 0.4f
+    val hc = Offset(base.x, base.y - bodyH * 0.8f - headRy * 0.82f)
+    fun hp(x: Float, y: Float) = Offset(hc.x + x * headRx, hc.y + y * headRy)
+    fun poly(vararg xy: Float) = Path().apply {
+        moveTo(hc.x + xy[0] * headRx, hc.y + xy[1] * headRy)
+        var i = 2
+        while (i < xy.size) { lineTo(hc.x + xy[i] * headRx, hc.y + xy[i + 1] * headRy); i += 2 }
+        close()
     }
-    // feet peeking out under the body
+    // ears behind the head
+    when (species) {
+        Species.KITTEN -> for (sx in listOf(-1f, 1f)) {
+            shape(poly(sx * 0.88f, -0.2f, sx * 0.78f, -1.2f, sx * 0.3f, -0.8f))
+            drawPath(poly(sx * 0.76f, -0.4f, sx * 0.72f, -0.98f, sx * 0.44f, -0.76f), CritterPalette.blush, alpha = alpha * 0.8f)
+        }
+        Species.FOX -> for (sx in listOf(-1f, 1f)) {
+            shape(poly(sx * 0.92f, -0.2f, sx * 0.86f, -1.38f, sx * 0.28f, -0.78f))
+            drawPath(poly(sx * 0.8f, -0.45f, sx * 0.8f, -1.12f, sx * 0.46f, -0.78f), dark, alpha = alpha)
+        }
+        Species.WOLF -> for (sx in listOf(-1f, 1f)) {
+            shape(poly(sx * 0.86f, -0.3f, sx * 0.66f, -1.32f, sx * 0.22f, -0.84f))
+            drawPath(poly(sx * 0.72f, -0.52f, sx * 0.62f, -1.08f, sx * 0.4f, -0.84f), light, alpha = alpha)
+        }
+        Species.RED_PANDA -> for (sx in listOf(-1f, 1f)) {
+            shape(ovalPath(hc.x + sx * headRx * 0.7f, hc.y - headRy * 0.78f, headRx * 0.3f, headRx * 0.3f))
+            drawCircle(dark, headRx * 0.15f, hp(sx * 0.7f, -0.78f), alpha = alpha)
+        }
+    }
+    shape(ovalPath(hc.x, hc.y, headRx, headRy))
+    // markings
+    when (species) {
+        Species.RED_PANDA -> {
+            // white muzzle and brow spots, dark tear marks under the eyes
+            drawOval(Color.White, Offset(hc.x - headRx * 0.36f, hc.y + headRy * 0.12f), Size(headRx * 0.72f, headRy * 0.6f), alpha = alpha)
+            for (sx in listOf(-1f, 1f)) {
+                drawOval(Color.White, Offset(hc.x + sx * headRx * 0.36f - headRx * 0.11f, hc.y - headRy * 0.5f), Size(headRx * 0.22f, headRy * 0.17f), alpha = alpha)
+                drawLine(dark, hp(sx * 0.46f, 0.34f), hp(sx * 0.52f, 0.58f), strokeWidth = headRx * 0.08f, cap = StrokeCap.Round, alpha = alpha)
+            }
+        }
+        Species.FOX, Species.WOLF -> {
+            // light cheeks and muzzle
+            val cheeks = Path().apply {
+                moveTo(hp(-0.98f, 0.18f).x, hp(-0.98f, 0.18f).y)
+                quadraticTo(hp(-0.3f, 0.05f).x, hp(-0.3f, 0.05f).y, hp(0f, 0.2f).x, hp(0f, 0.2f).y)
+                quadraticTo(hp(0.3f, 0.05f).x, hp(0.3f, 0.05f).y, hp(0.98f, 0.18f).x, hp(0.98f, 0.18f).y)
+                quadraticTo(hp(0.8f, 0.85f).x, hp(0.8f, 0.85f).y, hp(0f, 1f).x, hp(0f, 1f).y)
+                quadraticTo(hp(-0.8f, 0.85f).x, hp(-0.8f, 0.85f).y, hp(-0.98f, 0.18f).x, hp(-0.98f, 0.18f).y)
+                close()
+            }
+            drawPath(cheeks, if (species == Species.FOX) Color.White else light, alpha = alpha)
+            if (species == Species.WOLF) drawLine(dark, hp(0f, -0.92f), hp(0f, -0.55f), strokeWidth = headRx * 0.1f, cap = StrokeCap.Round, alpha = alpha)
+        }
+        Species.KITTEN -> {
+            for (sx in listOf(-1f, 1f)) {
+                drawLine(ink, hp(sx * 1.12f, 0.3f), hp(sx * 0.78f, 0.36f), strokeWidth = sw * 0.6f, cap = StrokeCap.Round, alpha = alpha)
+                drawLine(ink, hp(sx * 1.1f, 0.56f), hp(sx * 0.78f, 0.5f), strokeWidth = sw * 0.6f, cap = StrokeCap.Round, alpha = alpha)
+            }
+        }
+    }
+    drawOval(ink, Offset(hc.x - headRx, hc.y - headRy), Size(headRx * 2, headRy * 2), alpha = alpha, style = line)
+    // face: wide-set dot eyes with a highlight, rosy cheeks, nose and a little w mouth
     for (sx in listOf(-1f, 1f)) {
-        val tl = Offset(base.x + sx * size * 0.17f - size * 0.1f, base.y - size * 0.08f)
-        drawOval(fur, tl, Size(size * 0.2f, size * 0.11f), alpha = alpha)
-        drawOval(ink, tl, Size(size * 0.2f, size * 0.11f), alpha = alpha, style = line)
+        val eye = hp(sx * 0.42f, 0.18f)
+        drawCircle(ink, headRx * 0.11f, eye, alpha = alpha)
+        drawCircle(Color.White, headRx * 0.04f, eye + Offset(-headRx * 0.03f, -headRx * 0.04f), alpha = alpha)
+        drawOval(CritterPalette.blush, Offset(hc.x + sx * headRx * 0.66f - headRx * 0.14f, hc.y + headRy * 0.36f), Size(headRx * 0.28f, headRy * 0.17f), alpha = alpha * 0.75f)
     }
-    // head
-    val headR = size * 0.36f
-    drawAnimalFace(Offset(base.x, base.y - bodyH - headR * 0.55f), headR, species, alpha, fill = fur)
+    drawOval(ink, Offset(hc.x - headRx * 0.07f, hc.y + headRy * 0.3f), Size(headRx * 0.14f, headRy * 0.1f), alpha = alpha)
+    val mouth = Path().apply {
+        val a = hp(-0.14f, 0.46f); val m = hp(0f, 0.44f); val b = hp(0.14f, 0.46f)
+        moveTo(a.x, a.y)
+        quadraticTo(hc.x - headRx * 0.07f, hc.y + headRy * 0.58f, m.x, m.y)
+        quadraticTo(hc.x + headRx * 0.07f, hc.y + headRy * 0.58f, b.x, b.y)
+    }
+    drawPath(mouth, ink, alpha = alpha, style = Stroke(width = sw * 0.75f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+
+    // paws in front of the body, holding a nigiri when eating
+    val pawY = base.y - bodyH * 0.5f
+    if (eating) {
+        val nw = size * 0.34f
+        val nh = size * 0.15f
+        val rice = Offset(base.x - nw / 2, pawY - nh * 0.55f)
+        drawRoundRect(CritterPalette.rice, rice, Size(nw, nh), CornerRadius(nh * 0.45f), alpha = alpha)
+        drawRoundRect(ink, rice, Size(nw, nh), CornerRadius(nh * 0.45f), alpha = alpha, style = line)
+        val fish = Offset(base.x - nw * 0.55f, pawY - nh * 0.95f)
+        drawRoundRect(CritterPalette.salmon, fish, Size(nw * 1.1f, nh * 0.62f), CornerRadius(nh * 0.3f), alpha = alpha)
+        drawRoundRect(ink, fish, Size(nw * 1.1f, nh * 0.62f), CornerRadius(nh * 0.3f), alpha = alpha, style = line)
+    }
+    val pawSpread = if (eating) bodyW * 0.32f else bodyW * 0.2f
+    for (sx in listOf(-1f, 1f)) shape(ovalPath(base.x + sx * pawSpread, pawY, size * 0.065f, size * 0.055f), light)
 }

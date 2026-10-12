@@ -149,16 +149,16 @@ object CritterCafeSkin : Skin {
         // critters sit behind the table: they arrive with a hop, and walk off to the right when the party leaves
         if (view != null) {
             val n = cellsFor(view.capacity)
-            val size = minOf(t.w * 0.92f / n, t.h * 0.5f)
+            val size = minOf(t.w * 0.84f / n, t.h * 0.44f)
             val fur = lerp(body!!, Color.White, 0.4f)
             val species = Species.of(view.containerId)
-            val span = size * 0.95f * (n - 1)
+            val span = size * 1.02f * (n - 1)
             val cx0 = t.left + t.w * 0.44f - span / 2
             for (i in 0 until n) {
                 val a = ((arrive - i * 0.12f) / 0.6f).coerceIn(0f, 1f)
                 if (a <= 0f) continue
                 val hop = sin(a * PI).toFloat() * t.h * 0.14f
-                var x = cx0 + i * size * 0.95f - (1f - a) * t.w * 0.18f
+                var x = cx0 + i * size * 1.02f - (1f - a) * t.w * 0.18f
                 var y = t.tableTop + t.tableH * 0.4f - hop
                 var critterAlpha = minOf(1f, a * 2.5f)
                 if (leave > 0f) {

@@ -20,9 +20,7 @@ import com.phloots.busjam.game.AnimJob
 import com.phloots.busjam.game.GameUiState
 import com.phloots.busjam.game.NO_WINNING_MOVE
 import com.phloots.busjam.data.PackInfo
-import com.phloots.busjam.ui.LevelTileInfo
 import com.phloots.busjam.ui.game.GameScreen
-import com.phloots.busjam.ui.levels.LevelSelectScreen
 import com.phloots.jam.core.model.Bits128
 import com.phloots.jam.core.model.Container
 import com.phloots.jam.core.model.ContainerSize
@@ -429,57 +427,6 @@ class ScreenshotTest {
     }
 
     @Test
-    fun levelSelect() {
-        rule.setContent {
-            LevelSelectScreen(
-                count = 1000,
-                progress = Progress(highestUnlocked = 14, stars = (1..12).associateWith { 1 + it % 3 }),
-                onPlay = {}, onBack = {},
-            )
-        }
-        save("level_select")
-    }
-
-    @Test
-    fun levelSelectDebug() {
-        rule.setContent {
-            LevelSelectScreen(
-                count = 1000,
-                progress = Progress(highestUnlocked = 3, stars = mapOf(1 to 3, 2 to 1)),
-                onPlay = {}, onBack = {},
-                unlockAll = true,
-                tileInfo = { n -> LevelTileInfo("%.1f".format(10.0 + n * 0.7), "${4 + n % 5}c ${30 + n}n 12x14") },
-                showGoTo = true,
-            )
-        }
-        save("v2_level_select_debug")
-    }
-
-    @Test
-    fun homeScreenPackSelector() {
-        val packs = listOf(
-            PackInfo.CAMPAIGN,
-            PackInfo("packs/motif-preview.json", "Motif preview", "Hand-placed motifs: capacity choices, forks"),
-            PackInfo("packs/reverse-preview.json", "Reverse preview", "Reverse-extraction generator, v2 rules"),
-        )
-        rule.setContent {
-            com.phloots.busjam.ui.home.HomeScreen(
-                nextLevel = 7, totalLevels = 120, totalStars = 9, onPlay = {}, onLevels = {},
-                packs = packs, selectedPack = packs[2].file,
-            )
-        }
-        save("v2_home_pack_selector")
-    }
-
-    @Test
-    fun homeScreen() {
-        rule.setContent {
-            com.phloots.busjam.ui.home.HomeScreen(nextLevel = 13, totalLevels = 1000, totalStars = 24, onPlay = {}, onLevels = {})
-        }
-        save("home")
-    }
-
-    @Test
     @Config(qualifiers = "w427dp-h952dp-xxhdpi")
     fun pixel9ProCritterHome() {
         rule.setContent {
@@ -492,7 +439,7 @@ class ScreenshotTest {
     @Config(qualifiers = "w360dp-h640dp-xhdpi")
     fun smallCritterHome() {
         rule.setContent {
-            com.phloots.busjam.ui.skin.critter.CritterHomeScreen(nextLevel = 1, totalLevels = 100, totalStars = 0, onPlay = {}, onLevels = {}, realTime = true)
+            com.phloots.busjam.ui.skin.critter.CritterHomeScreen(nextLevel = 1, totalLevels = 100, totalStars = 0, onPlay = {}, onLevels = {})
         }
         save("small_critter_home")
     }

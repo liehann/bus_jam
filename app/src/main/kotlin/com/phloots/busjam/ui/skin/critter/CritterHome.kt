@@ -21,15 +21,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -44,17 +39,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.phloots.busjam.R
-import com.phloots.busjam.data.PackInfo
-import com.phloots.busjam.ui.home.HomeDebugOptions
 
 private val P = CritterPalette
 
 /**
- * The Critter Café home screen: star total and (debug) settings on top, the logo, the café hero illustration
- * (gently breathing), a big Play pill with the next level and a Levels pill. Debug builds keep the pack list and
- * the mode and skin switches in a settings dialog.
+ * The Critter Café home screen: the star total on top, the logo, the café hero illustration (gently breathing),
+ * a big Play pill with the next level and a Levels pill.
  */
 @Composable
 fun CritterHomeScreen(
@@ -63,16 +54,7 @@ fun CritterHomeScreen(
     totalStars: Int,
     onPlay: () -> Unit,
     onLevels: () -> Unit,
-    packs: List<PackInfo> = emptyList(),
-    selectedPack: String? = null,
-    onSelectPack: (String) -> Unit = {},
-    realTime: Boolean? = null,
-    onRealTime: (Boolean) -> Unit = {},
-    critterCafe: Boolean? = null,
-    onCritterCafe: (Boolean) -> Unit = {},
 ) {
-    var debugOpen by remember { mutableStateOf(false) }
-    val hasDebug = packs.size > 1 || realTime != null || critterCafe != null
     val breath = rememberInfiniteTransition(label = "hero")
     val bob by breath.animateFloat(0f, 1f, infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "bob")
 
@@ -82,13 +64,6 @@ fun CritterHomeScreen(
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             StarPill(if (totalLevels > 0) "$totalStars / ${totalLevels * 3}" else "...")
-            Spacer(Modifier.weight(1f))
-            if (hasDebug) {
-                CritterButton(
-                    null, { debugOpen = true }, Modifier.width(48.dp).testTag("home-settings"), icon = CritterIcon.SETTINGS,
-                    description = "Settings",
-                )
-            }
         }
         Image(
             painterResource(R.drawable.critter_logo), contentDescription = "Critter Café",
@@ -116,25 +91,6 @@ fun CritterHomeScreen(
             enabled = totalLevels > 0, height = 52.dp,
         )
         Spacer(Modifier.height(12.dp))
-    }
-    if (debugOpen) {
-        Dialog(onDismissRequest = { debugOpen = false }) {
-            val shape = RoundedCornerShape(22.dp)
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .background(P.card, shape)
-                    .border(2.5.dp, P.ink, shape)
-                    .padding(18.dp)
-                    .verticalScroll(rememberScrollState())
-                    .testTag("home-debug"),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text("Settings", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = P.ink)
-                HomeDebugOptions(packs, selectedPack, onSelectPack, realTime, onRealTime, critterCafe, onCritterCafe)
-                CritterButton("Close", { debugOpen = false }, Modifier.fillMaxWidth())
-            }
-        }
     }
 }
 

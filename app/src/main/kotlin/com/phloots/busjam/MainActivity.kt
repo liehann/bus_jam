@@ -32,15 +32,11 @@ import com.phloots.busjam.data.Progress
 import com.phloots.busjam.game.GameViewModel
 import com.phloots.busjam.ui.AppViewModel
 import com.phloots.busjam.data.PackInfo
-import com.phloots.busjam.ui.packColor
-import com.phloots.busjam.ui.tileInfo
 import com.phloots.busjam.game.rt.CoreRealTimeRules
 import com.phloots.busjam.game.rt.RealTimeViewModel
 import com.phloots.busjam.ui.game.GameScreen
 import com.phloots.busjam.ui.game.RealTimeGameScreen
 import com.phloots.jam.core.realtime.RealTimeState
-import com.phloots.busjam.ui.home.HomeScreen
-import com.phloots.busjam.ui.levels.LevelSelectScreen
 import com.phloots.busjam.ui.theme.Palette
 import com.phloots.busjam.ui.skin.FlatSkin
 import com.phloots.busjam.ui.skin.LocalSkin
@@ -93,11 +89,8 @@ fun BusJamApp() {
         rtGame.commitPendingWin()
     }
     val loadedPack by app.loaded.collectAsStateWithLifecycle()
-    val selectedPack by app.pack.collectAsStateWithLifecycle()
     val levels = loadedPack?.levels?.takeIf { it.isNotEmpty() }
     val packInfo = loadedPack?.info
-    val packIndex = app.packs.indexOfFirst { it.file == packInfo?.file }.coerceAtLeast(0)
-    val showPack = BuildConfig.DEBUG && packInfo != null
     val progressOrNull by app.progress.collectAsStateWithLifecycle()
     val progress = progressOrNull ?: Progress()
     var screen by rememberSaveable { mutableIntStateOf(HOME) }
@@ -133,35 +126,11 @@ fun BusJamApp() {
                 onPlay = { pack?.let { openLevel(progress.firstUnbeaten(it.size)) } },
                 onLevels = { screen = LEVELS },
             )
-            screen == HOME -> HomeScreen(
-                nextLevel = pack?.let { progress.firstUnbeaten(it.size) }.takeIf { progressOrNull != null && realTimeOrNull != null },
-                totalLevels = pack?.size ?: 0,
-                totalStars = progress.stars.values.sum(),
-                onPlay = { pack?.let { openLevel(progress.firstUnbeaten(it.size)) } },
-                onLevels = { screen = LEVELS },
-                packs = if (BuildConfig.DEBUG) app.packs else emptyList(),
-                selectedPack = selectedPack?.file,
-                onSelectPack = app::selectPack,
-                realTime = if (BuildConfig.DEBUG) realTimeOrNull else null,
-                onRealTime = app::setRealTime,
-                critterCafe = if (BuildConfig.DEBUG) critterCafe else null,
-                onCritterCafe = app::setCritterCafe,
-            )
             screen == LEVELS && pack != null && skin === CritterCafeSkin -> CritterLevelSelect(
                 count = pack.size,
                 progress = progress,
                 onPlay = openLevel,
                 onBack = { screen = HOME },
-            )
-            screen == LEVELS && pack != null -> LevelSelectScreen(
-                count = pack.size,
-                progress = progress,
-                onPlay = openLevel,
-                onBack = { screen = HOME },
-                unlockAll = BuildConfig.DEBUG,
-                tileInfo = if (BuildConfig.DEBUG) { n -> pack.getOrNull(n - 1)?.tileInfo() } else null,
-                showGoTo = BuildConfig.DEBUG,
-                pack = if (showPack) packInfo!!.label to packColor(packIndex) else null,
             )
             screen > 0 && pack != null && realTime -> {
                 val number = screen.coerceIn(1, pack.size)

@@ -32,9 +32,13 @@ import kotlin.math.roundToInt
  * more on levels 7-9, and most on the hard levels (28, then 24). A level that is not solvable at its planned size
  * steps back up 4 seats at a time.
  *
- * Output: app/src/main/assets/levels.json + levelgen/out/official.md.
+ * Output: app/src/main/assets/levels.json, levelgen/out/official.md and levelgen/out/official-lines.json (each
+ * level's winning line at its ring size, as container ids).
  * Run: ./gradlew :levelgen:reversePreview -PreverseMain=com.phloots.jam.levelgen.reverse.OfficialPackKt
  *      [--args="--tries 400 --seed 7 --threads 8"]
+ * A full run takes 25-35 minutes and starves everything else on the machine. To fix or change a few levels, rebuild
+ * only those slots with --only 37,52: they are spliced into the existing levels.json and official-lines.json and
+ * the other 98 stay as they are.
  */
 private data class OfficialSlot(val number: Int, val recipe: Int, val ring: Int)
 
@@ -109,6 +113,22 @@ private fun shrink(level: Level, ring: Int, line: List<Move>): Pair<Level, List<
     return level.copy(stagingSpots = 40) to line
 }
 
+private val LINES = File("levelgen/out/official-lines.json")
+
+private fun writeLines(lines: Map<Int, List<Move>>) {
+    LINES.parentFile?.mkdirs()
+    LINES.writeText(lines.toSortedMap().entries.joinToString(",\n", "{\n", "\n}\n") { (id, line) ->
+        "  \"$id\": [${line.joinToString(",") { it.containerId.toString() }}]"
+    })
+}
+
+private fun readLines(): MutableMap<Int, List<Move>> {
+    if (!LINES.exists()) return HashMap()
+    return Regex("\"(\\d+)\": \\[([\\d,]*)]").findAll(LINES.readText()).associate { m ->
+        m.groupValues[1].toInt() to m.groupValues[2].split(",").filter { it.isNotEmpty() }.map { Move(it.toInt()) }
+    }.toMutableMap()
+}
+
 fun main(args: Array<String>) {
     val opts = HashMap<String, String>()
     var i = 0
@@ -120,7 +140,8 @@ fun main(args: Array<String>) {
     val config = DifficultyConfig.DEFAULT
     val fc = HybridFitnessConfig.DEFAULT
     val rs = recipes4()
-    val slots = plan()
+    val only = opts["only"]?.split(",")?.map { it.trim().toInt() }?.toSet()
+    val slots = plan().filter { only == null || it.number in only }
 
     val pool = Executors.newFixedThreadPool(threads)
     val futures = slots.filter { it.recipe != 0 }.map { slot ->
@@ -136,16 +157,13 @@ fun main(args: Array<String>) {
     val built = futures.map { it.get() }
     pool.shutdown()
 
+    val header = listOf("| lvl | recipe | label | ring | col | cont | grid | hidden bits @40 | hidden bits @ring | hard decisions | fit4 | accepted |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|")
     val packed = ArrayList<PackedLevel>()
     val rows = ArrayList<String>()
-    rows += "| lvl | recipe | label | ring | col | cont | grid | hidden bits @40 | hidden bits @ring | hard decisions | fit4 | accepted |"
-    rows += "|---|---|---|---|---|---|---|---|---|---|---|---|"
-    val tut = Director(tutorialParams(), seed * 100).run()!!
-    packed += PackedLevel(tut.level.copy(id = 1), 0.0, null, listOf("Tutorial"))
-    rows += "| 1 | tutorial | | 40 | ${tut.level.colors().size} | ${tut.level.containers.size} | ${tut.level.width}x${tut.level.height} | | | | | |"
-    for (b in built) {
-        if (b == null) { println("no level built for a slot"); continue }
-        val id = packed.size + 1
+    val lines = HashMap<Int, List<Move>>()
+
+    fun finish(b: Built, id: Int): PackedLevel {
         val (lv, line) = shrink(b.sl.level.copy(id = id), b.slot.ring, b.sl.line)
         val q40 = b.e.quality!!
         val q = Quality.measure(lv, line)
@@ -154,12 +172,40 @@ fun main(args: Array<String>) {
         val label = if (b.slot.number % 10 == 0) b.r.label.ifEmpty { "hard" } else b.r.label
         val tags = listOfNotNull(if (label.isNotEmpty()) "difficultyLabel: $label" else null, "Recipe: ${b.r.name}",
             "Ring ${lv.stagingSpots} seats", "Quality: " + q.summary())
-        packed += PackedLevel(lv, report.score, report, tags)
         rows += "| $id | ${b.r.name} | $label | ${lv.stagingSpots}${if (lv.stagingSpots != b.slot.ring) " (planned ${b.slot.ring})" else ""} | ${lv.colors().size} | ${lv.containers.size} | ${lv.width}x${lv.height} | %.1f | %.1f | %d | %.1f | %s |"
             .format(q40.hidden, q.hidden, q.hardDecisions, b.e.fitness4, if (b.accepted) "yes" else "no (${b.why})")
+        lines[id] = line
+        return PackedLevel(lv, report.score, report, tags)
+    }
+
+    if (only != null) {
+        // patch mode: rebuild the chosen slots in place, keep every other level and line
+        val old = LevelPackCodec.decode(out.readText()).levels.toMutableList()
+        val oldLines = readLines()
+        for (b in built) {
+            if (b == null) { println("no level built for a slot; kept the old one"); continue }
+            old[b.slot.number - 1] = finish(b, b.slot.number)
+        }
+        oldLines.putAll(lines)
+        out.writeText(LevelPackCodec.encode(LevelPack(levels = old)))
+        writeLines(oldLines)
+        File("levelgen/out/official.md").appendText("\nPatched ${only.sorted()} (seed $seed, $tries tries):\n\n" + (header + rows).joinToString("\n") + "\n")
+        println((header + rows).joinToString("\n"))
+        println("patched ${rows.size} levels in $out")
+        return
+    }
+
+    rows += header
+    val tut = Director(tutorialParams(), seed * 100).run()!!
+    packed += PackedLevel(tut.level.copy(id = 1), 0.0, null, listOf("Tutorial"))
+    rows += "| 1 | tutorial | | 40 | ${tut.level.colors().size} | ${tut.level.containers.size} | ${tut.level.width}x${tut.level.height} | | | | | |"
+    for (b in built) {
+        if (b == null) { println("no level built for a slot"); continue }
+        packed += finish(b, packed.size + 1)
     }
     out.parentFile?.mkdirs()
     out.writeText(LevelPackCodec.encode(LevelPack(levels = packed)))
+    writeLines(lines)
     val md = "# Official campaign (Critter Café)\n\n10 cycles of 10: breather, a ladder of Hybrid preview 4 recipes, a hard closer. " +
         "Ring size shrinks with the cycle and on hard levels (planned size in brackets when the level needed a bigger ring). " +
         "Seed $seed, $tries tries.\n\n" + rows.joinToString("\n") + "\n"

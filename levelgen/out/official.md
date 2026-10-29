@@ -104,3 +104,5 @@
 | 98 | juggle, keystone + cascades, heralded climax |  | 40 (planned 28) | 9 | 65 | 12x14 | 19.4 | 19.4 | 9 | 39.4 | yes |
 | 99 | juggle, rolling + squatter |  | 40 (planned 28) | 10 | 65 | 12x14 | 23.4 | 23.4 | 15 | 40.0 | yes |
 | 100 | hard: juggle, scarce key -> heralded chain climax | hard | 40 (planned 24) | 9 | 64 | 12x14 | 36.7 | 36.7 | 19 | 76.8 | yes |
+
+Rebuilt under fitness5 (88 slots replaced, see campaign-f5.md).

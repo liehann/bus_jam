@@ -113,6 +113,41 @@ data class IRunDef(
 }
 
 /**
+ * Readable forks by construction (levelgen/out/readable-stalls.md). The fairness report found that the colour batch
+ * deciding a fork ([ForkArrival]: what the winning line boards over the fork's loss window that was beyond carousel
+ * + belt when the choice was made) typically sits 10-35 elements beyond the belt. With this dial the director
+ * measures that batch exactly for every candidate tap it scores (the forward state before the tap and every later tap
+ * are final when the candidate is scored, so the construction line's deciding batch is known) and:
+ *  - scores a readable fork (empty batch) [weight] up, an unreadable one [weight] + [perElement] per element (at most
+ *    [elementCap]) down;
+ *  - with [deepOnlyReadable], an unreadable fork earns none of the horizon reward (deep stakes count only when the
+ *    player can see what decides them);
+ *  - with [runBudget] > 0, bounds what the stall boards between its first dummy docking and the dummies' completion
+ *    by the visible horizon: the completion moves from the run's last tap to the first run tap at which the run's
+ *    planned boardings reach [runBudget] (the stall's critical batch is emitted early, the rest of the run follows
+ *    as plain fills on the freed dock);
+ *  - with [coverDead] > 0, placement hides reachable containers whose colour is nowhere on show (carousel + belt):
+ *    docking one holds a slot past the visible horizon, a deep loser that stretches every fork's loss window (and so
+ *    its deciding batch) beyond the belt.
+ * [ring] / [belt]: carousel and belt of the shipped level (0 = the script's stagingSpots / queuePreview).
+ * [candidates] / [openCandidates] > 0 override the script's candidates per tap (more choice for the readability
+ * score).
+ */
+data class ReadableDef(
+    val weight: Double = 3.0,
+    val perElement: Double = 0.15,
+    val elementCap: Int = 20,
+    val deepOnlyReadable: Boolean = true,
+    val runBudget: Int = 0,
+    val ring: Int = 0,
+    val belt: Int = 0,
+    val candidates: Int = 0,
+    val openCandidates: Int = 0,
+    /** Placement reward per reachable container whose colour is not on show (carousel + belt) that the new one hides. */
+    val coverDead: Double = 0.0,
+)
+
+/**
  * A stall script: [lead] free filler taps, the stalls, then the remaining dummies are completed one per filler tap and
  * [exitFill] plain filler taps end the level (they also sit on the board during the stalls as decoys).
  */
@@ -161,6 +196,14 @@ data class StallScript(
     val climaxAt: Double = 0.0,
     /** Staging spots of the generated level ([com.phloots.crittercafe.core.model.Level.stagingSpots]). */
     val stagingSpots: Int = Limits.MAX_STAGING_SPOTS,
+    /**
+     * Queue elements the belt shows ([com.phloots.crittercafe.core.model.Level.queuePreview]): a generator dial, default 10
+     * (the app's belt); longer belts (up to [Limits.MAX_QUEUE_PREVIEW]) show more of the line on hard levels. View
+     * only: construction ignores it.
+     */
+    val queuePreview: Int = Limits.DEFAULT_QUEUE_PREVIEW,
+    /** Readable forks by construction ([ReadableDef]); null (default) = off, the construction is unchanged. */
+    val readable: ReadableDef? = null,
 ) {
     fun summary(): String = "L$lead " + stalls.joinToString(" ") { it.summary() } + " X$exitFill" +
         (squat?.let { " Q(${it.squat}/${it.bigs}L v${it.valves.size})" } ?: "") +
@@ -216,6 +259,8 @@ data class StallLevel(
     val script: StallScript,
     val seed: Long,
     val squat: SquatInfo? = null,
+    /** Construction role per container id (tap kind, "dummy" for dummies, + group kind), for diagnostics. */
+    val roles: Map<Int, String> = emptyMap(),
 ) {
     /** Readable labels, e.g. "Stall pink: dummies blue(4/6) yellow(0/10) -> roll yellow->red". */
     fun labels(): List<String> {
@@ -297,6 +342,8 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         const val RESERVE_SPAN = 6
         /** Mean cells per container on dense boards (Hybrid preview 2 L19/L20: 1.92/1.95). */
         const val AVG_CELLS = 2.25
+        /** Mean capacity of a run container (for [ReadableDef.runBudget]). */
+        const val RUN_MEAN = 7
     }
 
     private enum class PK { FILLER, DUMMY, TARGET, RUN, VALVE, BIG }
@@ -368,6 +415,20 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         return true
     }
 
+    /**
+     * The tap whose boardings complete a stall's dummies: the run's last tap, or with [ReadableDef.runBudget] the
+     * first run tap by which the target and run have boarded about that many elements (the target boards 10, a run
+     * container about [RUN_MEAN]): the critical batch is emitted early, the rest of the run follows.
+     */
+    private fun completionTap(targetIdx: Int): PTap {
+        val budget = sc.readable?.runBudget ?: 0
+        if (budget <= 0) return taps.last()
+        val extra = maxOf(0, budget - ContainerSize.L.capacity) / RUN_MEAN
+        return taps[minOf(targetIdx + extra, taps.size - 1)]
+    }
+
+    private var targetIdx = -1
+
     private fun plan0(): Boolean {
         repeat(sc.lead) { taps += PTap(PK.FILLER, -1) }
         val docked = ArrayList<Int>()
@@ -401,16 +462,18 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                         dummies[first + 1].forceSize = ContainerSize.L
                     }
                     if (docked.size > 3) { failure = "plan: ${docked.size} docked"; return false }
+                    targetIdx = taps.size
                     taps += PTap(PK.TARGET, gA)
                     repeat(seg.run) { taps += PTap(PK.RUN, gA) }
                     if (seg.steal && seg.dummies >= 2) {
                         // Only the cheap S completes at the end of the run; the L is carried.
-                        taps.last().completes += first
+                        val endTap = completionTap(targetIdx)
+                        endTap.completes += first
                         docked.remove(first)
                         val nextNew = newDummies(sc.stalls.getOrNull(si + 1))
                         while (docked.size + nextNew > 3) {
                             val o = docked.firstOrNull { it != first + 1 } ?: run { failure = "plan: steal L cannot carry docked=$docked first=$first next=$nextNew si=$si"; return false }
-                            taps.last().completes += o; docked.remove(o)
+                            endTap.completes += o; docked.remove(o)
                         }
                         repeat(seg.gap) { taps += PTap(PK.FILLER, -1) }
                         continue
@@ -486,7 +549,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
                     if (before.isEmpty()) Unit
                 }
             }
-            val last = taps.last()
+            val last = if (seg is StallDef) completionTap(targetIdx) else taps.last()
             val roll = when (seg) { is StallDef -> seg.roll; is IRunDef -> seg.roll; else -> 0 }
             val gap = when (seg) { is StallDef -> seg.gap; is IRunDef -> seg.gap; else -> 0 }
             val nextNew = newDummies(sc.stalls.getOrNull(si + 1))
@@ -534,6 +597,16 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
     ) {
         var score = 0.0
         var fb = 0; var fw = 0; var fh = 0
+        /** Deciding-batch size of the fork before this tap ([ReadableDef]); -1 = not measured. */
+        var hidden = -1
+    }
+
+    /** The construction line from the candidate's tap on: its container, then every later tap (already built). */
+    private fun readLine(c: Cand): List<Move> {
+        val out = ArrayList<Move>(releasedRev.size + 1)
+        out += Move(c.v.id)
+        for (k in releasedRev.indices.reversed()) { out += Move(releasedRev[k]); if (out.size > Readability.WINDOW_CAP) break }
+        return out
     }
 
     /** Forward tap index -> colours its batch must avoid (reserved for dummies completed a few taps earlier). */
@@ -564,7 +637,9 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         planTaps = n0
         for (i in n0 - 1 downTo 0) {
             val tap = taps[i]
-            val want = if (sc.fork > 0 && sc.candidates > 1) (if (i < sc.openSpan && sc.openCandidates > 0) sc.openCandidates else sc.candidates) else 1
+            val nc = sc.readable?.candidates?.takeIf { it > 0 } ?: sc.candidates
+            val noc = sc.readable?.openCandidates?.takeIf { it > 0 } ?: sc.openCandidates
+            val want = if (sc.fork > 0 && nc > 1) (if (i < sc.openSpan && noc > 0) noc else nc) else 1
             val cands = ArrayList<Cand>()
             var tries = 0
             while (cands.size < want && tries++ < want * 4 + 8) build(tap, i)?.let { cands += it }
@@ -587,7 +662,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         }
         if (state.dockUsed != 0 || releasedRev.size != sizes.size) { failure = "unfinished"; return null }
         val containers = (0 until sizes.size).map { board.placed[it]!! }
-        val level = Level(0, sc.width, sc.height, containers, state.w, spots)
+        val level = Level(0, sc.width, sc.height, containers, state.w, spots, queuePreview = sc.queuePreview)
         val line = releasedRev.reversed().map { Move(it) }
         // Slack of each island: staging spots not taken by the run colour just before the island target.
         val infos = groups.indices.map { g ->
@@ -610,7 +685,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         }
         val forks = forksRev.map { intArrayOf(n - 1 - it[0], it[1], it[2], it[3]) }.sortedBy { it[0] }
         val sq = if (q >= 0) SquatInfo(q, valveSteps.map { intArrayOf(it[0], it[1], line.indexOf(Move(it[0]))) }) else null
-        return StallLevel(level, line, infos, forks, sc, seed, sq)
+        return StallLevel(level, line, infos, forks, sc, seed, sq, roles)
     }
 
     private var planTaps = 0
@@ -833,7 +908,13 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         }
     }
 
+    /** Construction role per container id (diagnostics only; never read by construction). */
+    private val roles = HashMap<Int, String>()
+
     private fun commit(c: Cand, tap: PTap, revIndex: Int, fwd: Int) {
+        val gk = if (tap.group < 0) "" else groups[tap.group].let { g -> when { g.juggle -> "/juggle"; g.cascade -> "/cascade"; g.islandOf >= 0 -> "/island"; g.squatRun -> "/qrun"; else -> "/stall" } } + tap.group
+        if (tap.kind != PK.DUMMY) roles[c.v.id] = tap.kind.name.lowercase() + gk
+        for ((d, idc) in c.dummyIds) roles[idc.first] = "dummy" + groups[dummies[d].group].let { g -> when { g.juggle -> "/juggle"; g.cascade -> "/cascade"; g.islandOf >= 0 -> "/island"; else -> "/stall" } } + dummies[d].group
         for ((sz, col) in c.newSpecs) { sizes += sz; colors += col; colorCount[col]++ }
         for ((d, idc) in c.dummyIds) {
             dummies[d].id = idc.first; dummies[d].color = idc.second; dummies[d].size = sizes[idc.first]
@@ -909,6 +990,15 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         val stagedSet = before.staging.toSet()
         val stagedRays = if (sc.coverStaged > 0) board.placed.values.filter { it.color in stagedSet && board.rayClear(it) }
             .map { board.ray(it).toSet() to it.color } else emptyList()
+        // Readable forks: reachable containers whose colour is nowhere on show (carousel + belt) are dead weight that
+        // loses deep when docked (it holds a slot past the visible horizon); hide them behind the new container.
+        val rd = sc.readable
+        val deadRays = if (rd == null || rd.coverDead <= 0) emptyList() else {
+            val edge = minOf(before.w.size, (rd.ring.takeIf { it > 0 } ?: spots) + (rd.belt.takeIf { it > 0 } ?: sc.queuePreview))
+            val onShow = BooleanArray(Limits.MAX_COLORS)
+            for (k in 0 until edge) onShow[before.w[k]] = true
+            board.placed.values.filter { !onShow[it.color] && board.rayClear(it) }.map { board.ray(it).toSet() }
+        }
         val fill = board.cellsUsed().toDouble() / (sc.width * sc.height)
         val cr = (sc.height - 1) / 2.0
         val cc = (sc.width - 1) / 2.0
@@ -922,6 +1012,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
             var cover = 0.0
             for ((ray, fillable) in reachRays) if (fillable && cells.any { it in ray }) cover += sc.coverFillable
             for (ray in chainRays) if (cells.any { it in ray }) cover += 6.0
+            for (ray in deadRays) if (cells.any { it in ray }) cover += rd!!.coverDead
             // Keystone: count every container whose exit ray this one would cross.
             if (keystoneW > 0) cover += keystoneW * board.placed.values.count { u -> board.ray(u).any { it in cells } }
             // Domino stack: same lane and facing as the previous run container, nose to tail.
@@ -984,12 +1075,25 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         val s = forwardState(c)
         val opening = fwd in 0 until sc.openSpan
         val climax = sc.climaxAt > 0 && fwd >= sc.climaxAt * planTaps
-        val d = ReverseAnalysis.decision(s, sc.candidateBudget, hCap = if (climax) 7 else 5)
+        val hCap = if (climax) 7 else 5
+        val d = ReverseAnalysis.decision(s, sc.candidateBudget, hCap = hCap)
         c.fb = d.b; c.fw = d.w; c.fh = d.hMax
         var score = 0.0
+        // Readable forks: the deciding batch of this fork on the construction line (exact: every later tap is built).
+        val rd = sc.readable
+        var unreadable = false
+        if (rd != null && d.b >= 2 && d.hMax >= 2) {
+            val window = if (d.hMax > hCap) Readability.WINDOW_CAP else minOf(d.hMax, Readability.WINDOW_CAP)
+            val edge = minOf(s.staging.size, rd.ring.takeIf { it > 0 } ?: spots) + (rd.belt.takeIf { it > 0 } ?: sc.queuePreview)
+            val n = Readability.hiddenBoarded(s, readLine(c), window, edge)
+            unreadable = n > 0
+            score += if (n == 0) rd.weight else -rd.weight - rd.perElement * minOf(n, rd.elementCap)
+            c.hidden = n
+        }
         // Stakes visible when the move is made: short horizons (2-4) in the opening, deep ones at the climax.
         val hTerm = when {
             d.hMax < 2 -> 0.0
+            unreadable && rd!!.deepOnlyReadable -> 0.0
             opening -> 2.0 + (if (d.hMax <= 4) 4.0 else 1.0)
             else -> 2.0 + d.hMax
         }

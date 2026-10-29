@@ -18,6 +18,8 @@ import com.phloots.crittercafe.core.scoring.DifficultyConfig
 import com.phloots.crittercafe.core.scoring.RolloutDifficulty
 import com.phloots.crittercafe.core.scoring.Scorer
 import com.phloots.crittercafe.core.solver.Solver
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.io.File
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
@@ -32,15 +34,20 @@ import kotlin.math.roundToInt
  * more on levels 7-9, and most on the hard levels (28, then 24). A level that is not solvable at its planned size
  * steps back up 4 seats at a time.
  *
- * Output: app/src/main/assets/levels.json, levelgen/out/official.md and levelgen/out/official-lines.json (each
- * level's winning line at its ring size, as container ids).
+ * Output: app/src/main/assets/levels.json, levelgen/out/official.md, levelgen/out/official-lines.json (each
+ * level's winning line at its ring size, as container ids) and levelgen/out/official-meta.json (provenance keyed by
+ * the level's content hash, the app analytics' level id: recipe, pack seed, director seed and try index, generator
+ * commit, ring, line; [Provenance]). --out and --meta redirect the pack and the provenance file.
  * Run: ./gradlew :levelgen:reversePreview -PreverseMain=com.phloots.crittercafe.levelgen.reverse.OfficialPackKt
  *      [--args="--tries 400 --seed 7 --threads 8"]
  * A full run takes 25-35 minutes and starves everything else on the machine. To fix or change a few levels, rebuild
  * only those slots with --only 37,52: they are spliced into the existing levels.json and official-lines.json and
  * the other 98 stay as they are.
+ *
+ * The shipped campaign has since been re-selected under fitness5 by [OfficialPackF5] (same [plan] and seeds); use
+ * that driver's --only for patches, as a full run here would replace the fitness5 levels with fitness4 ones.
  */
-private data class OfficialSlot(val number: Int, val recipe: Int, val ring: Int)
+internal data class OfficialSlot(val number: Int, val recipe: Int, val ring: Int)
 
 /** Recipe ladder for levels 2-9 (indexes into [recipes4], easiest first). */
 private val LADDER = listOf(1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17)
@@ -48,7 +55,7 @@ private const val BREATHER = 10
 /** Hard closers for cycles 4-10, in turn (cycles 1-2 use 9, cycle 3 uses 18). */
 private val BOSSES = listOf(19, 20, 21, 22, 23, 18, 9)
 
-private fun plan(): List<OfficialSlot> {
+internal fun plan(): List<OfficialSlot> {
     val out = ArrayList<OfficialSlot>()
     for (c in 0 until 10) {
         val base = minOf(1.2 * c, 8.0)
@@ -72,7 +79,7 @@ private fun plan(): List<OfficialSlot> {
     return out
 }
 
-private data class Built(val slot: OfficialSlot, val r: Recipe4, val sl: StallLevel, val e: HybridEval, val accepted: Boolean, val why: String)
+private data class Built(val slot: OfficialSlot, val r: Recipe4, val sl: StallLevel, val e: HybridEval, val accepted: Boolean, val why: String, val tryIndex: Int = -1)
 
 /** The generator's best try for [slot] at 40 seats, as in Hybrid preview 4. */
 private fun build(slot: OfficialSlot, r: Recipe4, seed: Long, tries: Int, fc: HybridFitnessConfig, config: DifficultyConfig): Built? {
@@ -90,7 +97,7 @@ private fun build(slot: OfficialSlot, r: Recipe4, seed: Long, tries: Int, fc: Hy
         val why = listOfNotNull(if (botWin) "bot" else null, if (e.solvable != true) "unsolved" else null, if (!opening) "opening" else null).plus(qf).joinToString(",")
         fun dist(x: HybridEval) = if (r.target == MAX4) -x.fitness4 else StrictMath.abs(x.fitness4 - r.target)
         val b = best
-        if (b == null || (acc && !b.accepted) || (acc == b.accepted && dist(e) < dist(b.e))) best = Built(slot, r, sl, e, acc, why)
+        if (b == null || (acc && !b.accepted) || (acc == b.accepted && dist(e) < dist(b.e))) best = Built(slot, r, sl, e, acc, why, t)
     }
     return best
 }
@@ -99,7 +106,7 @@ private fun build(slot: OfficialSlot, r: Recipe4, seed: Long, tries: Int, fc: Hy
  * The level at the slot's ring size: the generator's own [line] replayed at that size proves it solvable, else the
  * solver; failing both, step up 4 seats. At 40 seats the line always wins (the level was built from it).
  */
-private fun shrink(level: Level, ring: Int, line: List<Move>): Pair<Level, List<Move>> {
+internal fun shrink(level: Level, ring: Int, line: List<Move>): Pair<Level, List<Move>> {
     var n = ring
     while (n < 40) {
         val lv = level.copy(stagingSpots = n)
@@ -114,6 +121,8 @@ private fun shrink(level: Level, ring: Int, line: List<Move>): Pair<Level, List<
 }
 
 private val LINES = File("levelgen/out/official-lines.json")
+/** Provenance per level, keyed by content hash ([Provenance]); patch runs add to it, so older builds stay traceable. */
+private val META = File("levelgen/out/official-meta.json")
 
 private fun writeLines(lines: Map<Int, List<Move>>) {
     LINES.parentFile?.mkdirs()
@@ -137,6 +146,7 @@ fun main(args: Array<String>) {
     val tries = opts["tries"]?.toInt() ?: 400
     val threads = opts["threads"]?.toInt() ?: Runtime.getRuntime().availableProcessors()
     val out = File(opts["out"] ?: "app/src/main/assets/levels.json")
+    val metaFile = opts["meta"]?.let { File(it) } ?: META
     val config = DifficultyConfig.DEFAULT
     val fc = HybridFitnessConfig.DEFAULT
     val rs = recipes4()
@@ -162,6 +172,7 @@ fun main(args: Array<String>) {
     val packed = ArrayList<PackedLevel>()
     val rows = ArrayList<String>()
     val lines = HashMap<Int, List<Move>>()
+    val meta = LinkedHashMap<String, JsonObject>()
 
     fun finish(b: Built, id: Int): PackedLevel {
         val (lv, line) = shrink(b.sl.level.copy(id = id), b.slot.ring, b.sl.line)
@@ -175,6 +186,9 @@ fun main(args: Array<String>) {
         rows += "| $id | ${b.r.name} | $label | ${lv.stagingSpots}${if (lv.stagingSpots != b.slot.ring) " (planned ${b.slot.ring})" else ""} | ${lv.colors().size} | ${lv.containers.size} | ${lv.width}x${lv.height} | %.1f | %.1f | %d | %.1f | %s |"
             .format(q40.hidden, q.hidden, q.hardDecisions, b.e.fitness4, if (b.accepted) "yes" else "no (${b.why})")
         lines[id] = line
+        meta += Provenance.entry(lv, b.r.name, seed, b.sl.seed, b.tryIndex, line, mapOf(
+            "ring" to JsonPrimitive(lv.stagingSpots), "tries" to JsonPrimitive(tries),
+            "accepted" to JsonPrimitive(b.accepted)))
         return PackedLevel(lv, report.score, report, tags)
     }
 
@@ -189,6 +203,7 @@ fun main(args: Array<String>) {
         oldLines.putAll(lines)
         out.writeText(LevelPackCodec.encode(LevelPack(levels = old)))
         writeLines(oldLines)
+        Provenance.write(metaFile, Provenance.read(metaFile).apply { putAll(meta) })
         File("levelgen/out/official.md").appendText("\nPatched ${only.sorted()} (seed $seed, $tries tries):\n\n" + (header + rows).joinToString("\n") + "\n")
         println((header + rows).joinToString("\n"))
         println("patched ${rows.size} levels in $out")
@@ -198,6 +213,7 @@ fun main(args: Array<String>) {
     rows += header
     val tut = Director(tutorialParams(), seed * 100).run()!!
     packed += PackedLevel(tut.level.copy(id = 1), 0.0, null, listOf("Tutorial"))
+    meta += Provenance.entry(tut.level.copy(id = 1), "tutorial", seed, seed * 100, 0, tut.line)
     rows += "| 1 | tutorial | | 40 | ${tut.level.colors().size} | ${tut.level.containers.size} | ${tut.level.width}x${tut.level.height} | | | | | |"
     for (b in built) {
         if (b == null) { println("no level built for a slot"); continue }
@@ -206,6 +222,7 @@ fun main(args: Array<String>) {
     out.parentFile?.mkdirs()
     out.writeText(LevelPackCodec.encode(LevelPack(levels = packed)))
     writeLines(lines)
+    Provenance.write(metaFile, meta)
     val md = "# Official campaign (Critter Café)\n\n10 cycles of 10: breather, a ladder of Hybrid preview 4 recipes, a hard closer. " +
         "Ring size shrinks with the cycle and on hard levels (planned size in brackets when the level needed a bigger ring). " +
         "Seed $seed, $tries tries.\n\n" + rows.joinToString("\n") + "\n"

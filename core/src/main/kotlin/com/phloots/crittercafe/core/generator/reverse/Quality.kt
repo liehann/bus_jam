@@ -43,8 +43,8 @@ data class QState(val step: Int, val b: Int, val w: Int, val unknown: Int, val l
  *
  * Chain (the climax, principle 15): the colour whose staged count peaks highest; [chainAt] the first state where it
  * floods the carousel (staged >= max(min(15, peak), 60% of peak)); [chainVisibleAt] the first state where at least [Quality.VISIBLE]
- * chain elements are on the carousel or in the shown part of the line ([Quality.SHOWN_QUEUE], RingField's queue
- * preview); [digShareBeforeVisible] = share of the chain's blocker containers (initial board, transitive) that the
+ * chain elements are on the carousel or in the shown part of the line (the belt: [Level.queuePreview] elements by
+ * default, [Quality.SHOWN_QUEUE_CALIBRATION] when the playtest labels were set); [digShareBeforeVisible] = share of the chain's blocker containers (initial board, transitive) that the
  * line had already removed when the chain became visible (high = the player had to dig blind).
  * [climaxSlack] = mean free docks over the [Quality.CLIMAX_WINDOW] states before [chainAt].
  */
@@ -95,8 +95,13 @@ object Quality {
     const val DEEP = H_CAP + 1
     const val PEAK_WINDOW = 10
     const val CLIMAX_WINDOW = 8
-    /** Elements of the line shown beyond the carousel (RingField.QUEUE_MAX). */
-    const val SHOWN_QUEUE = 20
+    /**
+     * Belt length (elements of the line shown beyond the carousel) the app had when [HybridFitnessConfig]'s quality
+     * section (minLead, leadFull, maxBlindShare) was set from the playtest labels. The belt has shown 10 since
+     * (RingField.QUEUE_MAX = [com.phloots.crittercafe.core.model.Limits.DEFAULT_QUEUE_PREVIEW]); [measure] / [of] now default
+     * to the level's own [Level.queuePreview]. Pass this as `shown` to reproduce numbers measured before that change.
+     */
+    const val SHOWN_QUEUE_CALIBRATION = 20
     /** Chain elements on show (carousel + shown line) for the chain to count as visible. */
     const val VISIBLE = 10
 
@@ -118,7 +123,8 @@ object Quality {
         return QState(step, legal.size, w, unk, hs.toIntArray(), Limits.DOCK_SLOTS - s.dockUsed, s.queueRemaining)
     }
 
-    fun measure(level: Level, line: List<Move>, budget: Long = 20_000): QualityMetrics {
+    /** [shown]: belt length for the chain-visibility metrics (default: the level's [Level.queuePreview]). */
+    fun measure(level: Level, line: List<Move>, budget: Long = 20_000, shown: Int = level.queuePreview): QualityMetrics {
         val gs = ArrayList<GameState>()
         val qs = ArrayList<QState>()
         var s = GameState.initial(level)
@@ -128,7 +134,7 @@ object Quality {
             qs += state(s, i, budget)
             s = Engine.apply(s, m).state
         }
-        return of(level, line, gs, qs)
+        return of(level, line, gs, qs, shown)
     }
 
     /** Transitive blocker sets on the initial board. */
@@ -152,7 +158,7 @@ object Quality {
         }
     }
 
-    fun of(level: Level, line: List<Move>, gs: List<GameState>, qs: List<QState>): QualityMetrics {
+    fun of(level: Level, line: List<Move>, gs: List<GameState>, qs: List<QState>, shown: Int = level.queuePreview): QualityMetrics {
         val n = qs.size
         val hb = qs.map { it.bitsBeyond(1) }
         val third = maxOf(1, n / 3)
@@ -179,9 +185,9 @@ object Quality {
             chainEnd = i
             if (level.containers[line[i].containerId].color == chainColor) chainLen++
         }
-        fun shown(st: GameState): Int = st.staging.count { it == chainColor } +
-            (st.queueIndex until minOf(level.queue.size, st.queueIndex + SHOWN_QUEUE)).count { level.queue[it] == chainColor }
-        val visibleAt = if (chainColor < 0) -1 else gs.indexOfFirst { shown(it) >= minOf(VISIBLE, flood) }
+        fun onShow(st: GameState): Int = st.staging.count { it == chainColor } +
+            (st.queueIndex until minOf(level.queue.size, st.queueIndex + shown)).count { level.queue[it] == chainColor }
+        val visibleAt = if (chainColor < 0) -1 else gs.indexOfFirst { onShow(it) >= minOf(VISIBLE, flood) }
         // Blockers of the chain containers tapped during the chain.
         val bl = blockers(level)
         val chainIds = if (chainAt < 0) emptyList() else (chainAt..chainEnd).map { line[it].containerId }.filter { level.containers[it].color == chainColor }

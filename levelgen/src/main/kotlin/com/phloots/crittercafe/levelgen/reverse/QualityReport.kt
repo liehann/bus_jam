@@ -1,5 +1,7 @@
 package com.phloots.crittercafe.levelgen.reverse
 
+import com.phloots.crittercafe.core.generator.reverse.Fairness
+import com.phloots.crittercafe.core.generator.reverse.FairnessConfig
 import com.phloots.crittercafe.core.generator.reverse.HybridGenerator
 import com.phloots.crittercafe.core.generator.reverse.JuggleMetrics
 import com.phloots.crittercafe.core.generator.reverse.LevelMetrics
@@ -16,7 +18,8 @@ import java.util.concurrent.Executors
 /**
  * Quality metrics (docs/LEVEL-QUALITY.md) over the labelled levels and whole packs, on solver lines.
  * Run: ./gradlew :levelgen:reversePreview -PreverseMain=com.phloots.crittercafe.levelgen.reverse.QualityReportKt
- *      [--args="--packs a.json,b.json --labelled true --mc 300 --out levelgen/out/quality.csv"]
+ *      [--args="--packs a.json,b.json --labelled true --mc 300 --out levelgen/out/quality.csv --fair 10"]
+ * --fair N adds the fairness columns (core Fairness.kt) for a belt of N shown elements (FairnessReport has the full set).
  */
 private data class Row(val name: String, val label: String, val cells: List<String>)
 
@@ -36,6 +39,10 @@ private val LABELLED = listOf(
 val QUALITY_HEADER = listOf("level", "label", "n", "moves", "bits", "hidden", "deep", "h/move", "thirds", "peak10", "hard", "2^-bits", "2^-hidden",
     "mc rand", "mc 1-ply", "free docks", "tight", "chain", "lead", "dug blind", "climax slack", "blind deep", "climax hidden",
     "juggle 1st", "free opener", "bots won", "bot early", "fit3", "axes info/open/read/slack", "fit4")
+
+/** Fairness columns ([Fairness.measure] at this belt length), when --fair is given. */
+val FAIR_HEADER = listOf("fair", "unfair", "traps", "undet", "blind bits", "deep blind/visible", "w>=2", "mean w")
+private var fairShown: Int? = null
 
 /** Per-state dump (level, step, b, w, losers' horizons, free docks, queue left), filled when --states is given. */
 private val STATES = java.util.concurrent.ConcurrentLinkedQueue<String>()
@@ -63,7 +70,12 @@ fun qualityRow(name: String, label: String, lv: Level, mc: Int): List<String> {
         "x%d@%d".format(q.chainLen, q.chainAt), "${q.chainLead}", "%.0f%%".format(q.digShareBeforeVisible * 100), "%.2f".format(q.climaxSlack),
         "%.1f".format(q.blindDeep), "%.1f".format(q.climaxHidden),
         "%.0f%%".format(jm.firstThird * 100), "$fo", bots.filter { it.won }.joinToString("+") { it.name }.ifEmpty { "-" }, "%.2f".format(early), "%.1f".format(fit3),
-        HybridGenerator.axes(q).let { "%.2f/%.2f/%.2f/%.2f".format(it.info, it.opening, it.readable, it.slack) }, "%.1f".format(HybridGenerator.fitness4(fit3, q)))
+        HybridGenerator.axes(q).let { "%.2f/%.2f/%.2f/%.2f".format(it.info, it.opening, it.readable, it.slack) }, "%.1f".format(HybridGenerator.fitness4(fit3, q))) +
+        (fairShown?.let { n ->
+            val fm = Fairness.measure(lv, sol, FairnessConfig(shown = n))
+            listOf("%.0f%%".format(fm.fairShare * 100), "${fm.unfair.size}", "${fm.trapDecisions}", "${fm.undetermined.size}", "%.1f".format(fm.blindBits),
+                "${fm.deepBlindLosers}/${fm.deepVisibleLosers}", "%.0f%%".format(fm.multiShare * 100), "%.2f".format(fm.meanW))
+        } ?: emptyList())
 }
 
 fun main(args: Array<String>) {
@@ -71,6 +83,7 @@ fun main(args: Array<String>) {
     var i = 0
     while (i + 1 < args.size) { opts[args[i].removePrefix("--")] = args[i + 1]; i += 2 }
     val mc = opts["mc"]?.toInt() ?: 300
+    fairShown = opts["fair"]?.toInt()
     val jobs = ArrayList<Triple<String, String, Level>>()
     if (opts["labelled"] != "false") for ((path, id, label) in LABELLED) {
         val f = File(path)
@@ -86,7 +99,7 @@ fun main(args: Array<String>) {
     pool.shutdown()
     val out = File(opts["out"] ?: "levelgen/out/quality.tsv")
     out.parentFile?.mkdirs()
-    out.writeText((listOf(QUALITY_HEADER) + rows).joinToString("\n") { it.joinToString("\t") } + "\n")
+    out.writeText((listOf(QUALITY_HEADER + (if (fairShown != null) FAIR_HEADER else emptyList())) + rows).joinToString("\n") { it.joinToString("\t") } + "\n")
     opts["states"]?.let { File(it).writeText(STATES.joinToString("\n") + "\n") }
     println("wrote ${rows.size} rows to $out")
 }

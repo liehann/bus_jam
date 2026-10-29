@@ -4,6 +4,8 @@
     python3 tools/art/build_prompt.py luau            # render one theme, print it
     python3 tools/art/build_prompt.py sushi spa       # several
     python3 tools/art/build_prompt.py --all           # every art/themes/*.json
+    python3 tools/art/build_prompt.py --kit luau_night  # the theme's kit prompts (one per piece)
+    python3 tools/art/build_prompt.py --kit --all     # kit prompts for every theme with a "kit" object
 
 Each theme (art/themes/<id>.json) is:
 
@@ -17,6 +19,13 @@ just before "Layout from top to bottom:", and a fixed list of night avoid items 
 prepended to extra_avoid. Day themes therefore render exactly as the plain template.
 
 Output goes to art/prompts/generated/<id>.txt. Stdlib only.
+
+Kit prompts: a theme's raster pieces (backdrop, kitchen, belt, loop, counter, bench, mat, frame, props) are
+generated one per Gemini chat with the theme's level mock attached. art/prompts/kit.template.txt holds the prompts;
+it is filled from the theme's slots plus its "kit" object (slots only the pieces need) plus computed values: id,
+name, style / style_soft (the style preamble, from palette, lighting and variant), obstacle_list and
+props_decor_list (the "a X, a Y and a Z" phrases split into the sheet's items). Output goes to
+art/prompts/generated/<id>_kit.md.
 """
 import argparse
 import json
@@ -27,6 +36,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 THEMES_DIR = ROOT / "art" / "themes"
 TEMPLATE = ROOT / "art" / "prompts" / "level_mock.template.txt"
+KIT_TEMPLATE = ROOT / "art" / "prompts" / "kit.template.txt"
 NIGHT_TEMPLATE = ROOT / "art" / "prompts" / "level_mock.night.template.txt"
 OUT_DIR = ROOT / "art" / "prompts" / "generated"
 
@@ -137,6 +147,73 @@ def render(theme_id, theme, template_text=None, night_text=None):
     return out
 
 
+KIT_COMPUTED = ("id", "name", "style", "style_soft", "obstacle_list", "props_decor_list")
+# Kit slots that must be "a X, a Y and a Z" (three items for the props sheet).
+KIT_TRIPLES = {"obstacles": "obstacle_list", "props_decor": "props_decor_list"}
+ITEM_SPLIT = re.compile(r",\s+|\s+and\s+")
+
+
+def three_items(phrase, where, slot):
+    items = [i.strip() for i in ITEM_SPLIT.split(phrase.strip()) if i.strip()]
+    if len(items) != 3:
+        raise PromptError(f"{where}: slot '{slot}' must list exactly three items as 'a X, a Y and a Z', got {phrase!r}")
+    return items
+
+
+def style_preamble(slots, variant, outlines=True):
+    light = slots["lighting"].strip()
+    light = light[:1].lower() + light[1:]
+    if variant == "night":
+        light += " at night"
+    parts = ["flat 2D illustration", "soft cel shading"]
+    if outlines:
+        parts.append("thick dark brown outlines")
+    parts += [slots["palette"].strip(), light]
+    return "Using exactly its art style (" + ", ".join(parts) + ")"
+
+
+def render_kit(theme_id, theme, template_text=None):
+    """Return the kit prompts (markdown) for one theme dict. Raises PromptError on any problem."""
+    if template_text is None:
+        template_text = KIT_TEMPLATE.read_text(encoding="utf-8")
+    where = f"theme '{theme_id}' kit"
+    kit = theme.get("kit")
+    if not isinstance(kit, dict):
+        raise PromptError(f"{where}: no 'kit' object")
+    for k, v in kit.items():
+        if not isinstance(v, str):
+            raise PromptError(f"{where}: slot '{k}' must be a string")
+        if LEFTOVER.search(v):
+            raise PromptError(f"{where}: slot '{k}' contains '{{{{' or '}}}}': {v!r}")
+    slots = {k: v.strip() for k, v in theme["slots"].items()}
+    clash = sorted(set(kit) & set(slots))
+    if clash:
+        raise PromptError(f"{where}: kit slot(s) {', '.join(clash)} repeat a theme slot")
+    wanted = set(template_slots(template_text)) - set(KIT_COMPUTED)
+    kit_wanted = wanted - set(slots)
+    unknown = sorted(set(kit) - kit_wanted - set(KIT_TRIPLES))
+    if unknown:
+        raise PromptError(f"{where}: unknown slot(s) {', '.join(unknown)}")
+    values = dict(slots)
+    values.update({k: v.strip() for k, v in kit.items()})
+    missing = sorted(s for s in (kit_wanted | {"props_decor"}) if not values.get(s, "").strip())
+    if missing:
+        raise PromptError(f"{where}: missing slot(s) {', '.join(missing)}")
+    variant = theme.get("variant", "day")
+    values["id"] = theme_id
+    values["name"] = theme.get("name", theme_id)
+    values["style"] = style_preamble(slots, variant)
+    values["style_soft"] = style_preamble(slots, variant, outlines=False)
+    for slot, out in KIT_TRIPLES.items():
+        values[out] = "; ".join(three_items(values[slot], where, slot))
+    out = _fill(template_text, values, where)
+    left = LEFTOVER.search(out)
+    if left:
+        line = out[: left.start()].count("\n") + 1
+        raise PromptError(f"{where}: leftover placeholder near line {line}")
+    return out
+
+
 def all_theme_ids(themes_dir=THEMES_DIR):
     return sorted(p.stem for p in Path(themes_dir).glob("*.json") if p.name not in NON_THEME_FILES)
 
@@ -149,27 +226,42 @@ def build(theme_id, themes_dir=THEMES_DIR, out_dir=OUT_DIR):
     return text
 
 
+def kit_theme_ids(themes_dir=THEMES_DIR):
+    return [t for t in all_theme_ids(themes_dir) if "kit" in load_theme(t, themes_dir)]
+
+
+def build_kit(theme_id, themes_dir=THEMES_DIR, out_dir=OUT_DIR):
+    text = render_kit(theme_id, load_theme(theme_id, themes_dir))
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / f"{theme_id}_kit.md").write_text(text, encoding="utf-8")
+    return text
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("themes", nargs="*", help="theme ids (file names in art/themes without .json)")
     ap.add_argument("--all", action="store_true", help="render every theme")
     ap.add_argument("--quiet", action="store_true", help="write files but do not print prompts")
+    ap.add_argument("--kit", action="store_true", help="render the kit prompts instead of the level mock")
     args = ap.parse_args(argv)
 
-    ids = all_theme_ids() if args.all else args.themes
+    ids = (kit_theme_ids() if args.kit else all_theme_ids()) if args.all else args.themes
+    make = build_kit if args.kit else build
+    suffix = "_kit.md" if args.kit else ".txt"
     if not ids:
         ap.error("give one or more theme ids, or --all")
 
     failed = False
     for i, tid in enumerate(ids):
         try:
-            text = build(tid)
+            text = make(tid)
         except PromptError as e:
             print(f"error: {e}", file=sys.stderr)
             failed = True
             continue
         if args.quiet:
-            print(f"wrote art/prompts/generated/{tid}.txt", file=sys.stderr)
+            print(f"wrote art/prompts/generated/{tid}{suffix}", file=sys.stderr)
         else:
             if len(ids) > 1:
                 print(("\n" if i else "") + f"===== {tid} =====")

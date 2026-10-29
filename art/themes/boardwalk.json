@@ -19,5 +19,15 @@
     "mood": "sunny, breezy and cheerful, with everyone happily eating",
     "lighting": "Bright soft seaside sunlight",
     "extra_avoid": "sand texture on the board, seagulls over the plates or reservation cards, animals in the water"
+  },
+  "kit": {
+    "backdrop_ground": "smooth pale sand",
+    "backdrop_edges": "colourful bunting along the top edge, striped beach umbrellas in the corners, a few seagulls, a strip of gentle blue sea with white foam along one side edge",
+    "belt_rim": "a bleached wooden rim",
+    "mat_surface": "smooth pale bleached boardwalk planks",
+    "mat_texture": "planks running left to right with faint seams and a very soft grain",
+    "frame_piece": "thick twisted rope",
+    "frame_corner": "a corner where two short thick twisted ropes meet at a right angle, tied in a knot",
+    "props_decor": "a striped beach umbrella, a seagull and a small bunting flag"
   }
 }

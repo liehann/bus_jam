@@ -1,23 +1,33 @@
 {
-  "name": "Ski Lodge",
+  "name": "Ski Slopes",
   "variant": "day",
   "status": "final",
   "slots": {
-    "palette": "cozy winter pastel palette",
-    "setting": "a snowy mountain ski lodge for cute animals",
-    "decorations": "Pale pine wood, snowy frosted windows, knitted bunting along the top edge and a small stone fireplace at one side edge of the screen.",
-    "background_tones": "cozy (cream, pale pine, soft snow white)",
-    "kitchen": "a cocoa bar hatch with a small knitted curtain",
+    "palette": "crisp winter pastel palette",
+    "setting": "an outdoor ski hut terrace on a snowy mountainside for cute animals",
+    "decorations": "Snowy pine trees, pairs of skis and poles stuck upright in the snow, small snowdrifts, a little snowman and a string of bunting around the edges of the screen.",
+    "background_tones": "crisp (soft snow white, pale blue shadows, pale pine)",
+    "kitchen": "a small wooden ski hut serving window with snow on its roof",
     "belt_material": "pale pine slats",
-    "loop_interior": "a soft cream sheepskin rug with a faint warm glow from the fireplace",
+    "loop_interior": "a smooth frozen pond with a few faint skate marks and a small snowman at one end",
     "foods": "a hot cocoa mug, a cinnamon roll, a waffle, a small bowl of soup or a gingerbread cookie",
-    "counter": "a pale pine wood bar",
+    "counter": "a pale pine outdoor bar counter with a light dusting of snow on its front edge",
     "bench_material": "pine",
     "accessory": "a small striped knitted scarf",
-    "board_surface": "a pale cream knitted rug with a very soft, almost flat knit texture, framed with a thin pine border",
-    "obstacles": "a pair of short mini skis, a small log stack and a mitten",
-    "mood": "snug, warm and cheerful, with everyone happily eating",
-    "lighting": "Soft bright snowy daylight",
-    "extra_avoid": "falling snow over the plates or reservation cards, a dark fireplace wall behind the board"
+    "board_surface": "smooth, even packed snow with very faint soft blue shading, framed with a thin pine log border",
+    "obstacles": "a pair of short mini skis, a snowball and a mitten",
+    "mood": "fresh, sunny and cheerful, with everyone happily eating",
+    "lighting": "Bright soft snowy daylight",
+    "extra_avoid": "falling snow over the plates or reservation cards, skiers, steep slopes behind the board, an indoor room"
+  },
+  "kit": {
+    "backdrop_ground": "smooth pale snow with soft blue shadows",
+    "backdrop_edges": "snowy pine trees in the top corners, a pair of skis and poles stuck upright in the snow near the left and right edges, small snowdrifts and a little snowman in the bottom corners, a string of bunting along the top edge",
+    "belt_rim": "a pale pine rim",
+    "mat_surface": "smooth, even packed snow",
+    "mat_texture": "an almost plain snow surface with very faint soft blue shading",
+    "frame_piece": "pale pine log with a thin line of snow along its top",
+    "frame_corner": "a corner joint where two short pale pine logs meet at a right angle, with a little snow on top",
+    "props_decor": "a snowy pine branch, a pair of crossed skis and a small snowman"
   }
 }

@@ -1,0 +1,5 @@
+{
+  "comment": "This sheet predates the kit template's 4 x 2 props layout: it is 4 x 3, and these names map its cells (row by row) to the template's pieces. null = not used.",
+  "grid": [4, 3],
+  "names": ["stand", "decor_1", null, "obstacle_1", "obstacle_2", "obstacle_3", "decor_2", "decor_3", null, "corner", null, null]
+}

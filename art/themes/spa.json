@@ -19,5 +19,15 @@
     "mood": "calm, cozy, gentle and spa-like, with everyone happily eating",
     "lighting": "Soft diffuse light",
     "extra_avoid": "green or busy backgrounds behind the reservation cards, animals in water"
+  },
+  "kit": {
+    "backdrop_ground": "pale grey-cream smooth stone floor",
+    "backdrop_edges": "pale bamboo stalks and leaves along the left and right edges, smooth grey river stones and cream paper screens in the corners, small paper lanterns near the top corners, faint wisps of white steam",
+    "belt_rim": "a light bamboo rim",
+    "mat_surface": "a pale cream-gold tatami mat",
+    "mat_texture": "soft, even, low-contrast woven straw lines",
+    "frame_piece": "thin dark bamboo pole with a node ring at regular intervals",
+    "frame_corner": "a corner joint where two short dark bamboo poles cross at a right angle, tied with thin cord",
+    "props_decor": "a small stone lantern, a bamboo stalk with leaves and a small paper lantern"
   }
 }

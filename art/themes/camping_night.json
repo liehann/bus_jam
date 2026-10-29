@@ -5,8 +5,8 @@
   "slots": {
     "palette": "warm woodland palette with deep blue night accents",
     "setting": "a cozy forest campsite at night for cute animals",
-    "decorations": "Pale birch logs, a few pine trees, a small tent and some ferns around the edges of the screen.",
-    "background_tones": "warm (cream canvas, pale birch, soft firelight)",
+    "decorations": "Only a few small pale birch logs, ferns and pine branches tucked into the corners of the screen.",
+    "background_tones": "warm where the firelight falls (pale birch, cream canvas) and deep blue-green in the shadows",
     "kitchen": "a small wooden camp kitchen with a kettle",
     "belt_material": "pale birch-log slats",
     "loop_interior": "a small stone campfire ring with soft, small, contained flames",
@@ -18,9 +18,19 @@
     "obstacles": "a pinecone, a small camp lantern and a tent peg",
     "mood": "cozy, warm and peaceful, with everyone happily eating around the fire",
     "lighting": "Warm soft firelight and lantern glow",
-    "night_sky": "a starry night sky seen through dark pine treetops, only around the outer edges",
+    "night_sky": "a dark night all around the scene: the ground between the play areas is a deep blue-green forest floor in shadow, seen from directly above, with no sky and no stars",
     "light_sources": "the small campfire inside the loop, camp lanterns hanging along the edges and above the counter",
-    "effects": "a few fireflies near the edges, faint sparks just above the campfire, and pine silhouettes framing the corners",
+    "effects": "a few fireflies near the corners and faint sparks just above the campfire",
     "extra_avoid": "large flames, smoke covering anything, fire outside the loop, a dark forest behind the board"
+  },
+  "kit": {
+    "backdrop_ground": "dark blue-green forest floor with a few soft warm firelight pools",
+    "backdrop_edges": "a few small pale birch logs, ferns and pine branches tucked into the four corners only, a couple of fireflies; no sky, no stars and no wide border",
+    "belt_rim": "a birch-bark rim",
+    "mat_surface": "a pale cream canvas groundsheet",
+    "mat_texture": "a soft, even, barely visible canvas weave",
+    "frame_piece": "pale birch log with small dark bark marks",
+    "frame_corner": "a rope-lashed corner joint where two short pale birch logs cross at a right angle",
+    "props_decor": "a small camp kettle, a pine branch and a fern"
   }
 }

@@ -19,5 +19,15 @@
     "mood": "warm, bustling and cozy, with everyone happily eating",
     "lighting": "Soft warm daylight",
     "extra_avoid": "steam covering the plates or reservation cards, red backgrounds behind the reservation cards"
+  },
+  "kit": {
+    "backdrop_ground": "pale cream wooden floor",
+    "backdrop_edges": "carved light wooden screens with red lacquer accents along the left and right edges, round red paper lanterns along the top edge, a few potted orchids in the bottom corners",
+    "belt_rim": "a light wooden rim with a thin red lacquer line",
+    "mat_surface": "a pale wooden table top",
+    "mat_texture": "almost plain pale wood with a faint, soft grain",
+    "frame_piece": "red lacquer rail with softly rounded edges and a thin gold line",
+    "frame_corner": "a corner joint where two short red lacquer rails meet at a right angle, with a small gold corner cap",
+    "props_decor": "a round red paper lantern, a potted orchid and a small bamboo steamer"
   }
 }

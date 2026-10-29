@@ -385,4 +385,4 @@ are lighter than this; plates need the darker values for the rim to read at 18 d
 ## Open questions
 
 1. New game name.
-2. Rename app id/package (`com.phloots.busjam`) and make Kitten Jumble the default: when?
+2. ~~Rename app id/package (`com.phloots.busjam`)~~ Done 2026-10-17: `com.phloots.crittercafe`. Make Kitten Jumble the default: when?

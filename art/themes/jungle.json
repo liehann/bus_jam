@@ -1,0 +1,33 @@
+{
+  "name": "Jungle Café",
+  "variant": "day",
+  "status": "final",
+  "slots": {
+    "palette": "lush tropical green palette with warm accents",
+    "setting": "a cozy jungle treehouse café for cute animals",
+    "decorations": "Big tropical leaves, hanging vines, a few bright jungle flowers and a small parrot around the edges of the screen.",
+    "background_tones": "fresh (pale moss green, light wood, warm cream)",
+    "kitchen": "a small treehouse hut with a big-leaf roof and a rope pulley",
+    "belt_material": "pale light-wood slats",
+    "loop_interior": "a soft bed of moss with a few ferns and small glowing mushrooms",
+    "foods": "a banana, a mango slice, a passion fruit, a coconut piece or a small fruit skewer",
+    "counter": "a light wooden treehouse counter with a few vines wrapped around it",
+    "bench_material": "light wooden",
+    "accessory": "a small leaf hat",
+    "board_surface": "a very pale moss-green linen cloth framed with a thin vine-wrapped wooden border",
+    "obstacles": "a coconut, a small potted fern and a toucan feather",
+    "mood": "lively, cheerful and cozy, with everyone happily eating",
+    "lighting": "Soft dappled green daylight",
+    "extra_avoid": "dense leaves over the plates or reservation cards, snakes, a dark jungle behind the board"
+  },
+  "kit": {
+    "backdrop_ground": "pale moss-green jungle floor with soft dappled light",
+    "backdrop_edges": "big tropical leaves and hanging vines along the top and side edges, a few bright jungle flowers in the corners, a small parrot perched near a top corner, ferns in the bottom corners",
+    "belt_rim": "a light wooden rim wrapped with a thin vine",
+    "mat_surface": "a very pale moss-green linen cloth",
+    "mat_texture": "a soft, even, barely visible linen weave",
+    "frame_piece": "light wooden pole wrapped with a thin green vine",
+    "frame_corner": "a vine-lashed corner joint where two short light wooden poles cross at a right angle",
+    "props_decor": "a small parrot, a big tropical leaf and a bright jungle flower"
+  }
+}

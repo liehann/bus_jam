@@ -10,13 +10,16 @@ import com.phloots.crittercafe.game.SlotView
 import com.phloots.crittercafe.game.rt.RtView
 import com.phloots.crittercafe.ui.game.DOCKED_DEGREES
 import com.phloots.crittercafe.ui.game.FieldGeometry
+import com.phloots.crittercafe.ui.game.MechanicStyle
+import com.phloots.crittercafe.ui.game.spanCenter
 import com.phloots.crittercafe.ui.game.RingLayout
+import com.phloots.crittercafe.ui.theme.Palette
 import com.phloots.crittercafe.core.model.Level
 
 /**
  * How the real-time game screen draws its pieces. Geometry (where things are) stays in [RingLayout] /
  * [FieldGeometry]; a skin only decides what a board, a container, a dock slot, the carousel track and an element look
- * like. [FlatSkin] is the original look; [com.phloots.crittercafe.ui.skin.critter.CritterCafeSkin] is the Critter Café
+ * like. [FlatSkin] is the original look; [com.phloots.crittercafe.ui.skin.critter.CafeSkin] is the Critter Café
  * restaurant skin. Provided through [LocalSkin].
  */
 interface Skin {
@@ -38,12 +41,16 @@ interface Skin {
     /** Noun for a container in content descriptions. */
     fun containerNoun(size: String): String
 
+    /** Scenery under the whole field, drawn first (theme decoration placed from the layout). */
+    fun DrawScope.scenery(lay: RingLayout) {}
+
     /** Board tray and grid, without containers. */
     fun DrawScope.board(geo: FieldGeometry, level: Level)
 
     /**
      * One container centred at [center], [width] across and [length] along, front pointing [degrees] clockwise from
-     * up. [id] is the container id (skins may derive decoration from it; it never carries meaning).
+     * up. [id] is the container id (skins may derive decoration from it; it never carries meaning). [spin] marks a
+     * ticket standing on a turntable: a smaller icon ringed by clockwise arrows.
      */
     fun DrawScope.container(
         center: Offset,
@@ -55,12 +62,37 @@ interface Skin {
         alpha: Float = 1f,
         highlight: Float = 0f,
         iconSize: Float = width * 0.5f,
+        spin: Boolean = false,
+    )
+
+    /** The body colour of a ticket of colour [color] (the frozen count's ring shows it). */
+    fun ticketColor(color: Int): Color = Palette.color(color)
+
+    /** Colours of the v4 mechanic overlays (ice cube, tie cord, gate, hidden ticket). */
+    val mechanics: MechanicStyle get() = MechanicStyle.FLAT
+
+    /**
+     * A hidden ticket (colour not revealed yet): same pose as [container], in a neutral colour with a "?" instead of
+     * anything that would give the colour away.
+     */
+    fun DrawScope.hiddenContainer(
+        center: Offset,
+        width: Float,
+        length: Float,
+        degrees: Float,
+        id: Int,
+        alpha: Float = 1f,
+        highlight: Float = 0f,
+        iconSize: Float = width * 0.5f,
+        spin: Boolean = false,
     )
 
     /**
      * Dock slot [slot]: its pad and, when [view] is set, the docked container with [filled] elements seated and the
      * remaining count. [offset] / [alpha] animate a dispatching container; [arrive] runs 0..1 just after the container
      * docks and [leave] 0..1 while it dispatches (skins that animate their own way use these instead).
+     * [span] = 2 draws one pad across slots [slot] and [slot] + 1 (a wide container; the caller skips the right
+     * slot). [bench] has one entry per spanned slot: the only colour that slot accepts, or -1 (any colour).
      */
     fun DrawScope.dockSlot(
         geo: FieldGeometry,
@@ -72,14 +104,17 @@ interface Skin {
         alpha: Float = 1f,
         arrive: Float = 1f,
         leave: Float = 0f,
+        span: Int = 1,
+        bench: List<Int> = List(span) { -1 },
     )
 
-    /** Where a container of [capacity] rests once docked in [slot]: the end of its release flight. */
-    fun dockedCard(geo: FieldGeometry, slot: Int, capacity: Int): DockedCard =
-        DockedCard(geo.slotCenter(slot), geo.dockedW, geo.dockedLength(capacity), DOCKED_DEGREES)
+    /** Where a container of [capacity] rests once docked in [slot] (spanning [span] slots): its release flight's end. */
+    fun dockedCard(geo: FieldGeometry, slot: Int, capacity: Int, span: Int = 1): DockedCard =
+        DockedCard(geo.spanCenter(slot, span), geo.dockedW, geo.dockedLength(capacity), DOCKED_DEGREES)
 
-    /** Where an element boarding the container in [slot] lands, and its size on arrival. */
-    fun boardingTarget(geo: FieldGeometry, slot: Int): Pair<Offset, Float> = geo.slotCenter(slot) to geo.dockedW * 0.34f
+    /** Where an element boarding the container in [slot] (spanning [span] slots) lands, and its size on arrival. */
+    fun boardingTarget(geo: FieldGeometry, slot: Int, span: Int = 1): Pair<Offset, Float> =
+        geo.spanCenter(slot, span) to geo.dockedW * 0.34f
 
     /**
      * Carousel band, boarding window and entry marker. [rotation] is the ring rotation in seats (for moving

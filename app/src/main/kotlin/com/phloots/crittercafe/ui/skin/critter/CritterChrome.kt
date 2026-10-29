@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
+import com.phloots.crittercafe.ui.skin.LocalSkin
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -125,7 +127,7 @@ fun CritterTopBar(levelNumber: Int, isBoss: Boolean, paused: Boolean, onPause: (
 
 /** Dimmed backdrop that swallows taps (or calls [onDismiss]) with a cream card in the middle. */
 @Composable
-private fun CritterDialog(tag: String, onDismiss: (() -> Unit)?, content: @Composable () -> Unit) {
+internal fun CritterDialog(tag: String, onDismiss: (() -> Unit)?, content: @Composable () -> Unit) {
     Box(
         Modifier
             .fillMaxSize()
@@ -171,10 +173,18 @@ fun CritterPauseMenu(
     CritterButton("Hint", onHint, Modifier.fillMaxWidth().testTag("hint"), icon = CritterIcon.HINT, fill = P.color(3), enabled = canHint)
 }
 
-/** Settings card. No options yet: the way back to the level list and home lives here. */
+/** Switches to the next Critter Café theme; provided in debug builds only. */
+val LocalThemeSwitch = staticCompositionLocalOf<(() -> Unit)?> { null }
+
+/** Settings card: the way back to the level list and home, and in debug builds the theme switch. */
 @Composable
 fun CritterSettings(onClose: () -> Unit, onLevels: () -> Unit, onHome: () -> Unit) = CritterDialog("settings-menu", onClose) {
     Title("Settings")
+    val switchTheme = LocalThemeSwitch.current
+    val skin = LocalSkin.current
+    if (switchTheme != null && skin is CafeSkin) {
+        CritterButton("Theme: ${skin.title}", switchTheme, Modifier.fillMaxWidth().testTag("theme-switch"), fill = P.color(3))
+    }
     CritterButton("Level select", onLevels, Modifier.fillMaxWidth().testTag("to-levels"))
     CritterButton("Home", onHome, Modifier.fillMaxWidth().testTag("to-home"))
     CritterButton("Close", onClose, Modifier.fillMaxWidth().testTag("settings-close"), fill = P.color(1))

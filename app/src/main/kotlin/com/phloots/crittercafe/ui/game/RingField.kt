@@ -78,6 +78,8 @@ class RingLayout(
     val style: FieldStyle = FieldStyle.FLAT,
     /** The entry's ring position minus the gate's, in seats (where the belt drops in; default: top centre). */
     val entryFromGate: Float = seatCount / 2f,
+    /** Queue elements to show ([Level.queuePreview]). */
+    val queueMax: Int = QUEUE_MAX,
 ) : FieldGeometry {
     private val dp = density.density
     private val gap = (if (compact) 4 else 8) * dp
@@ -121,9 +123,13 @@ class RingLayout(
     val seatToken = minOf(pitch * 0.82f, seatR * 1.8f)
     // queue line inside the oval: a two-row snake starting under the entry point (row 1 towards the right end, then
     // row 2 back to the left), at most [QUEUE_MAX] shown, then "+N"
-    private val insideToken = (if (compact) 11 else 14) * dp
     private val innerLeft = x0 - radius * 0.45f
     private val innerRight = x1 + radius * 0.45f
+    // smaller tokens when two rows of the default size can't hold [queueMax]
+    private val insideToken = minOf(
+        (if (compact) 11 else 14) * dp,
+        2 * (innerRight - innerLeft) / (1.1f * (queueMax + 3)),
+    ).coerceAtLeast(6 * dp)
     val queueRow1Y = cy - (radius - seatR * 1.4f) / 2
     val queueRow2Y = cy + (radius - seatR * 1.4f) / 2
     val gatePoint = Offset(width / 2, trackBottom)
@@ -131,14 +137,31 @@ class RingLayout(
     /** Kitchen hatch (belt mode), top right above the loop. */
     val kitchen: Rect? = if (belt) Rect(Offset(width - 52 * dp, 2 * dp + padTop), Size(46 * dp, 46 * dp)) else null
 
-    val beltBand = seatR * 2.6f
+    private val loopBand = seatR * 2.6f
+
+    // belt geometry that doesn't depend on the plate pitch: the hatch, the two rows, the U-turn's leftmost position
+    private val beltY1 = (kitchen?.top ?: 0f) + beltRow1
+    private val beltY2 = beltY1 + 2 * beltTurnR
+    private val beltEntry = trackPoint(entryFromGate / seatCount.coerceAtLeast(1) * perimeter)
+    private val beltStartX = (kitchen?.left ?: 0f) + 6 * dp
+    private val beltDrop = (beltEntry.y - beltY2 - beltDropR).coerceAtLeast(0f)
+    private val beltFixed = PI.toFloat() * beltTurnR + PI.toFloat() / 2 * beltDropR + beltDrop
+    private val beltUxMin = beltTurnR + loopBand / 2 + 4 * dp
+    private val beltUxMax = beltEntry.x - beltDropR - beltTurnR
+
+    /** Longest belt the screen holds (U-turn at the far left). */
+    private val beltMaxLength = (beltStartX - beltUxMin) + beltFixed + (beltEntry.x - beltDropR - beltUxMin)
 
     /**
      * Queue plates: in belt mode the belt continues the ring, so its plates are the loop's size and one seat [pitch]
-     * apart, at most [QUEUE_MAX] (as many as the belt holds); otherwise the inside snake's smaller tokens.
+     * apart, [queueMax] of them; when even the longest belt can't hold that many at the ring's pitch, the plates
+     * shrink and close up to fit. Otherwise (inside the oval) the snake's smaller tokens.
      */
-    val queueToken = if (belt) seatToken else insideToken
-    val queuePitch = if (belt) pitch else insideToken * 1.1f
+    val queuePitch = if (belt) minOf(pitch, beltMaxLength / (queueMax + 1.2f)) else insideToken * 1.1f
+    val queueToken = if (belt) seatToken * queuePitch / pitch else insideToken
+
+    /** Width of the queue belt: the loop's band, narrowed (not below 65%) when its plates shrink. */
+    val beltBand = loopBand * maxOf(queuePitch / pitch, 0.65f)
 
     /**
      * Belt centre-line from the kitchen hatch to the loop's entry (belt mode), as a dense polyline: left from the
@@ -147,19 +170,16 @@ class RingLayout(
      * the screen width).
      */
     val beltLine: List<Offset> = if (!belt) emptyList() else buildList {
-        val k = kitchen!!
-        val y1 = k.top + beltRow1
+        val y1 = beltY1
         val turnR = beltTurnR
-        val y2 = y1 + 2 * turnR
+        val y2 = beltY2
         val r2 = beltDropR
-        val entryPoint = trackPoint(entryFromGate / seatCount.coerceAtLeast(1) * perimeter)
-        val ex = entryPoint.x
-        val startX = k.left + 6 * dp
-        val drop = (entryPoint.y - y2 - r2).coerceAtLeast(0f)
-        val needed = queuePitch * (QUEUE_MAX + 1.2f)
-        val fixed = PI.toFloat() * turnR + PI.toFloat() / 2 * r2 + drop
+        val ex = beltEntry.x
+        val startX = beltStartX
+        val drop = beltDrop
+        val needed = queuePitch * (queueMax + 1.2f)
         // length = (startX - ux) + fixed + (ex - r2 - ux)
-        val ux = ((startX + ex - r2 + fixed - needed) / 2).coerceIn(turnR + beltBand / 2 + 4 * dp, ex - r2 - turnR)
+        val ux = ((startX + ex - r2 + beltFixed - needed) / 2).coerceIn(beltUxMin, maxOf(beltUxMin, beltUxMax))
         val steps = 24
         for (i in 0..steps) add(Offset(startX + (ux - startX) * i / steps, y1))
         for (i in 1..16) {
@@ -177,7 +197,7 @@ class RingLayout(
         for (i in 1 until beltLine.size) acc[i] = acc[i - 1] + (beltLine[i] - beltLine[i - 1]).getDistance()
     }
     val beltLength: Float get() = beltLengths.lastOrNull() ?: 0f
-    private val beltPlaces = if (belt) (beltLength / queuePitch - 1f).toInt().coerceIn(1, QUEUE_MAX) else 0
+    private val beltPlaces = if (belt) (beltLength / queuePitch - 1f + 1e-3f).toInt().coerceIn(1, queueMax) else 0
 
     /** Point on the belt [d] pixels upstream of the entry (towards the kitchen). */
     fun beltPoint(d: Float): Offset {
@@ -254,14 +274,15 @@ class RingLayout(
         if (belt) return List(beltPlaces) { queuePoint(it.toFloat(), emptyList()) }
         val out = ArrayList<Offset>()
         var x = entry.x.coerceIn(innerLeft + queuePitch / 2, innerRight - queuePitch / 2)
-        while (x <= innerRight - queuePitch / 2 && out.size < QUEUE_MAX) { out += Offset(x, queueRow1Y); x += queuePitch }
+        while (x <= innerRight - queuePitch / 2 && out.size < queueMax) { out += Offset(x, queueRow1Y); x += queuePitch }
         x = innerRight - queuePitch / 2
-        while (x >= innerLeft + queuePitch * 1.5f && out.size < QUEUE_MAX) { out += Offset(x, queueRow2Y); x -= queuePitch }
+        while (x >= innerLeft + queuePitch * 1.5f && out.size < queueMax) { out += Offset(x, queueRow2Y); x -= queuePitch }
         return out
     }
 
     companion object {
-        const val QUEUE_MAX = 10
+        /** Queue places shown when a level does not set [Level.queuePreview]. */
+        const val QUEUE_MAX = Limits.DEFAULT_QUEUE_PREVIEW
 
         /** Ticks after docking during which [Skin.dockSlot] gets an `arrive` progress below 1. */
         const val ARRIVE_TICKS = 24
@@ -276,12 +297,16 @@ class RingLayout(
             seats: Int,
             style: FieldStyle = FieldStyle.FLAT,
             entryFromGate: Float = seats / 2f,
+            queueMax: Int = QUEUE_MAX,
         ): RingLayout {
-            val normal = RingLayout(width, height, levelWidth, levelHeight, density, seats, style = style, entryFromGate = entryFromGate)
+            val normal = RingLayout(
+                width, height, levelWidth, levelHeight, density, seats, style = style, entryFromGate = entryFromGate, queueMax = queueMax,
+            )
             val target = minOf(width / levelWidth, PlayLayout.TARGET_CELL_DP * density.density)
             if (normal.cell >= target) return normal
             val compact = RingLayout(
                 width, height, levelWidth, levelHeight, density, seats, compact = true, style = style, entryFromGate = entryFromGate,
+                queueMax = queueMax,
             )
             return if (compact.cell > normal.cell) compact else normal
         }
@@ -317,6 +342,50 @@ private class BoardCache(val layer: GraphicsLayer) {
     }
 }
 
+/**
+ * Follows the on-board set to animate what each release changes on mechanic levels (turntables turn, a revealed
+ * ticket flips, gates swing): after a single release it keeps the board from just before it, timed on the game clock
+ * ([RtUiState.nowMs], which stops while paused). Anything else (undo, restart) snaps.
+ */
+internal class ReleaseTracker(private val level: Level, private var board: Set<Int>) {
+    private val hasMechanics = level.mechanics().isNotEmpty()
+    private var before: Set<Int>? = null
+    private var startMs = 0L
+
+    /** Mechanic view of [onBoard] at game time [nowMs], or null when the level has no mechanics. */
+    fun mechanics(onBoard: Set<Int>, nowMs: Long): BoardMechanics? {
+        if (!hasMechanics) return null
+        if (onBoard != board) {
+            before = board.takeIf { b -> b.size == onBoard.size + 1 && b.containsAll(onBoard) }
+            startMs = nowMs
+            board = onBoard
+        }
+        val b = before ?: return BoardMechanics(level, onBoard)
+        val t = ((nowMs - startMs).toFloat() / CHANGE_MS).coerceIn(0f, 1f)
+        if (t >= 1f) before = null
+        return BoardMechanics(level, onBoard, b, t)
+    }
+
+    companion object {
+        /** Length of a release's mechanic animation (turn, flip, gate swing). */
+        const val CHANGE_MS = 420
+    }
+}
+
+/** Accessibility text for on-board container [id]: colour (or "hidden"), size, facing and mechanic state. */
+internal fun containerDescription(skin: Skin, level: Level, id: Int, mech: BoardMechanics?): String {
+    val v = level.containers[id]
+    val colour = if (mech?.isRevealed(id) == false) "hidden" else skin.colorName(v.color)
+    val dir = (mech?.dirOf(id) ?: v.dir).name.lowercase()
+    val extra = buildList {
+        if (v.wide) add("wide")
+        mech?.frozenRemaining(id)?.takeIf { it > 0 }?.let { add("frozen for $it more") }
+        if (mech?.isTieLocked(id) == true) add("tied, waiting")
+        if (level.turntables.isNotEmpty() && level.onTurntable(id)) add("on a turntable")
+    }
+    return "$colour ${skin.containerNoun(v.size.name)} facing $dir" + extra.joinToString("") { ", $it" }
+}
+
 @Composable
 fun RingField(
     ui: RtUiState,
@@ -336,12 +405,15 @@ fun RingField(
     val currentOnTap by rememberUpdatedState(onTap)
     val boardLayer = rememberGraphicsLayer()
     val cache = remember(boardLayer) { BoardCache(boardLayer) }
+    val tracker = remember(level) { ReleaseTracker(level, view.onBoard) }
+    // read in composition (every game frame recomposes with a new ui), so a release is seen at the frame it happens
+    val mech = tracker.mechanics(view.onBoard, ui.nowMs)
     BoxWithConstraints(modifier) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
         val entryFromGate = view.entry - view.gate
-        val lay = remember(w, h, level.width, level.height, density, view.seats.size, skin, entryFromGate) {
-            RingLayout.fit(w, h, level.width, level.height, density, view.seats.size, skin.field, entryFromGate)
+        val lay = remember(w, h, level.width, level.height, density, view.seats.size, skin, entryFromGate, level.queuePreview) {
+            RingLayout.fit(w, h, level.width, level.height, density, view.seats.size, skin.field, entryFromGate, level.queuePreview)
         }
         Canvas(
             Modifier
@@ -354,13 +426,14 @@ fun RingField(
                     }
                 },
         ) {
-            drawRingField(lay, ui, hintPulse(), shakeProgress(), measurer, skin, cache)
+            drawRingField(lay, ui, hintPulse(), shakeProgress(), measurer, skin, cache, mech)
         }
         with(density) {
             Box(
                 Modifier.offset(lay.board.x.toDp(), lay.board.y.toDp()).size(lay.boardW.toDp(), lay.boardH.toDp())
                     .testTag("board"),
             )
+            val described = if (level.mechanics().isEmpty()) null else BoardMechanics(level, view.onBoard)
             for (v in level.containers) {
                 if (v.id !in view.onBoard) continue
                 val tail = v.tail()
@@ -371,10 +444,7 @@ fun RingField(
                         .offset((lay.board.x + lay.cell * c0).toDp(), (lay.board.y + lay.cell * r0).toDp())
                         .size((lay.cell * (abs(v.col - tail.col) + 1)).toDp(), (lay.cell * (abs(v.row - tail.row) + 1)).toDp())
                         .testTag("container-${v.id}")
-                        .semantics {
-                            contentDescription =
-                                "${skin.colorName(v.color)} ${skin.containerNoun(v.size.name)} facing ${v.dir.name.lowercase()}"
-                        },
+                        .semantics { contentDescription = containerDescription(skin, level, v.id, described) },
                 )
             }
         }
@@ -389,21 +459,27 @@ private fun DrawScope.drawRingField(
     measurer: TextMeasurer,
     skin: Skin,
     cache: BoardCache,
+    mech: BoardMechanics?,
 ) = with(skin) {
     val view = ui.view
     val level = view.level
     val t = view.tick + ui.tickFraction // fractional tick: everything in motion is interpolated from it
     fun progress(from: Long, to: Long) = if (to <= from) 1f else ((t - from) / (to - from)).coerceIn(0f, 1f)
 
+    scenery(lay)
     drawCarousel(lay, view, ui.tickFraction, measurer, skin)
 
     // dock: arriving containers are drawn in flight; dispatching ones lift away; walkers are not seated yet
     translate(left = shake(shakeT) * 8 * density) {
         for (s in 0 until Limits.DOCK_SLOTS) {
+            // a wide container's right half is drawn with its left one, as one table across both slots
+            if (view.isWideTail(s)) continue
             val slot = view.slots[s]
+            val span = view.slotSpan(s)
+            val bench = List(span) { level.benchColors.getOrElse(s + it) { -1 } }
             when {
-                slot == null -> dockSlot(lay, s, null, 0, measurer)
-                t < slot.dockedAt -> dockSlot(lay, s, null, 0, measurer)
+                slot == null -> dockSlot(lay, s, null, 0, measurer, span = span, bench = bench)
+                t < slot.dockedAt -> dockSlot(lay, s, null, 0, measurer, span = span, bench = bench)
                 slot.dispatchAt >= 0 && t >= slot.dispatchAt -> {
                     val p = progress(slot.dispatchAt, slot.freeAt)
                     val e = FastOutSlowInEasing.transform(p)
@@ -412,11 +488,15 @@ private fun DrawScope.drawRingField(
                         offset = Offset(e * lay.slotW * 0.35f, -e * lay.slotH * 0.9f),
                         alpha = 1f - FastOutLinearInEasing.transform(p),
                         leave = p,
+                        span = span,
+                        bench = bench,
                     )
                 }
                 else -> dockSlot(
                     lay, s, SlotView(slot.containerId, slot.color, slot.seated, slot.capacity), slot.seated, measurer,
                     arrive = progress(slot.dockedAt, slot.dockedAt + RingLayout.ARRIVE_TICKS),
+                    span = span,
+                    bench = bench,
                 )
             }
         }
@@ -426,34 +506,41 @@ private fun DrawScope.drawRingField(
     val bump = ui.bumps.firstOrNull { ui.nowMs < it.endMs }
     val block = bump?.event?.let { Event.Blocked(it.containerId, it.stopRow, it.stopCol, it.blockerId) }
     val blockT = bump?.progress(ui.nowMs) ?: 0f
-    val arriving = view.slots.filterNotNull().filter { t < it.dockedAt }
+    // a wide container holds two slots with the same value: one flight, to its left slot
+    val arriving = view.slots.filterNotNull().filter { t < it.dockedAt }.distinctBy { it.containerId }
     if (cacheBoard) {
-        val live = setOfNotNull(block?.containerId, ui.hintContainerId).filterTo(HashSet()) { it in view.onBoard }
+        val live = (setOfNotNull(block?.containerId, ui.hintContainerId) + (mech?.moving(view.onBoard) ?: emptySet()))
+            .filterTo(HashSet()) { it in view.onBoard }
         if (cache.stale(lay, skin, level, view.onBoard, live)) {
             // explicit Density: recording with the enclosing scope as its own density recurses in getDensity()
             cache.layer.record(Density(density, fontScale), layoutDirection, size.toIntSize()) {
-                drawBoardArea(lay, level, view.onBoard, live, null, 0f, null, 0f, skin)
+                drawBoardArea(lay, level, view.onBoard, live, null, 0f, null, 0f, skin, mech?.let { BoardMechanics(level, view.onBoard) })
             }
         }
         drawLayer(cache.layer)
         if (live.isNotEmpty()) clipBoard(lay) {
-            for (id in live) drawBoardContainer(lay, level, id, block, blockT, ui.hintContainerId, pulse, skin)
+            for (id in live) drawBoardContainer(lay, level, id, block, blockT, ui.hintContainerId, pulse, skin, mech)
         }
     } else {
-        drawBoardArea(lay, level, view.onBoard, emptySet(), block, blockT, ui.hintContainerId, pulse, skin)
+        drawBoardArea(lay, level, view.onBoard, emptySet(), block, blockT, ui.hintContainerId, pulse, skin, mech)
     }
+    // ties, frozen counters, gates: drawn every frame over the board
+    if (mech != null) drawMechanicOverlays(lay, level, view.onBoard, mech, mechanics, measurer, block, blockT, skin::ticketColor)
 
     // elements walking from the gate into their container
     for (w in view.walkers) {
         val p = FastOutSlowInEasing.transform(progress(w.startTick, w.arriveTick))
         val start = lay.seatPoint(w.fromPosition, view.gate)
-        val (end, endSize) = boardingTarget(lay, w.slot)
+        val (end, endSize) = boardingTarget(lay, w.slot, view.slotSpan(w.slot))
         val pos = Offset(start.x + (end.x - start.x) * p, start.y + (end.y - start.y) * p - sin(p * PI).toFloat() * lay.seatR * 2.2f)
         element(w.color, pos, lay.seatToken + (endSize - lay.seatToken) * p)
     }
     // containers driving from the board to their slot
     for (a in arriving) {
-        drawReleaseFlight(lay, level, a.containerId, view.slots.indexOf(a), progress(a.releasedAt, a.dockedAt), skin)
+        val slot = view.slots.indexOf(a)
+        // it left facing the way it pointed just before its release (turntables turn after every release)
+        val dir = mech?.let { BoardMechanics(level, view.onBoard + a.containerId).dirOf(a.containerId) } ?: level.containers[a.containerId].dir
+        drawReleaseFlight(lay, level, a.containerId, slot, progress(a.releasedAt, a.dockedAt), skin, dir, view.slotSpan(slot))
     }
 }
 
@@ -487,7 +574,9 @@ private fun DrawScope.drawCarousel(lay: RingLayout, view: RtView, fraction: Floa
             // inside the oval: the front plate glides straight onto the arriving seat
             else -> places[0] + (lay.seatPoint(entryPos - 1 + step, view.gate) - places[0]) * step
         }
-        element(queue[view.queueIndex + k], c, lay.queueToken)
+        // the front plate grows to the loop's plate size as it steps on (belt plates shrink for long previews)
+        val size = if (k == 0 && stepping) lay.queueToken + (lay.seatToken - lay.queueToken) * slide else lay.queueToken
+        element(queue[view.queueIndex + k], c, size)
     }
     val more = view.queueRemaining - shown
     val kitchen = lay.kitchen

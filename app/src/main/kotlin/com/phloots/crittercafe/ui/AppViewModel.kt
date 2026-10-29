@@ -4,14 +4,19 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.phloots.crittercafe.BuildConfig
+import com.phloots.crittercafe.ui.skin.critter.CafeSkin
+import com.phloots.crittercafe.ui.skin.critter.CafeThemes
 import com.phloots.crittercafe.data.AndroidAssetSource
 import com.phloots.crittercafe.data.GameModeStore
+import com.phloots.crittercafe.data.LevelMeta
 import com.phloots.crittercafe.data.LevelRepository
 import com.phloots.crittercafe.data.PackCatalog
 import com.phloots.crittercafe.data.PackInfo
 import com.phloots.crittercafe.data.PackSelectionStore
 import com.phloots.crittercafe.data.Progress
 import com.phloots.crittercafe.data.ProgressStore
+import com.phloots.crittercafe.data.SeenMechanics
+import com.phloots.crittercafe.data.SeenMechanicsStore
 import com.phloots.crittercafe.data.SkinStore
 import com.phloots.crittercafe.data.progressDataStore
 import com.phloots.crittercafe.core.io.PackedLevel
@@ -25,8 +30,14 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** A pack with its levels loaded (empty if the file could not be decoded). */
-data class LoadedPack(val info: PackInfo, val levels: List<PackedLevel>)
+/**
+ * A pack with its levels loaded (empty if the file could not be decoded) and their [LevelMeta] (empty, or one per
+ * level).
+ */
+data class LoadedPack(val info: PackInfo, val levels: List<PackedLevel>, val meta: List<LevelMeta> = emptyList()) {
+    /** Level [number]'s (1-based) meta; empty when the pack has none. */
+    fun meta(number: Int): LevelMeta = meta.getOrNull(number - 1) ?: LevelMeta()
+}
 
 /**
  * App-wide data: the level packs, the selected pack and its progress. Release builds only know the campaign;
@@ -54,14 +65,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         .flatMapLatest { p ->
             flow {
                 emit(null)
-                emit(LoadedPack(p, runCatching { repository.levels(p.file) }.getOrElse { emptyList() }))
+                val levels = runCatching { repository.levels(p.file) }.getOrElse { emptyList() }
+                val meta = runCatching { repository.meta(p.file) }.getOrElse { emptyList() }
+                emit(LoadedPack(p, levels, meta.takeIf { it.size == levels.size }.orEmpty()))
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    /** The selected pack's progress; null while loading. */
+    /** The selected pack's progress; null while loading. The prototype build unlocks every level. */
     val progress: StateFlow<Progress?> = pack.filterNotNull()
         .flatMapLatest { p -> progressStore(p).progress }
+        .map { if (BuildConfig.UNLOCK_ALL) it.copy(highestUnlocked = Int.MAX_VALUE) else it }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val mode = GameModeStore(dataStore)
@@ -84,6 +98,40 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setCritterCafe(on: Boolean) {
         viewModelScope.launch { skinStore.setCritterCafe(on) }
+    }
+
+    /** The Critter Café themes the app has art for: the classic café first, then the world themes. */
+    private val cafeSkins = CafeThemes.available(application)
+
+    /**
+     * Critter Café theme (a debug switch for now; release builds keep the classic café). Its art is loaded here, so
+     * the screen colour derived from the backdrop is known before the first frame.
+     */
+    val cafeSkin: StateFlow<CafeSkin> = skinStore.cafeTheme
+        .map { id -> (cafeSkins.firstOrNull { BuildConfig.DEBUG && it.id == id } ?: cafeSkins.first()).also { it.prepare(application) } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, cafeSkins.first())
+
+    /**
+     * The skin a level with [meta] is drawn in: its pack theme (prepared here) when it names a known one, else the
+     * selected [cafeSkin].
+     */
+    fun skinFor(meta: LevelMeta): CafeSkin =
+        meta.theme?.let { CafeThemes.skin(it) }?.also { it.prepare(getApplication()) } ?: cafeSkin.value
+
+    /** Switches to the next Critter Café theme. */
+    fun nextCafeTheme() {
+        val next = cafeSkins[(cafeSkins.indexOf(cafeSkin.value) + 1) % cafeSkins.size]
+        viewModelScope.launch { skinStore.setCafeTheme(next.id) }
+    }
+
+    private val seenStore = SeenMechanicsStore(dataStore)
+
+    /** Mechanic intros already shown (the game screen's first-time cards). */
+    val seenMechanics: SeenMechanics = object : SeenMechanics {
+        override val seen = seenStore.seen
+        override fun markSeen(id: String) {
+            viewModelScope.launch { seenStore.markSeen(id) }
+        }
     }
 
     /** Everything the first home frame needs has been read: skin, mode, the selected pack and its progress. */

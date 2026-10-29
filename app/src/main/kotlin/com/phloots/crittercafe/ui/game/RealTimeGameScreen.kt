@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -39,12 +42,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.phloots.crittercafe.data.SeenMechanics
 import com.phloots.crittercafe.game.rt.RtUiState
 import com.phloots.crittercafe.ui.GameButton
 import com.phloots.crittercafe.ui.theme.Palette
 import com.phloots.crittercafe.ui.skin.LocalSkin
-import com.phloots.crittercafe.ui.skin.critter.CritterCafeSkin
+import com.phloots.crittercafe.ui.skin.critter.CafeSkin
 import com.phloots.crittercafe.ui.skin.critter.CritterPalette
+import com.phloots.crittercafe.ui.skin.critter.CritterMechanicIntro
 import com.phloots.crittercafe.ui.skin.critter.CritterPauseMenu
 import com.phloots.crittercafe.ui.skin.critter.CritterResult
 import com.phloots.crittercafe.ui.skin.critter.CritterSettings
@@ -57,7 +62,8 @@ import kotlinx.coroutines.isActive
 
 /**
  * Real-time game screen: the carousel field driven by a frame loop ([onFrame] gets each frame's time in ms). The
- * game pauses with the pause button, while the app is not resumed ([onHostPause]) and once the result shows.
+ * game pauses with the pause button, while the app is not resumed or a first-time intro card for one of the level's
+ * [mechanics] is up ([onHostPause]; cards already in [seenMechanics] are skipped) and once the result shows.
  */
 @Composable
 fun RealTimeGameScreen(
@@ -72,14 +78,21 @@ fun RealTimeGameScreen(
     onNext: () -> Unit,
     onLevels: () -> Unit,
     onHome: () -> Unit,
+    mechanics: Set<String> = emptySet(),
+    seenMechanics: SeenMechanics? = null,
 ) {
     val haptic = LocalHapticFeedback.current
     val frame by rememberUpdatedState(onFrame)
     LaunchedEffect(Unit) {
         while (isActive) withFrameMillis { frame(it) }
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { onHostPause(true) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { onHostPause(false) }
+    val intros = rememberMechanicIntros(ui.levelNumber, mechanics, seenMechanics)
+    var inBackground by remember { mutableStateOf(false) }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { inBackground = true; onHostPause(true) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { inBackground = false; onHostPause(intros.blocking) }
+    val introBlocking = intros.blocking
+    LaunchedEffect(introBlocking) { onHostPause(inBackground || introBlocking) }
+    val dismissIntro = { intros.dismiss()?.let { seenMechanics?.markSeen(it) } }
 
     val shakeAnim = remember { Animatable(1f) }
     LaunchedEffect(ui.dockFullSignal) {
@@ -100,8 +113,11 @@ fun RealTimeGameScreen(
     } else null
 
     val skin = LocalSkin.current
-    if (skin === CritterCafeSkin) {
-        CritterGameScreen(ui, { pulse?.value ?: 0f }, { shakeAnim.value }, onTogglePause, onTap, onUndo, onRestart, onHint, onNext, onLevels, onHome)
+    if (skin is CafeSkin) {
+        Box(Modifier.fillMaxSize()) {
+            CritterGameScreen(ui, { pulse?.value ?: 0f }, { shakeAnim.value }, onTogglePause, onTap, onUndo, onRestart, onHint, onNext, onLevels, onHome)
+            intros.current?.let { CritterMechanicIntro(it, intros.step, intros.total) { dismissIntro() } }
+        }
         return
     }
     Box(Modifier.fillMaxSize().background(skin.background)) {
@@ -167,6 +183,7 @@ fun RealTimeGameScreen(
         if (ui.showResult) {
             ResultOverlay(ui.status, ui.earnedStars, ui.hasNext, ui.canUndo, onUndo, onRestart, onNext, onLevels, onHome)
         }
+        intros.current?.let { CritterMechanicIntro(it, intros.step, intros.total) { dismissIntro() } }
     }
 }
 
@@ -211,7 +228,14 @@ private fun CritterGameScreen(
         if (settingsPaused && ui.paused) onTogglePause()
         settingsPaused = false
     }
-    Box(Modifier.fillMaxSize().background(CritterPalette.background)) {
+    val skin = LocalSkin.current
+    val context = LocalContext.current
+    remember(skin) { skin.prepare(context) }
+    Box(Modifier.fillMaxSize().background(skin.background)) {
+        (skin as? CafeSkin)?.kit?.backdrop?.let { backdrop ->
+            // the theme's scenery fills the screen behind everything; its middle is plain, the field covers it
+            Image(backdrop, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
+        }
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
             CritterTopBar(
                 ui.levelNumber, ui.isBoss, ui.paused,

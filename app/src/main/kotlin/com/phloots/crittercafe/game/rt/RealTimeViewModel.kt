@@ -3,6 +3,10 @@ package com.phloots.crittercafe.game.rt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phloots.crittercafe.data.ProgressSink
+import com.phloots.crittercafe.game.Attempt
+import com.phloots.crittercafe.game.AttemptEnd
+import com.phloots.crittercafe.game.HintOutcome
+import com.phloots.crittercafe.game.LevelAnalytics
 import com.phloots.crittercafe.game.NO_WINNING_MOVE
 import com.phloots.crittercafe.game.starsFor
 import com.phloots.crittercafe.core.model.GameState
@@ -35,8 +39,20 @@ data class RtBump(val event: RtEvent.Blocked, val startMs: Long) {
     val endMs: Long get() = startMs + DURATION_MS
     fun progress(nowMs: Long): Float = ((nowMs - startMs).toFloat() / DURATION_MS).coerceIn(0f, 1f)
 
+    /** True for a refusal wiggle in place (frozen or tied ticket), not a drive towards a blocker. */
+    val isNudge: Boolean get() = event.blockerId == NUDGE
+
     companion object {
         const val DURATION_MS = 260
+
+        /** [RtEvent.Blocked.blockerId] of a [nudge]: the ticket can't move at all (frozen, or waiting on a tie). */
+        const val NUDGE = -2
+
+        /** A refusal wiggle of container [id] in place. */
+        fun nudge(level: Level, id: Int, startMs: Long): RtBump {
+            val v = level.containers[id]
+            return RtBump(RtEvent.Blocked(id, v.row, v.col, NUDGE), startMs)
+        }
     }
 }
 
@@ -80,6 +96,7 @@ class RealTimeViewModel<S : Any>(
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val findHint: (GameState, () -> Boolean) -> Move? = { s, cancelled -> Solver.hint(s, cancelled) },
     private val recordScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+    private val analytics: LevelAnalytics = LevelAnalytics.None,
 ) : ViewModel() {
 
     private data class Snap<S : Any>(val state: S, val accumMs: Double)
@@ -98,6 +115,9 @@ class RealTimeViewModel<S : Any>(
     private var generation = 0L
     private var hintJob: Job? = null
     private var winRecorded = false
+    /** The attempt in progress for [analytics]; null between a loss and an undo out of it, or before a start. */
+    private var attempt: Attempt? = null
+    private var attemptStartMs = 0.0
 
     fun start(level: Level, levelNumber: Int, hasNext: Boolean, fresh: Boolean = true, sink: ProgressSink = progress) {
         val current = _ui.value
@@ -105,11 +125,13 @@ class RealTimeViewModel<S : Any>(
             return
         }
         commitPendingWin()
+        endAttempt(AttemptEnd.QUIT)
         this.level = level
         this.sink = sink
         val s = rules.initial(level)
         reset(s)
         _ui.value = RtUiState(levelNumber, levelNumber % 10 == 0, hasNext, rules.view(s), nowMs = 0, tickFraction = 0f)
+        beginAttempt(resumed = false)
     }
 
     // ------------------------------------------------------------------ clock
@@ -182,7 +204,17 @@ class RealTimeViewModel<S : Any>(
         val step = rules.tap(s, containerId)
         val ignored = step.events.singleOrNull() as? RtEvent.Ignored
         if (ignored != null || step.events.isEmpty()) {
-            if (ignored?.reason == IgnoreReason.DOCK_FULL) _ui.value = ui.copy(dockFullSignal = ui.dockFullSignal + 1)
+            when (ignored?.reason) {
+                // no slot this ticket may take: the dock shakes, as when it is full
+                IgnoreReason.DOCK_FULL, IgnoreReason.NO_FITTING_SLOT ->
+                    _ui.value = ui.copy(dockFullSignal = ui.dockFullSignal + 1)
+                // the ticket itself refuses: it wiggles in place, with the blocked-tap haptic
+                IgnoreReason.FROZEN, IgnoreReason.TIED -> _ui.value = ui.copy(
+                    bumps = ui.bumps + RtBump.nudge(ui.view.level, containerId, ui.nowMs),
+                    bumpSignal = ui.bumpSignal + 1,
+                )
+                else -> {}
+            }
             return
         }
         val blocked = step.events.all { it is RtEvent.Blocked }
@@ -192,6 +224,7 @@ class RealTimeViewModel<S : Any>(
             return
         }
         undoStack.addLast(Snap(s, accumMs))
+        attempt = attempt?.let { it.copy(taps = it.taps + 1) }
         state = step.state
         generation++
         cancelHint()
@@ -210,6 +243,8 @@ class RealTimeViewModel<S : Any>(
         val ui = _ui.value ?: return
         if (winRecorded) return
         val snap = undoStack.removeLastOrNull() ?: return
+        if (attempt == null) beginAttempt(resumed = true)
+        attempt = attempt?.let { it.copy(undos = it.undos + 1) }?.also { analytics.undo(timed(it)) }
         state = snap.state
         accumMs = snap.accumMs
         generation++
@@ -231,9 +266,11 @@ class RealTimeViewModel<S : Any>(
         val ui = _ui.value ?: return
         val level = level ?: return
         commitPendingWin()
+        endAttempt(AttemptEnd.RESTART)
         val s = rules.initial(level)
         reset(s)
         _ui.value = RtUiState(ui.levelNumber, ui.isBoss, ui.hasNext, rules.view(s), nowMs = ui.nowMs, tickFraction = 0f)
+        beginAttempt(resumed = false)
     }
 
     fun hint() {
@@ -243,6 +280,7 @@ class RealTimeViewModel<S : Any>(
         val settled = rules.settled(s)
         if (settled == null) {
             _ui.value = ui.copy(hintMessage = HINT_WAIT, hintContainerId = null)
+            attempt?.let { analytics.hint(timed(it), HintOutcome.WAIT) }
             return
         }
         val gen = generation
@@ -257,8 +295,16 @@ class RealTimeViewModel<S : Any>(
             val now = _ui.value ?: return@launch
             _ui.value = when {
                 gen != generation -> now.copy(hintLoading = false)
-                move == null -> now.copy(hintLoading = false, hintMessage = NO_WINNING_MOVE)
-                else -> now.copy(hintLoading = false, hintContainerId = move.containerId, usedHint = true)
+                move == null -> {
+                    attempt = attempt?.let { it.copy(hintsNoMove = it.hintsNoMove + 1) }
+                        ?.also { analytics.hint(timed(it), HintOutcome.NO_MOVE) }
+                    now.copy(hintLoading = false, hintMessage = NO_WINNING_MOVE)
+                }
+                else -> {
+                    attempt = attempt?.let { it.copy(hints = it.hints + 1) }
+                        ?.also { analytics.hint(timed(it), HintOutcome.SHOWN) }
+                    now.copy(hintLoading = false, hintContainerId = move.containerId, usedHint = true)
+                }
             }
         }
     }
@@ -276,6 +322,7 @@ class RealTimeViewModel<S : Any>(
 
     override fun onCleared() {
         commitPendingWin()
+        endAttempt(AttemptEnd.QUIT)
         super.onCleared()
     }
 
@@ -301,8 +348,31 @@ class RealTimeViewModel<S : Any>(
         var ui = next
         if (ui.status == Status.WON && ui.earnedStars == 0) ui = ui.copy(earnedStars = starsFor(ui.usedUndo, ui.usedHint))
         _ui.value = ui
+        when (ui.status) {
+            Status.PLAYING -> {}
+            Status.WON -> endAttempt(AttemptEnd.WON, ui.earnedStars)
+            Status.DEADLOCK -> endAttempt(AttemptEnd.DEADLOCK)
+            Status.STUCK -> endAttempt(AttemptEnd.STUCK)
+        }
         if (ui.status == Status.WON) commitPendingWin()
     }
+
+    private fun beginAttempt(resumed: Boolean) {
+        val level = level ?: return
+        val ui = _ui.value ?: return
+        attemptStartMs = clockMs
+        attempt = Attempt(ui.levelNumber, LevelAnalytics.hash(level), resumed).also { analytics.started(it) }
+    }
+
+    /** Reports the open attempt as ended (once); a later undo out of a loss opens a resumed attempt. */
+    private fun endAttempt(end: AttemptEnd, stars: Int = 0) {
+        val a = attempt ?: return
+        attempt = null
+        analytics.ended(timed(a), end, stars)
+    }
+
+    /** [a] with its game time so far. */
+    private fun timed(a: Attempt) = a.copy(gameMs = (clockMs - attemptStartMs).toLong())
 
     private companion object {
         /** Longest frame gap applied at once (a hiccup never fast-forwards the carousel). */

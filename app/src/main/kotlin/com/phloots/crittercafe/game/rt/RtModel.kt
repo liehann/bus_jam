@@ -1,8 +1,11 @@
 package com.phloots.crittercafe.game.rt
 
+import com.phloots.crittercafe.core.model.Bits128
+import com.phloots.crittercafe.core.model.Dir
 import com.phloots.crittercafe.core.model.GameState
 import com.phloots.crittercafe.core.model.IgnoreReason
 import com.phloots.crittercafe.core.model.Level
+import com.phloots.crittercafe.core.model.MechanicsView
 import com.phloots.crittercafe.core.model.Status
 
 /**
@@ -55,6 +58,37 @@ data class RtView(
     val status: Status,
 ) {
     val queueRemaining: Int get() = level.queue.size - queueIndex
+
+    // ---- v4 mechanic views: pure functions of (level, onBoard), delegated to core's MechanicsView ----
+
+    private val board: Bits128 by lazy { onBoard.fold(Bits128.EMPTY) { b, id -> b.with(id) } }
+
+    /** Releases so far (containers no longer on the board); every mechanic advances on these. */
+    val releases: Int get() = level.containers.size - onBoard.size
+
+    /** Releases still needed before frozen container [id] thaws (0 = not frozen or thawed). */
+    fun frozenRemaining(id: Int): Int = MechanicsView.frozenRemaining(level, board, id)
+
+    /** True iff [id] waits for its tie partner, which is still on the board. */
+    fun isTieLocked(id: Int): Boolean = MechanicsView.isTieLocked(level, board, id)
+
+    /** Current facing of [id] (a container on a turntable has turned once per release). */
+    fun dirOf(id: Int): Dir = MechanicsView.dirOf(level, board, id)
+
+    /** True iff `level.gates[gate]` is open now. */
+    fun isGateOpen(gate: Int): Boolean = MechanicsView.isGateOpen(level, board, gate)
+
+    /** True iff the player can see [id]'s colour (false only for a hidden container whose cover is still there). */
+    fun isRevealed(id: Int): Boolean = MechanicsView.isRevealed(level, board, id)
+
+    /** True iff dock [slot] holds the right half of a wide container whose left half is at `slot - 1`. */
+    fun isWideTail(slot: Int): Boolean {
+        val s = slots[slot] ?: return false
+        return slot > 0 && slots[slot - 1]?.containerId == s.containerId
+    }
+
+    /** Dock slots the container docked at [slot] spans: 2 for the left half of a wide one, else 1. */
+    fun slotSpan(slot: Int): Int = if (slot + 1 < slots.size && isWideTail(slot + 1)) 2 else 1
 }
 
 /** The few event kinds the UI reacts to (everything else is visible in [RtView]). */

@@ -3,6 +3,7 @@ package com.phloots.crittercafe
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.background
 import com.phloots.crittercafe.ui.skin.critter.drawAnimalBadge
@@ -345,6 +346,12 @@ class ScreenshotTest {
     @Config(qualifiers = "w427dp-h952dp-xxhdpi")
     fun pixel9ProCritterCafe() = showRealTime(com.phloots.crittercafe.ui.skin.critter.CritterCafeSkin, midLevelRealTime(), "p9p_critter")
 
+    /** Luau night: a raster theme kit (backdrop, bent belt strips, loop interior, kitchen, counter, benches, mat, frame). */
+    @Test
+    @Config(qualifiers = "w427dp-h952dp-xxhdpi")
+    fun pixel9ProLuauNight() =
+        showRealTime(com.phloots.crittercafe.ui.skin.critter.CafeThemes.skin("luau_night")!!, midLevelRealTime(), "p9p_luau")
+
     /** Critter Café on the smallest ring (20 seats): bigger plates, a wider belt, the entry on the left curve. */
     @Test
     @Config(qualifiers = "w427dp-h952dp-xxhdpi")
@@ -454,5 +461,33 @@ class ScreenshotTest {
             )
         }
         save("p9p_critter_levels")
+    }
+
+    /** One intro card, and every mechanic's placeholder diagram on a sheet. */
+    @Test
+    @Config(qualifiers = "w427dp-h952dp-xxhdpi")
+    fun pixel9ProMechanicIntros() {
+        var card by androidx.compose.runtime.mutableStateOf(true)
+        rule.setContent {
+            if (card) {
+                Box(Modifier.fillMaxSize().background(com.phloots.crittercafe.ui.skin.critter.CritterPalette.background)) {
+                    com.phloots.crittercafe.ui.skin.critter.CritterMechanicIntro("frozen", 1, 2, onGotIt = {})
+                }
+            } else {
+                androidx.compose.foundation.layout.Column(
+                    Modifier.fillMaxSize().background(com.phloots.crittercafe.ui.skin.critter.CritterPalette.card).padding(16.dp),
+                ) {
+                    for (m in com.phloots.crittercafe.game.Mechanics.ALL) {
+                        com.phloots.crittercafe.ui.skin.critter.MechanicDiagram(
+                            m, Modifier.padding(4.dp).size(200.dp, 110.dp),
+                        )
+                    }
+                }
+            }
+        }
+        save("p9p_mechanic_intro")
+        card = false
+        rule.waitForIdle()
+        save("p9p_mechanic_diagrams")
     }
 }

@@ -1,3 +1,21 @@
 <resources>
     <string name="app_name">Critter Café</string>
+
+    <!-- first-time mechanic intro cards -->
+    <string name="intro_got_it">Got it</string>
+    <string name="intro_step">%1$d of %2$d</string>
+    <string name="intro_frozen_title">Frozen ticket</string>
+    <string name="intro_frozen_body">The number shows how many other tickets must leave before this one can.</string>
+    <string name="intro_tied_title">Tied tickets</string>
+    <string name="intro_tied_body">The ribbon means this ticket can\'t leave until its partner has.</string>
+    <string name="intro_hidden_title">Mystery ticket</string>
+    <string name="intro_hidden_body">Its colour shows once the ticket in front of it has left.</string>
+    <string name="intro_wide_title">Big party</string>
+    <string name="intro_wide_body">This ticket needs two benches next to each other.</string>
+    <string name="intro_colour_bench_title">Reserved bench</string>
+    <string name="intro_colour_bench_body">This bench only seats one colour.</string>
+    <string name="intro_turntable_title">Turntable</string>
+    <string name="intro_turntable_body">Tickets on it turn a quarter each time you send a ticket out.</string>
+    <string name="intro_gate_title">Gate</string>
+    <string name="intro_gate_body">It opens and closes each time you send a ticket out.</string>
 </resources>

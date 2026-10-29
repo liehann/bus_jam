@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import com.phloots.crittercafe.ui.game.drawQuestionMark
+import com.phloots.crittercafe.ui.game.drawSpinArrows
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -48,7 +50,9 @@ private fun rotatePoint(p: Offset, degrees: Float): Offset {
 /**
  * A reservation card centred at [center]: [width] across, [length] along, front pointing [degrees] clockwise from
  * up. Pastel body in [body], brown outline, white chevron at the front, a perforated tear-off stub at the back and
- * one white circle with the [species] face, drawn upright whatever the rotation.
+ * one white circle with the [species] face, drawn upright whatever the rotation. A [mystery] card (hidden colour)
+ * shows a "?" in that circle instead of the face. A [spin] card (on a turntable) has a smaller circle ringed
+ * by two clockwise arrows.
  */
 fun DrawScope.drawReservationCard(
     center: Offset,
@@ -59,6 +63,8 @@ fun DrawScope.drawReservationCard(
     species: Species,
     alpha: Float = 1f,
     highlight: Float = 0f,
+    mystery: Boolean = false,
+    spin: Boolean = false,
 ) {
     val ink = CritterPalette.ink
     val w = width
@@ -76,7 +82,7 @@ fun DrawScope.drawReservationCard(
     val chevronY = top + if (single) w * 0.13f else w * 0.33f
     val stub = if (single) w * 0.12f else w * 0.3f
     val perfY = top + l - stub
-    val iconR = if (single) w * 0.215f else w * 0.3f
+    val iconR = (if (single) w * 0.215f else w * 0.3f) * (if (spin) 0.7f else 1f)
     val iconLocal = if (single) Offset(0f, (top + w * 0.6f) - center.y) else Offset(0f, (chevronY + w * 0.2f + perfY) / 2 - center.y)
 
     rotate(degrees, center) {
@@ -119,7 +125,13 @@ fun DrawScope.drawReservationCard(
         drawPath(chev, dark, alpha = alpha * 0.9f, style = Stroke(width = sw + outline * 1.6f, cap = StrokeCap.Round, join = StrokeJoin.Round))
         drawPath(chev, Color.White, alpha = alpha, style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
-    drawAnimalBadge(center + rotatePoint(iconLocal, degrees), iconR, species, alpha)
+    val badge = center + rotatePoint(iconLocal, degrees)
+    if (mystery) {
+        drawCircle(Color.White, iconR, badge, alpha = alpha)
+        drawCircle(ink, iconR, badge, alpha = alpha * 0.45f, style = Stroke(width = maxOf(iconR * 0.07f, 0.7f * density)))
+        drawQuestionMark(badge, iconR * 1.45f, ink, alpha)
+    } else drawAnimalBadge(badge, iconR, species, alpha)
+    if (spin) drawSpinArrows(badge, iconR * 1.5f, maxOf(w * 0.055f, 1f * density), ink, alpha)
 }
 
 /** White circle with a line-drawn [species] face, radius [r]. */
@@ -259,4 +271,26 @@ fun DrawScope.drawPlateStack(rim: Color, base: Offset, w: Float, count: Int, ste
             drawOval(lerp(rim, Color.White, 0.18f), Offset(base.x - w * 0.34f, cy - h * 0.34f), Size(w * 0.68f, h * 0.68f), alpha = alpha)
         }
     }
+}
+
+/** A cloth runner in [color] from [left] to [right], [h] tall from [top], with a scalloped hem: a colour-only table. */
+fun DrawScope.drawTableRunner(left: Float, right: Float, top: Float, h: Float, color: Color) {
+    val scallop = Path().apply {
+        moveTo(left, top)
+        lineTo(right, top)
+        lineTo(right, top + h)
+        val bumps = 7
+        val bw = (right - left) / bumps
+        for (i in 0 until bumps) {
+            val x = right - i * bw
+            quadraticTo(x - bw / 2, top + h + bw * 0.55f, x - bw, top + h)
+        }
+        close()
+    }
+    drawPath(scallop, color)
+    drawPath(scallop, CritterPalette.ink, style = Stroke(width = maxOf(h * 0.08f, 1f * density)))
+    drawLine(
+        Color.White, Offset(left + h * 0.2f, top + h * 0.3f), Offset(right - h * 0.2f, top + h * 0.3f),
+        strokeWidth = maxOf(h * 0.07f, 1f * density), alpha = 0.6f,
+    )
 }

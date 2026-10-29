@@ -37,7 +37,20 @@ object FlatSkin : Skin {
         alpha: Float,
         highlight: Float,
         iconSize: Float,
-    ) = drawContainer(center, width, length, degrees, color, alpha, null, highlight, iconSize)
+        spin: Boolean,
+    ) = drawContainer(center, width, length, degrees, color, alpha, null, highlight, iconSize, spin = spin)
+
+    override fun DrawScope.hiddenContainer(
+        center: Offset,
+        width: Float,
+        length: Float,
+        degrees: Float,
+        id: Int,
+        alpha: Float,
+        highlight: Float,
+        iconSize: Float,
+        spin: Boolean,
+    ) = drawContainer(center, width, length, degrees, 0, alpha, null, highlight, iconSize, mystery = mechanics.mystery, spin = spin)
 
     override fun DrawScope.dockSlot(
         geo: FieldGeometry,
@@ -49,7 +62,9 @@ object FlatSkin : Skin {
         alpha: Float,
         arrive: Float,
         leave: Float,
-    ) = drawDockSlot(geo, slot, view, filled, measurer, offset, alpha)
+        span: Int,
+        bench: List<Int>,
+    ) = drawDockSlot(geo, slot, view, filled, measurer, offset, alpha, span, bench)
 
     override fun DrawScope.track(lay: RingLayout, view: RtView, rotation: Float, entry: Offset, queueFront: Offset) =
         drawFlatTrack(lay, view, entry, queueFront)

@@ -67,6 +67,9 @@ object CritterPalette {
     val card = Color(0xFFFBF1E1)
     val scrim = Color(0x8C3A2618)
 
+    /** A hidden (not yet revealed) reservation card. */
+    val mystery = Color(0xFFD5CBBE)
+
     /** Number pill. */
     val pill = Color(0xFFFFF6E8)
 

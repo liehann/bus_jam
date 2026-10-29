@@ -53,10 +53,18 @@ private val P = CritterPalette
 /**
  * The Critter Café level list: a back button, the title and the star total on top; then the levels five to a row
  * (so each cycle of ten is two rows, its last level the boss), each a chunky tile in a plate colour with its stars.
- * Locked levels are greyed with a lock; the next level to play gently pulses.
+ * Locked levels are greyed with a lock; the next level to play gently pulses. With [groups] (one heading per level,
+ * from the pack's entries, e.g. the prototype's "Bamboo Spa · Frozen tickets") the levels are listed under those
+ * headings instead, a group per run of equal headings, without bosses.
  */
 @Composable
-fun CritterLevelSelect(count: Int, progress: Progress, onPlay: (Int) -> Unit, onBack: () -> Unit) {
+fun CritterLevelSelect(
+    count: Int,
+    progress: Progress,
+    onPlay: (Int) -> Unit,
+    onBack: () -> Unit,
+    groups: List<String?> = emptyList(),
+) {
     val next = progress.firstUnbeaten(count)
     val grid = rememberLazyGridState(initialFirstVisibleItemIndex = (next - 1 - 10).coerceAtLeast(0))
     val pulse = rememberInfiniteTransition(label = "next")
@@ -80,16 +88,32 @@ fun CritterLevelSelect(count: Int, progress: Progress, onPlay: (Int) -> Unit, on
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize().testTag("level-grid"),
         ) {
-            for (cycle in 0 until (count + 9) / 10) {
-                item(key = "h$cycle", span = { GridItemSpan(5) }) {
+            val grouped = groups.size == count && groups.all { it != null }
+            // (heading, levels) runs: the pack's groups, or cycles of ten
+            val sections = if (grouped) {
+                val out = ArrayList<Pair<String, IntRange>>()
+                var start = 1
+                for (n in 2..count + 1) {
+                    if (n > count || groups[n - 1] != groups[start - 1]) {
+                        out += groups[start - 1]!! to start..n - 1
+                        start = n
+                    }
+                }
+                out
+            } else {
+                (0 until (count + 9) / 10).map { c -> "Levels ${c * 10 + 1}-${minOf(count, c * 10 + 10)}" to c * 10 + 1..minOf(count, c * 10 + 10) }
+            }
+            for ((i, section) in sections.withIndex()) {
+                val (heading, range) = section
+                item(key = "h$i", span = { GridItemSpan(5) }) {
                     Text(
-                        "Levels ${cycle * 10 + 1}-${minOf(count, cycle * 10 + 10)}", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
-                        color = P.ink.copy(alpha = 0.55f), modifier = Modifier.padding(top = if (cycle == 0) 0.dp else 6.dp, start = 2.dp),
+                        heading, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
+                        color = P.ink.copy(alpha = 0.55f), modifier = Modifier.padding(top = if (i == 0) 0.dp else 6.dp, start = 2.dp),
                     )
                 }
-                for (n in cycle * 10 + 1..minOf(count, cycle * 10 + 10)) {
+                for (n in range) {
                     item(key = n) {
-                        LevelTile(n, progress.isUnlocked(n), progress.starsFor(n), n % 10 == 0, n == next, beat) { onPlay(n) }
+                        LevelTile(n, progress.isUnlocked(n), progress.starsFor(n), !grouped && n % 10 == 0, n == next, beat) { onPlay(n) }
                     }
                 }
             }

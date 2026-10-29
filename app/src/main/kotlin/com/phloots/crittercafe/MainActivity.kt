@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -28,7 +29,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.phloots.crittercafe.data.GameAnalyticsLevels
 import com.phloots.crittercafe.data.Progress
+import com.phloots.crittercafe.game.LevelAnalytics
 import com.phloots.crittercafe.game.GameViewModel
 import com.phloots.crittercafe.ui.AppViewModel
 import com.phloots.crittercafe.data.PackInfo
@@ -40,7 +43,9 @@ import com.phloots.crittercafe.core.realtime.RealTimeState
 import com.phloots.crittercafe.ui.theme.Palette
 import com.phloots.crittercafe.ui.skin.FlatSkin
 import com.phloots.crittercafe.ui.skin.LocalSkin
-import com.phloots.crittercafe.ui.skin.critter.CritterCafeSkin
+import com.phloots.crittercafe.ui.skin.critter.CafeSkin
+import com.phloots.crittercafe.ui.skin.critter.CritterPalette
+import com.phloots.crittercafe.ui.skin.critter.LocalThemeSwitch
 import com.phloots.crittercafe.ui.skin.critter.CritterHomeScreen
 import com.phloots.crittercafe.ui.skin.critter.CritterLevelSelect
 import androidx.compose.runtime.CompositionLocalProvider
@@ -55,10 +60,12 @@ class MainActivity : ComponentActivity() {
         val started = SystemClock.uptimeMillis()
         installSplashScreen().setKeepOnScreenCondition { !app.isReady() && SystemClock.uptimeMillis() - started < 4000 }
         super.onCreate(savedInstanceState)
+        // off (LevelAnalytics.None) in builds without the GameAnalytics keys
+        val analytics = GameAnalyticsLevels.start(this)
         enableEdgeToEdge()
         setContent {
             MaterialTheme {
-                BusJamApp()
+                BusJamApp(analytics)
             }
         }
     }
@@ -69,31 +76,40 @@ private const val LEVELS = -1
 
 /** Screen routing: [HOME], [LEVELS], or a positive level number for the game screen. */
 @Composable
-fun BusJamApp() {
+fun BusJamApp(analytics: LevelAnalytics = LevelAnalytics.None) {
     val app: AppViewModel = viewModel()
     val game: GameViewModel = viewModel(
         factory = viewModelFactory { initializer { GameViewModel(app.progressStore(PackInfo.CAMPAIGN)) } },
     )
     val rtGame: RealTimeViewModel<RealTimeState> = viewModel(
         factory = viewModelFactory {
-            initializer { RealTimeViewModel(app.progressStore(PackInfo.CAMPAIGN), CoreRealTimeRules()) }
+            initializer {
+                RealTimeViewModel(app.progressStore(PackInfo.CAMPAIGN), CoreRealTimeRules(), analytics = analytics)
+            }
         },
     )
     val critterCafe by app.critterCafe.collectAsStateWithLifecycle()
     // not read yet counts as Critter Café (the default), so the flat look never flashes on launch
-    val skin = if (critterCafe != false) CritterCafeSkin else FlatSkin
+    val cafeSkin by app.cafeSkin.collectAsStateWithLifecycle()
+    val loadedPack by app.loaded.collectAsStateWithLifecycle()
+    var screen by rememberSaveable { mutableIntStateOf(HOME) }
+    // a level whose pack entry names a theme is drawn in it (the prototype pack); otherwise the selected theme
+    val levelMeta = loadedPack?.takeIf { screen > 0 }?.meta(screen)
+    val skin = when {
+        critterCafe == false -> FlatSkin
+        levelMeta?.theme != null -> remember(levelMeta.theme, cafeSkin) { app.skinFor(levelMeta) }
+        else -> cafeSkin
+    }
     val realTimeOrNull by app.realTime.collectAsStateWithLifecycle()
     val realTime = realTimeOrNull == true
     val commitWins = {
         game.commitPendingWin()
         rtGame.commitPendingWin()
     }
-    val loadedPack by app.loaded.collectAsStateWithLifecycle()
     val levels = loadedPack?.levels?.takeIf { it.isNotEmpty() }
     val packInfo = loadedPack?.info
     val progressOrNull by app.progress.collectAsStateWithLifecycle()
     val progress = progressOrNull ?: Progress()
-    var screen by rememberSaveable { mutableIntStateOf(HOME) }
     // A win whose animation is still playing when the app goes to the background is recorded now: the process may
     // be killed before the animation can finish.
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { commitWins() }
@@ -115,20 +131,30 @@ fun BusJamApp() {
         }
     }
 
-    CompositionLocalProvider(LocalSkin provides skin) {
-    Box(Modifier.fillMaxSize().background(if ((screen > 0 && realTime) || (screen <= HOME && skin === CritterCafeSkin)) skin.background else Palette.background).safeDrawingPadding()) {
+    CompositionLocalProvider(
+        LocalSkin provides skin,
+        LocalThemeSwitch provides if (BuildConfig.DEBUG) app::nextCafeTheme else null,
+    ) {
+    val cafe = skin is CafeSkin
+    val back = when {
+        screen > 0 && realTime -> skin.background
+        screen <= HOME && cafe -> CritterPalette.background
+        else -> Palette.background
+    }
+    Box(Modifier.fillMaxSize().background(back).safeDrawingPadding()) {
         val pack = levels
         when {
-            screen == HOME && skin === CritterCafeSkin -> CritterHomeScreen(
+            screen == HOME && cafe -> CritterHomeScreen(
                 nextLevel = pack?.let { progress.firstUnbeaten(it.size) }.takeIf { progressOrNull != null && realTimeOrNull != null },
                 totalLevels = pack?.size ?: 0,
                 totalStars = progress.stars.values.sum(),
                 onPlay = { pack?.let { openLevel(progress.firstUnbeaten(it.size)) } },
                 onLevels = { screen = LEVELS },
             )
-            screen == LEVELS && pack != null && skin === CritterCafeSkin -> CritterLevelSelect(
+            screen == LEVELS && pack != null && cafe -> CritterLevelSelect(
                 count = pack.size,
                 progress = progress,
+                groups = loadedPack?.meta?.map { it.group }.orEmpty(),
                 onPlay = openLevel,
                 onBack = { screen = HOME },
             )
@@ -155,6 +181,8 @@ fun BusJamApp() {
                         onNext = { openLevel(number + 1) },
                         onLevels = { commitWins(); screen = LEVELS },
                         onHome = { commitWins(); screen = HOME },
+                        mechanics = com.phloots.crittercafe.game.levelMechanics(pack[number - 1].level),
+                        seenMechanics = app.seenMechanics,
                     )
                 }
             }

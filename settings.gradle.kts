@@ -10,6 +10,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://maven.gameanalytics.com/release") {
+            content { includeGroup("com.gameanalytics.sdk") }
+        }
     }
 }
 rootProject.name = "bus_jam"

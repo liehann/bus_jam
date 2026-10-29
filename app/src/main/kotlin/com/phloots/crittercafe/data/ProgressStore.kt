@@ -115,7 +115,15 @@ class SkinStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[CRITTER_CAFE] = on }
     }
 
+    /** Critter Café theme id (debug switch); null = the default theme. */
+    val cafeTheme: Flow<String?> = dataStore.data.map { it[CAFE_THEME] }
+
+    suspend fun setCafeTheme(id: String) {
+        dataStore.edit { it[CAFE_THEME] = id }
+    }
+
     private companion object {
         val CRITTER_CAFE = androidx.datastore.preferences.core.booleanPreferencesKey("critter_cafe_skin")
+        val CAFE_THEME = androidx.datastore.preferences.core.stringPreferencesKey("cafe_theme_id")
     }
 }

@@ -47,7 +47,9 @@ fun DrawScope.drawContainer(
  * Draws a top-down container centred at [center]. [width] is across the container, [length] along it; the front
  * (headlights + windshield) points at [degrees] clockwise from up. With [fill] the roof shows a 2-column seat grid
  * (filled spots carry the shape icon); otherwise the colour's shape icon is drawn upright, nudged towards the rear so
- * the windshield stays visible even on a one-cell container.
+ * the windshield stays visible even on a one-cell container. With [mystery] set (a hidden container) the body is
+ * drawn in that colour and the icon is replaced by a "?". With [spin] (on a turntable) the icon shrinks inside two
+ * clockwise arrows.
  */
 fun DrawScope.drawContainer(
     center: Offset,
@@ -59,8 +61,10 @@ fun DrawScope.drawContainer(
     fill: Fill? = null,
     highlight: Float = 0f,
     iconSize: Float = width * 0.5f,
+    mystery: Color? = null,
+    spin: Boolean = false,
 ) {
-    val body = Palette.color(color)
+    val body = mystery ?: Palette.color(color)
     val on = Palette.onColor(color)
     val w = width
     val l = length
@@ -135,7 +139,10 @@ fun DrawScope.drawContainer(
         // icon centre: middle of the body behind the windshield
         val along = if (compact) (w * 0.42f + l) / 2 - l / 2 else 0f
         val icon = rotatePoint(Offset(0f, along), degrees)
-        drawShapeIcon(Palette.shape(color), center + icon, iconSize, on, alpha = alpha)
+        val size = if (spin) iconSize * 0.62f else iconSize
+        if (mystery != null) drawQuestionMark(center + icon, size * 1.2f, Color.White, alpha)
+        else drawShapeIcon(Palette.shape(color), center + icon, size, on, alpha = alpha)
+        if (spin) drawSpinArrows(center + icon, iconSize * 0.62f, maxOf(w * 0.06f, 1f * density), if (mystery != null) Color.White else on, alpha)
     }
 }
 

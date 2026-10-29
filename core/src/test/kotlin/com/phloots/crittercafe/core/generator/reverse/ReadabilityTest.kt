@@ -45,12 +45,12 @@ class ReadabilityTest {
         assertTrue(short.forks.isNotEmpty())
         val first = short.forks.first()
         assertEquals(0, first.step)
-        assertFalse(first.readable)
+        assertFalse(first.clued)
         assertTrue(first.lag > 0)
         assertTrue(0 in first.colors, "the colour-0 batch decides the opening fork: ${first.colors}")
         val long = Readability.arrivals(trap, line, q.states, shown = trap.queue.size)
-        assertTrue(long.forks.all { it.readable })
-        assertEquals(1.0, long.readableShare, 1e-9)
+        assertTrue(long.forks.all { it.clued })
+        assertEquals(1.0, long.cluedShare, 1e-9)
         assertEquals(0, long.maxLag)
     }
 
@@ -62,25 +62,25 @@ class ReadabilityTest {
         var repaired = 0
         var improved = 0
         var built = 0
-        var unreadable = 0
+        var unclued = 0
         for (seed in 0L until 6L) {
             val sl = StallDirector(sc, seed).run() ?: continue
             assertEquals(4, sl.level.queuePreview)
             val q = Quality.measure(sl.level, sl.line, budget = 4_000)
             val rr = Readability.repair(sl.level, sl.line, q.states)
             built++
-            unreadable += rr.before.unreadable
+            unclued += rr.before.unclued
             assertTrue(Readability.wins(rr.level, sl.line), "seed $seed: the line must still win")
             assertEquals(sl.level.queue.groupingBy { it }.eachCount(), rr.level.queue.groupingBy { it }.eachCount())
             assertEquals(sl.level.containers, rr.level.containers)
             if (!rr.changed) { assertEquals(sl.level, rr.level); continue }
             repaired++
-            val firstFork = rr.before.forks.first { !it.readable }.step
+            val firstFork = rr.before.forks.first { !it.clued }.step
             val (qi, _) = Readability.boarded(sl.level, sl.line)
             assertEquals(sl.level.queue.subList(0, qi[firstFork]), rr.level.queue.subList(0, qi[firstFork]), "seed $seed: the queue before the first repaired fork moved")
             if (rr.after.forks.sumOf { it.hiddenBoarded } < rr.before.forks.sumOf { it.hiddenBoarded }) improved++
         }
-        assertTrue(repaired >= 1, "no level needed a repair (built $built, unreadable forks $unreadable)")
+        assertTrue(repaired >= 1, "no level needed a repair (built $built, unclued forks $unclued)")
         assertTrue(improved >= 1, "the repair never reduced the hidden part of a deciding batch")
     }
 }

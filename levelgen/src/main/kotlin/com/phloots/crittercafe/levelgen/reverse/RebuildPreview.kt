@@ -65,12 +65,12 @@ private fun readOfficialLines(f: File): Map<Int, List<Move>> {
 
 /** Builds the stage-0 pool of [slot] (OfficialPack's tries and seeds, belt [belt]). */
 internal fun pool0(slot: OfficialSlot, r: Recipe4, seed: Long, tries: Int, belt: Int, keep: Int, fc: HybridFitnessConfig, config: DifficultyConfig,
-                  readable: String = "off"): List<Stage0> {
+                  clued: String = "off"): List<Stage0> {
     val out = ArrayList<Stage0>()
-    val rd = readableDef(readable, slot.ring, belt)
+    val rd = cluedDef(clued, slot.ring, belt)
     for (t in 0 until (if (r.tier >= 2) tries * 2 else tries)) {
         val dseed = seed * 104729 + slot.number * 977L + t
-        val sl = StallDirector(r.build(t).copy(queuePreview = belt, readable = rd), dseed).run() ?: continue
+        val sl = StallDirector(r.build(t).copy(queuePreview = belt, clued = rd), dseed).run() ?: continue
         val q0 = HybridGenerator.quick(sl.level, sl.line) ?: continue
         val botWin = q0.first.any { it.won }
         val jm0 = JuggleMetrics.measure(sl.level, sl.line, r.n)
@@ -79,18 +79,18 @@ internal fun pool0(slot: OfficialSlot, r: Recipe4, seed: Long, tries: Int, belt:
         val e = HybridGenerator.evaluate(sl, config, juggleN = r.n, quality = true, fc = fc)
         val fails = listOfNotNull(if (botWin) "bot" else null, if (e.solvable != true) "unsolved" else null, if (!opening) "opening" else null) +
             qualityFails(r, e, fc).filter { !it.startsWith("hidden") }
-        out += Stage0(sl.level, sl.line, e, fails, t, dseed, sl, construction = if (rd == null) "default" else readable)
+        out += Stage0(sl.level, sl.line, e, fails, t, dseed, sl, construction = if (rd == null) "default" else clued)
     }
     return out
 }
 
 /**
- * The stage-0 pool over several constructions competing for the slot: [readables] is a comma-separated list of
- * [readableDef] specs ("off" = the default construction), e.g. "off,w3:d10"; each builds its own tries.
+ * The stage-0 pool over several constructions competing for the slot: [constructions] is a comma-separated list of
+ * [cluedDef] specs ("off" = the default construction), e.g. "off,w3:d10"; each builds its own tries.
  */
 internal fun poolOf(slot: OfficialSlot, r: Recipe4, seed: Long, tries: Int, belt: Int, keep: Int, fc: HybridFitnessConfig, config: DifficultyConfig,
-                    readables: String): List<Stage0> =
-    readables.split(",").map { it.trim() }.filter { it.isNotEmpty() }.distinct().flatMap { pool0(slot, r, seed, tries, belt, keep, fc, config, it) }
+                    constructions: String): List<Stage0> =
+    constructions.split(",").map { it.trim() }.filter { it.isNotEmpty() }.distinct().flatMap { pool0(slot, r, seed, tries, belt, keep, fc, config, it) }
 
 fun main(args: Array<String>) {
     val opts = HashMap<String, String>()
@@ -104,12 +104,12 @@ fun main(args: Array<String>) {
     val repair = RepairMode.valueOf((opts["repair"] ?: "both").uppercase())
     val wanted = opts["slots"]?.split(",")?.map { it.trim().toInt() } ?: REBUILD_SLOTS
     val beltOverride = opts["belt"]?.toInt()
-    // Readable-stall construction (ReadableDef spec, see readableDef; "off" = the default construction). A comma-separated
+    // Clued-squeeze construction (CluedDef spec, see cluedDef; "off" = the default construction). A comma-separated
     // list ("off,w3:d10") lets the constructions' tries compete in one pool (select5v).
-    val readable = opts["readable"] ?: "off"
-    // Readability term in the ranking (select5v readableWeight); a comma-separated list runs the selection once per
+    val clued = opts["clued"] ?: "off"
+    // clued term in the ranking (select5v cluedWeight); a comma-separated list runs the selection once per
     // weight on the same pools (outputs <out>-rw<weight>.* when more than one).
-    val weights = (opts["readable-weight"] ?: "0").split(",").map { it.trim().toDouble() }
+    val weights = (opts["clued-weight"] ?: "0").split(",").map { it.trim().toDouble() }
     // The levels compared against: a 100-level pack indexed by slot, or a preview pack whose tags name the slot
     // ("Slot: L<n>"); --old-meta: provenance file whose lines are the old levels' intended lines (keyed by slot).
     val oldMeta = opts["old-meta"]?.let { File(it) }
@@ -131,7 +131,7 @@ fun main(args: Array<String>) {
             val s0 = System.nanoTime()
             val r = rs[slot.recipe]
             val belt = beltOverride ?: beltFor(slot, r.tier)
-            val pool = poolOf(slot, r, seed, tries, belt, c5.prefilterTop, fc, config, readable)
+            val pool = poolOf(slot, r, seed, tries, belt, c5.prefilterTop, fc, config, clued)
             val stage0 = (System.nanoTime() - s0) / 1e9
             fun dist4(e: HybridEval) = if (r.target == MAX4) -e.fitness4 else StrictMath.abs(e.fitness4 - r.target)
             fun dist5(f: Double) = if (r.target == MAX4) -f else StrictMath.abs(f - r.target)
@@ -143,8 +143,8 @@ fun main(args: Array<String>) {
                 synchronized(System.out) {
                     val b = sel?.best
                     println("L${slot.number} ${r.name} (tier ${r.tier}, ring ${slot.ring}, belt $belt) rw $w: pool ${st.stage0} ok ${st.stage0Ok} pre ${st.prefiltered} fin ${st.finals} repaired ${st.repaired} " +
-                        (b?.let { "f5=%.1f acc=%s %s unfair %d %s readable %.0f%% (%.0f+%.0f+%.0f s)".format(it.fitness5, it.accepted, it.fails.joinToString(","), it.solver.m.unfair.size,
-                            it.s0.construction, it.readableShare * 100, stage0, st.stage1Seconds, st.stage2Seconds) } ?: "none"))
+                        (b?.let { "f5=%.1f acc=%s %s unfair %d %s clued %.0f%% (%.0f+%.0f+%.0f s)".format(it.fitness5, it.accepted, it.fails.joinToString(","), it.solver.m.unfair.size,
+                            it.s0.construction, it.cluedShare * 100, stage0, st.stage1Seconds, st.stage2Seconds) } ?: "none"))
                 }
                 res
             }
@@ -172,14 +172,14 @@ fun main(args: Array<String>) {
     val wall = (System.nanoTime() - t0) / 1e9
     for ((wi, w) in weights.withIndex()) {
         val base = if (weights.size > 1) "$outBase-rw${fmtWeight(w)}" else outBase
-        writeOutputs(perWeight.map { it[wi] }, olds, base, seed, tries, threads, repair, wall, c5, readable, oldPack.path, w)
+        writeOutputs(perWeight.map { it[wi] }, olds, base, seed, tries, threads, repair, wall, c5, clued, oldPack.path, w)
     }
 }
 
 private fun fmtWeight(w: Double) = if (w == StrictMath.floor(w)) w.toLong().toString() else w.toString()
 
 private fun writeOutputs(results: List<SlotResult>, olds: List<OldEval>, outBase: String, seed: Long, tries: Int, threads: Int, repair: RepairMode, wall: Double,
-                         c5: Fitness5Config, readable: String, oldPath: String, weight: Double) {
+                         c5: Fitness5Config, clued: String, oldPath: String, weight: Double) {
     // ---- outputs
     val packed = ArrayList<PackedLevel>()
     val meta = LinkedHashMap<String, JsonObject>()
@@ -196,13 +196,13 @@ private fun writeOutputs(results: List<SlotResult>, olds: List<OldEval>, outBase
         meta += Provenance.entry(lv, res.r.name, seed, b.s0.directorSeed, b.s0.tryIndex, b.line, mapOf(
             "slot" to JsonPrimitive(res.slot.number), "ring" to JsonPrimitive(lv.stagingSpots), "queuePreview" to JsonPrimitive(lv.queuePreview),
             "tries" to JsonPrimitive(tries), "accepted" to JsonPrimitive(b.accepted), "fitness5" to JsonPrimitive(b.fitness5),
-            "repairedElements" to JsonPrimitive(b.repair?.moved ?: 0), "readable" to JsonPrimitive(if (b.s0.construction == "default") "off" else b.s0.construction), "oldHash" to JsonPrimitive(Provenance.hash(olds[results.indexOf(res)].level))))
+            "repairedElements" to JsonPrimitive(b.repair?.moved ?: 0), "clued" to JsonPrimitive(if (b.s0.construction == "default") "off" else b.s0.construction), "oldHash" to JsonPrimitive(Provenance.hash(olds[results.indexOf(res)].level))))
     }
     val outJson = File("$outBase-levels.json")
     outJson.parentFile?.mkdirs()
     outJson.writeText(LevelPackCodec.encode(LevelPack(levels = packed)))
     Provenance.write(File("$outBase-meta.json"), meta)
-    File("$outBase.md").writeText(rebuildReport(results, olds, seed, tries, threads, repair, wall, c5, readable, oldPath, weight))
+    File("$outBase.md").writeText(rebuildReport(results, olds, seed, tries, threads, repair, wall, c5, clued, oldPath, weight))
     println(File("$outBase.md").readText())
     println("wrote ${packed.size} levels to $outJson in %.0f s".format(wall))
 }
@@ -228,12 +228,12 @@ private fun lineCells(o: LineFairness, n: LineFairness): List<String> = listOf(
 )
 
 private fun rebuildReport(results: List<SlotResult>, olds: List<OldEval>, seed: Long, tries: Int, threads: Int, repair: RepairMode, wall: Double, c5: Fitness5Config,
-                          readable: String = "off", oldPath: String = "app/src/main/assets/levels.json", weight: Double = 0.0): String {
+                          clued: String = "off", oldPath: String = "app/src/main/assets/levels.json", weight: Double = 0.0): String {
     val sb = StringBuilder()
     sb.append("# Rebuild preview (fitness5, tier floors, belt dial, deciding-batch repair)\n\n")
-    if (readable.contains(",")) sb.append("Constructions competing in one pool: `$readable` (`off` = default, else a `ReadableDef` spec at the ring and belt of each slot); " +
-        "readability weight $weight (ranking after the floors: dist5(fitness5) - weight x readable-fork share, solver line). Old = `$oldPath`.\n\n")
-    else if (readable != "off") sb.append("Construction: readable stalls (`ReadableDef` spec `$readable`, ring and belt of each slot). Old = `$oldPath`.\n\n")
+    if (clued.contains(",")) sb.append("Constructions competing in one pool: `$clued` (`off` = default, else a `CluedDef` spec at the ring and belt of each slot); " +
+        "clued weight $weight (ranking after the floors: dist5(fitness5) - weight x clued-fork share, solver line). Old = `$oldPath`.\n\n")
+    else if (clued != "off") sb.append("Construction: clued squeezes (`CluedDef` spec `$clued`, ring and belt of each slot). Old = `$oldPath`.\n\n")
     else if (weight != 0.0) sb.append("Readability weight $weight. Old = `$oldPath`.\n\n")
     sb.append("Replacements for ${results.size} official slots, same recipe / tier / ring schedule and director seeds as `OfficialPack` (seed $seed, $tries tries, x2 on tier >= 2), " +
         "selected by fitness5 with the tier floors (`Fitness5Config`): stage 0 = every try evaluated as OfficialPack does (fitness4 at 40 seats); stage 1 = the best ${c5.prefilterTop} by fitness4 at the slot's ring, " +
@@ -244,7 +244,7 @@ private fun rebuildReport(results: List<SlotResult>, olds: List<OldEval>, seed: 
         "order dependence over ${c5.finalOrderDraws} draws at ${c5.finalOrderBudget} nodes (undecided draws count as not winnable). Per-level table: the solver line (the fairness report's view); " +
         "the floors table: the mean over the intended and the solver line (what selection checks).\n\n")
     sb.append("## Per level, solver line (old → new)\n\n")
-    sb.append("| slot | recipe | tier | ring | belt | moves | unfair | traps | fair share | blind bits | winnable uniform start / 1/3 | winnable 1/3, H=40 | w>=2 share, mean w | hidden bits | fair hidden bits | solve nodes | readable forks (lag mean) | old @ new belt: unfair / traps / blind |\n")
+    sb.append("| slot | recipe | tier | ring | belt | moves | unfair | traps | fair share | blind bits | winnable uniform start / 1/3 | winnable 1/3, H=40 | w>=2 share, mean w | hidden bits | fair hidden bits | solve nodes | clued forks (lag mean) | old @ new belt: unfair / traps / blind |\n")
     sb.append("|" + "---|".repeat(18) + "\n")
     for ((k, res) in results.withIndex()) {
         val o = olds[k]
@@ -253,7 +253,7 @@ private fun rebuildReport(results: List<SlotResult>, olds: List<OldEval>, seed: 
         if (b == null) { sb.append("| L${res.slot.number} | ${res.r.name} | ${res.r.tier} | ${o.level.stagingSpots} | | | no level built |\n"); continue }
         val n = b.solver
         sb.append("| L${res.slot.number} | ${res.r.name} | ${res.r.tier} | ${o.level.stagingSpots} → ${b.level.stagingSpots} | ${o.level.queuePreview} → ${b.level.queuePreview} | ${os.m.states.size} → ${n.m.states.size} | " +
-            lineCells(os, n).joinToString(" | ") + " | ${o.solveNodes ?: ">5M"} → ${b.solveNodes ?: ">3M"} | ${arrivalOf(b.level, b.solverLine, n).let { a -> "${pct(o.arrival.readableShare)} (${f1(o.arrival.meanLagUnreadable)}) → ${pct(a.readableShare)} (${f1(a.meanLagUnreadable)})" }}" +
+            lineCells(os, n).joinToString(" | ") + " | ${o.solveNodes ?: ">5M"} → ${b.solveNodes ?: ">3M"} | ${arrivalOf(b.level, b.solverLine, n).let { a -> "${pct(o.arrival.cluedShare)} (${f1(o.arrival.meanLagUnclued)}) → ${pct(a.cluedShare)} (${f1(a.meanLagUnclued)})" }}" +
             (b.repair?.let { r -> if (r.changed) " rep ${r.moved}" else "" } ?: "") + " | " +
             (o.atNewBelt?.let { "${it.m.unfair.size} / ${it.m.trapDecisions} / ${f1(it.m.blindBits)}" } ?: "same belt") + " |\n")
     }
@@ -291,16 +291,16 @@ private fun rebuildReport(results: List<SlotResult>, olds: List<OldEval>, seed: 
     sb.append(row("choices with w >= 2 (mean)", { it.m.multiShare }, ::pct))
     sb.append(row("mean w (mean)", { it.m.meanW }, ::f2))
     sb.append("| levels at <= 5% winnable from start (uniform) | ${pairs.count { olds[it].lines.last().orderStart <= 0.05 }} | ${pairs.count { results[it].sel!!.best.solver.orderStart <= 0.05 }} |\n")
-    sb.append("| readable forks, deciding batch on show (mean share) | ${pct(pairs.map { olds[it].arrival.readableShare }.average())} | ${pct(pairs.map { results[it].sel!!.best.let { b -> arrivalOf(b.level, b.solverLine, b.solver).readableShare } }.average())} |\n")
+    sb.append("| clued forks, deciding batch on show (mean share) | ${pct(pairs.map { olds[it].arrival.cluedShare }.average())} | ${pct(pairs.map { results[it].sel!!.best.let { b -> arrivalOf(b.level, b.solverLine, b.solver).cluedShare } }.average())} |\n")
     sb.append("| floors passed (mean over lines) | ${pairs.count { Fitness5.floorFails(results[it].r.tier, olds[it].lines, c5).isEmpty() }} | ${pairs.count { results[it].sel!!.best.accepted }} |\n")
-    if (readable.contains(",")) {
+    if (clued.contains(",")) {
         val chosen = pairs.groupingBy { results[it].sel!!.best.s0.construction }.eachCount()
         sb.append("| construction chosen | | ${chosen.entries.joinToString(", ") { "${it.key} ${it.value}" }} |\n")
-        sb.append("\n## Best finalist per construction (solver line; slot: construction unfair / readable / f5 / floors)\n\n")
+        sb.append("\n## Best finalist per construction (solver line; slot: construction unfair / clued / f5 / floors)\n\n")
         for (k in pairs) {
             val res = results[k]
             sb.append("- L${res.slot.number}: " + res.sel!!.byConstruction.entries.joinToString("; ") { (c, s) ->
-                "$c ${s.solver.m.unfair.size} / ${pct(s.readableShare)} / ${f1(s.fitness5)} / ${if (s.accepted) "pass" else s.fails.joinToString(",")}" } +
+                "$c ${s.solver.m.unfair.size} / ${pct(s.cluedShare)} / ${f1(s.fitness5)} / ${if (s.accepted) "pass" else s.fails.joinToString(",")}" } +
                 " -> ${res.sel.best.s0.construction}\n")
         }
     }
@@ -314,7 +314,7 @@ private fun rebuildReport(results: List<SlotResult>, olds: List<OldEval>, seed: 
         sb.append("| blind bits (mean) | ${m({ it.solver.m.blindBits }, ::f1)} |\n")
         sb.append("| fair hidden bits (mean) | ${m({ it.solver.m.fairHidden }, ::f1)} |\n")
         sb.append("| winnable at 1/3, H=40 (mean) | ${m({ it.solver.orderThirdNear }, ::pct)} |\n")
-        sb.append("| readable forks, solver line (mean share) | ${m({ arrivalOf(it.level, it.solverLine, it.solver).readableShare }, ::pct)} |\n")
+        sb.append("| clued forks, solver line (mean share) | ${m({ arrivalOf(it.level, it.solverLine, it.solver).cluedShare }, ::pct)} |\n")
         sb.append("| fitness5 (mean) | ${m({ it.fitness5 }, ::f1)} |\n")
         sb.append("| floors passed | ${both.count { results[it].sel!!.bestOff!!.accepted }} | ${both.count { results[it].sel!!.bestOn!!.accepted }} |\n")
         sb.append("| chosen as the slot's level | ${both.count { results[it].sel!!.best.repair?.changed != true }} | ${both.count { results[it].sel!!.best.repair?.changed == true }} |\n")

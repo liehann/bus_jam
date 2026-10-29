@@ -10,13 +10,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** The readable-stall construction dial ([ReadableDef]): levelgen/out/readable-stalls.md. */
-class ReadableStallsTest {
+/** The clued-squeeze construction dial ([CluedDef]): levelgen/out/clued-squeezes.md. */
+class CluedSqueezesTest {
     /** A juggle opening, a stall and a climax stall with decoy exit fillers: the recipes' shape at test size. */
     private val base = StallScript(11, 13, 9, lead = 1, stalls = listOf(JuggleDef(taps = 6, hold = 2, fill = 0.25), StallDef(3, 3, partial = 0.5), StallDef(2, 4, partial = 0.7)),
         exitFill = 12, sizeWeights = listOf(1.0, 1.0, 0.8), dummySizeWeights = listOf(0.4, 1.0, 1.2), candidates = 3, openCandidates = 4, openSpan = 20,
         coverStaged = 2.0, mismatch = 1.0, climaxAt = 0.65, queuePreview = 16)
-    private val readable = base.copy(readable = ReadableDef(weight = 3.0, coverDead = 10.0))
+    private val clued = base.copy(clued = CluedDef(weight = 3.0, coverDead = 10.0))
 
     private fun states(level: Level, line: List<Move>): List<GameState> {
         val out = ArrayList<GameState>()
@@ -34,11 +34,11 @@ class ReadableStallsTest {
 
     @Test
     fun theDialIsOffByDefault() {
-        assertEquals(null, base.readable)
+        assertEquals(null, base.clued)
         // An explicit null builds exactly the default level (same rng stream, same choices).
         for (seed in 0L until 4L) {
             val a = StallDirector(base, seed).run()
-            val b = StallDirector(base.copy(readable = null), seed).run()
+            val b = StallDirector(base.copy(clued = null), seed).run()
             assertEquals(a?.level, b?.level)
             assertEquals(a?.line, b?.line)
         }
@@ -61,38 +61,38 @@ class ReadableStallsTest {
     }
 
     /**
-     * Readable construction: every level replays to WON and validates; over the seeds it leaves fewer reachable
+     * Clued construction: every level replays to WON and validates; over the seeds it leaves fewer reachable
      * containers whose colour is not on show (the deep losers that stretch a fork's loss window past the belt), and
-     * its forks are readable more often on the construction line.
+     * its forks are clued more often on the construction line.
      */
     @Test
-    fun readableConstructionHidesDeadContainersAndReadsMoreForks() {
+    fun cluedConstructionHidesDeadContainersAndReadsMoreForks() {
         var deadBase = 0; var deadRead = 0; var shareBase = 0.0; var shareRead = 0.0; var n = 0
         for (seed in 0L until 24L) {
             val a = StallDirector(base, seed).run() ?: continue
-            val b = StallDirector(readable, seed).run() ?: continue
+            val b = StallDirector(clued, seed).run() ?: continue
             for (sl in listOf(a, b)) {
                 assertTrue(sl.level.validate().isEmpty(), "seed $seed: ${sl.level.validate()}")
                 assertTrue(ReverseAnalysis.replay(sl.level, sl.line), "seed $seed does not replay")
             }
             deadBase += deadReachable(a.level, a.line); deadRead += deadReachable(b.level, b.line)
-            shareBase += Readability.arrivals(a.level, a.line, Quality.measure(a.level, a.line).states).readableShare
-            shareRead += Readability.arrivals(b.level, b.line, Quality.measure(b.level, b.line).states).readableShare
+            shareBase += Readability.arrivals(a.level, a.line, Quality.measure(a.level, a.line).states).cluedShare
+            shareRead += Readability.arrivals(b.level, b.line, Quality.measure(b.level, b.line).states).cluedShare
             n++
         }
         assertTrue(n >= 4, "only $n seeds built both ways")
-        assertTrue(deadRead < deadBase, "dead reachable: readable $deadRead vs default $deadBase")
-        assertTrue(shareRead >= shareBase, "readable share: readable ${shareRead / n} vs default ${shareBase / n}")
+        assertTrue(deadRead < deadBase, "dead reachable: clued $deadRead vs default $deadBase")
+        assertTrue(shareRead >= shareBase, "clued share: clued ${shareRead / n} vs default ${shareBase / n}")
     }
 
     /**
-     * Early emission ([ReadableDef.runBudget]): with a budget of one target the stall's dummies complete on the
+     * Early emission ([CluedDef.runBudget]): with a budget of one target the stall's dummies complete on the
      * target's tap (the dispatches of the dummies happen during it), and the run follows on a free dock.
      */
     @Test
     fun runBudgetCompletesTheDummiesOnTheTargetTap() {
         val sc = StallScript(11, 13, 9, lead = 5, stalls = listOf(StallDef(3, 4)), exitFill = 16, sizeWeights = listOf(2.0, 1.0, 0.3), candidates = 1,
-            readable = ReadableDef(weight = 0.0, deepOnlyReadable = false, runBudget = 10))
+            clued = CluedDef(weight = 0.0, deepOnlyClued = false, runBudget = 10))
         var built = 0
         for (seed in 0L until 16L) {
             val sl = StallDirector(sc, seed).run() ?: continue

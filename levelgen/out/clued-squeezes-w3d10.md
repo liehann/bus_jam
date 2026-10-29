@@ -1,6 +1,6 @@
 # Rebuild preview (fitness5, tier floors, belt dial, deciding-batch repair)
 
-Construction: readable stalls (`ReadableDef` spec `w3:d10`, ring and belt of each slot). Old = `levelgen/out/rebuild-preview-levels.json`.
+Construction: clued squeezes (`CluedDef` spec `w3:d10`, ring and belt of each slot). Old = `levelgen/out/rebuild-preview-levels.json`.
 
 Replacements for 20 official slots, same recipe / tier / ring schedule and director seeds as `OfficialPack` (seed 7, 400 tries, x2 on tier >= 2), selected by fitness5 with the tier floors (`Fitness5Config`): stage 0 = every try evaluated as OfficialPack does (fitness4 at 40 seats); stage 1 = the best 16 by fitness4 at the slot's ring, short chain (x1) on the intended and solver line, with and without the queue repair (`--repair off`); stage 2 = the best 4 per variant re-measured with the long chain (x16). Belt (`queuePreview`): 10 on tier 0 and in cycles 1-2 (12 / 16 on tiers 2 / 3 there), else 14 / 16 / 20 on tiers 1 / 2 / 3. Commit 8ce5435-dirty, wall time 6250 s on 4 threads.
 
@@ -8,7 +8,7 @@ Old = the shipped level (`app/src/main/assets/levels.json`, belt 10), new = the 
 
 ## Per level, solver line (old → new)
 
-| slot | recipe | tier | ring | belt | moves | unfair | traps | fair share | blind bits | winnable uniform start / 1/3 | winnable 1/3, H=40 | w>=2 share, mean w | hidden bits | fair hidden bits | solve nodes | readable forks (lag mean) | old @ new belt: unfair / traps / blind |
+| slot | recipe | tier | ring | belt | moves | unfair | traps | fair share | blind bits | winnable uniform start / 1/3 | winnable 1/3, H=40 | w>=2 share, mean w | hidden bits | fair hidden bits | solve nodes | clued forks (lag mean) | old @ new belt: unfair / traps / blind |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | L4 | juggle + just-enough cascade | 0 | 40 → 40 | 10 → 10 | 35 → 35 | 0 → 0 | 0 → 0 | 100% → 100% | 0.0 → 1.6 | 100% / 100% → 100% / 100% | 100% → 100% | 94%, 4.85 → 91%, 4.03 | 2.0 → 7.0 | 2.0 → 7.0 | 399 → 454 | 0% (29.0) → 80% (4.0) | same belt |
 | L10 | hard: juggle, scarce key -> heralded chain climax | 3 | 40 → 40 | 16 → 16 | 64 → 64 | 0 → 0 | 0 → 0 | 100% → 100% | 2.8 → 0.0 | 0% / 0% → 0% / 0% | 0% → 0% | 46%, 1.71 → 60%, 1.73 | 39.9 → 35.0 | 39.9 → 35.0 | 1801 → 2269 | 32% (23.2) → 26% (17.1) | same belt |
@@ -74,7 +74,7 @@ Old = the shipped level (`app/src/main/assets/levels.json`, belt 10), new = the 
 | choices with w >= 2 (mean) | 76% | 72% |
 | mean w (mean) | 3.30 | 3.05 |
 | levels at <= 5% winnable from start (uniform) | 11 | 13 |
-| readable forks, deciding batch on show (mean share) | 34% | 42% |
+| clued forks, deciding batch on show (mean share) | 34% | 42% |
 | floors passed (mean over lines) | 15 | 11 |
 
 ## Floors failed by finalists (count over all slots)

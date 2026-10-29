@@ -113,14 +113,14 @@ data class IRunDef(
 }
 
 /**
- * Readable forks by construction (levelgen/out/readable-stalls.md). The fairness report found that the colour batch
+ * Clued forks by construction (levelgen/out/clued-squeezes.md). The fairness report found that the colour batch
  * deciding a fork ([ForkArrival]: what the winning line boards over the fork's loss window that was beyond carousel
  * + belt when the choice was made) typically sits 10-35 elements beyond the belt. With this dial the director
  * measures that batch exactly for every candidate tap it scores (the forward state before the tap and every later tap
  * are final when the candidate is scored, so the construction line's deciding batch is known) and:
- *  - scores a readable fork (empty batch) [weight] up, an unreadable one [weight] + [perElement] per element (at most
+ *  - scores a clued fork (empty batch) [weight] up, an unclued one [weight] + [perElement] per element (at most
  *    [elementCap]) down;
- *  - with [deepOnlyReadable], an unreadable fork earns none of the horizon reward (deep stakes count only when the
+ *  - with [deepOnlyClued], an unclued fork earns none of the horizon reward (deep stakes count only when the
  *    player can see what decides them);
  *  - with [runBudget] > 0, bounds what the stall boards between its first dummy docking and the dummies' completion
  *    by the visible horizon: the completion moves from the run's last tap to the first run tap at which the run's
@@ -133,11 +133,11 @@ data class IRunDef(
  * [candidates] / [openCandidates] > 0 override the script's candidates per tap (more choice for the readability
  * score).
  */
-data class ReadableDef(
+data class CluedDef(
     val weight: Double = 3.0,
     val perElement: Double = 0.15,
     val elementCap: Int = 20,
-    val deepOnlyReadable: Boolean = true,
+    val deepOnlyClued: Boolean = true,
     val runBudget: Int = 0,
     val ring: Int = 0,
     val belt: Int = 0,
@@ -202,8 +202,8 @@ data class StallScript(
      * only: construction ignores it.
      */
     val queuePreview: Int = Limits.DEFAULT_QUEUE_PREVIEW,
-    /** Readable forks by construction ([ReadableDef]); null (default) = off, the construction is unchanged. */
-    val readable: ReadableDef? = null,
+    /** Clued forks by construction ([CluedDef]); null (default) = off, the construction is unchanged. */
+    val clued: CluedDef? = null,
 ) {
     fun summary(): String = "L$lead " + stalls.joinToString(" ") { it.summary() } + " X$exitFill" +
         (squat?.let { " Q(${it.squat}/${it.bigs}L v${it.valves.size})" } ?: "") +
@@ -262,7 +262,7 @@ data class StallLevel(
     /** Construction role per container id (tap kind, "dummy" for dummies, + group kind), for diagnostics. */
     val roles: Map<Int, String> = emptyMap(),
 ) {
-    /** Readable labels, e.g. "Stall pink: dummies blue(4/6) yellow(0/10) -> roll yellow->red". */
+    /** Human-readable labels, e.g. "Stall pink: dummies blue(4/6) yellow(0/10) -> roll yellow->red". */
     fun labels(): List<String> {
         val out = ArrayList<String>()
         for ((i, s) in stalls.withIndex()) {
@@ -342,7 +342,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         const val RESERVE_SPAN = 6
         /** Mean cells per container on dense boards (Hybrid preview 2 L19/L20: 1.92/1.95). */
         const val AVG_CELLS = 2.25
-        /** Mean capacity of a run container (for [ReadableDef.runBudget]). */
+        /** Mean capacity of a run container (for [CluedDef.runBudget]). */
         const val RUN_MEAN = 7
     }
 
@@ -416,12 +416,12 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
     }
 
     /**
-     * The tap whose boardings complete a stall's dummies: the run's last tap, or with [ReadableDef.runBudget] the
+     * The tap whose boardings complete a stall's dummies: the run's last tap, or with [CluedDef.runBudget] the
      * first run tap by which the target and run have boarded about that many elements (the target boards 10, a run
      * container about [RUN_MEAN]): the critical batch is emitted early, the rest of the run follows.
      */
     private fun completionTap(targetIdx: Int): PTap {
-        val budget = sc.readable?.runBudget ?: 0
+        val budget = sc.clued?.runBudget ?: 0
         if (budget <= 0) return taps.last()
         val extra = maxOf(0, budget - ContainerSize.L.capacity) / RUN_MEAN
         return taps[minOf(targetIdx + extra, taps.size - 1)]
@@ -597,7 +597,7 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
     ) {
         var score = 0.0
         var fb = 0; var fw = 0; var fh = 0
-        /** Deciding-batch size of the fork before this tap ([ReadableDef]); -1 = not measured. */
+        /** Deciding-batch size of the fork before this tap ([CluedDef]); -1 = not measured. */
         var hidden = -1
     }
 
@@ -637,8 +637,8 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         planTaps = n0
         for (i in n0 - 1 downTo 0) {
             val tap = taps[i]
-            val nc = sc.readable?.candidates?.takeIf { it > 0 } ?: sc.candidates
-            val noc = sc.readable?.openCandidates?.takeIf { it > 0 } ?: sc.openCandidates
+            val nc = sc.clued?.candidates?.takeIf { it > 0 } ?: sc.candidates
+            val noc = sc.clued?.openCandidates?.takeIf { it > 0 } ?: sc.openCandidates
             val want = if (sc.fork > 0 && nc > 1) (if (i < sc.openSpan && noc > 0) noc else nc) else 1
             val cands = ArrayList<Cand>()
             var tries = 0
@@ -990,9 +990,9 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         val stagedSet = before.staging.toSet()
         val stagedRays = if (sc.coverStaged > 0) board.placed.values.filter { it.color in stagedSet && board.rayClear(it) }
             .map { board.ray(it).toSet() to it.color } else emptyList()
-        // Readable forks: reachable containers whose colour is nowhere on show (carousel + belt) are dead weight that
+        // Clued forks: reachable containers whose colour is nowhere on show (carousel + belt) are dead weight that
         // loses deep when docked (it holds a slot past the visible horizon); hide them behind the new container.
-        val rd = sc.readable
+        val rd = sc.clued
         val deadRays = if (rd == null || rd.coverDead <= 0) emptyList() else {
             val edge = minOf(before.w.size, (rd.ring.takeIf { it > 0 } ?: spots) + (rd.belt.takeIf { it > 0 } ?: sc.queuePreview))
             val onShow = BooleanArray(Limits.MAX_COLORS)
@@ -1079,21 +1079,21 @@ class StallDirector(private val sc: StallScript, private val seed: Long) {
         val d = ReverseAnalysis.decision(s, sc.candidateBudget, hCap = hCap)
         c.fb = d.b; c.fw = d.w; c.fh = d.hMax
         var score = 0.0
-        // Readable forks: the deciding batch of this fork on the construction line (exact: every later tap is built).
-        val rd = sc.readable
-        var unreadable = false
+        // Clued forks: the deciding batch of this fork on the construction line (exact: every later tap is built).
+        val rd = sc.clued
+        var unclued = false
         if (rd != null && d.b >= 2 && d.hMax >= 2) {
             val window = if (d.hMax > hCap) Readability.WINDOW_CAP else minOf(d.hMax, Readability.WINDOW_CAP)
             val edge = minOf(s.staging.size, rd.ring.takeIf { it > 0 } ?: spots) + (rd.belt.takeIf { it > 0 } ?: sc.queuePreview)
             val n = Readability.hiddenBoarded(s, readLine(c), window, edge)
-            unreadable = n > 0
+            unclued = n > 0
             score += if (n == 0) rd.weight else -rd.weight - rd.perElement * minOf(n, rd.elementCap)
             c.hidden = n
         }
         // Stakes visible when the move is made: short horizons (2-4) in the opening, deep ones at the climax.
         val hTerm = when {
             d.hMax < 2 -> 0.0
-            unreadable && rd!!.deepOnlyReadable -> 0.0
+            unclued && rd!!.deepOnlyClued -> 0.0
             opening -> 2.0 + (if (d.hMax <= 4) 4.0 else 1.0)
             else -> 2.0 + d.hMax
         }

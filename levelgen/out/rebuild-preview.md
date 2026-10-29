@@ -6,7 +6,7 @@ Old = the shipped level (`app/src/main/assets/levels.json`, belt 10), new = the 
 
 ## Per level, solver line (old → new)
 
-| slot | recipe | tier | ring | belt | moves | unfair | traps | fair share | blind bits | winnable uniform start / 1/3 | winnable 1/3, H=40 | w>=2 share, mean w | hidden bits | fair hidden bits | solve nodes | readable forks (lag mean) | old @ new belt: unfair / traps / blind |
+| slot | recipe | tier | ring | belt | moves | unfair | traps | fair share | blind bits | winnable uniform start / 1/3 | winnable 1/3, H=40 | w>=2 share, mean w | hidden bits | fair hidden bits | solve nodes | clued forks (lag mean) | old @ new belt: unfair / traps / blind |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | L4 | juggle + just-enough cascade | 0 | 40 → 40 | 10 → 10 | 35 → 35 | 1 → 0 | 1 → 0 | 80% → 100% | 4.2 → 0.0 | 100% / 91% → 100% / 100% | 94% → 100% | 73%, 3.36 → 94%, 4.85 | 9.0 → 2.0 | 7.6 → 2.0 | 775 → 399 | 20% (21.5) → 0% (29.0) | same belt |
 | L10 | hard: juggle, scarce key -> heralded chain climax | 3 | 40 → 40 | 10 → 16 | 64 → 64 | 5 → 0 | 3 → 0 | 84% → 100% | 14.4 → 2.8 | 0% / 0% → 0% / 0% | 0% → 0% | 55%, 2.47 → 46%, 1.71 | 41.9 → 39.9 | 34.7 → 39.9 | 16803 → 1801 | 16% (30.6) → 32% (23.2) rep 60 | 4 / 4 / 10.7 |
@@ -72,7 +72,7 @@ Old = the shipped level (`app/src/main/assets/levels.json`, belt 10), new = the 
 | choices with w >= 2 (mean) | 71% | 76% |
 | mean w (mean) | 3.04 | 3.30 |
 | levels at <= 5% winnable from start (uniform) | 13 | 11 |
-| readable forks, deciding batch on show (mean share) | 21% | 34% |
+| clued forks, deciding batch on show (mean share) | 21% | 34% |
 | floors passed (mean over lines) | 2 | 15 |
 
 ## Effect of the deciding-batch repair (same pools, best finalist of each variant, solver line, 20 slots)
@@ -84,7 +84,7 @@ Old = the shipped level (`app/src/main/assets/levels.json`, belt 10), new = the 
 | blind bits (mean) | 2.9 | 3.3 |
 | fair hidden bits (mean) | 21.9 | 21.6 |
 | winnable at 1/3, H=40 (mean) | 48% | 39% |
-| readable forks, solver line (mean share) | 31% | 39% |
+| clued forks, solver line (mean share) | 31% | 39% |
 | fitness5 (mean) | 37.1 | 36.5 |
 | floors passed | 15 | 12 |
 | chosen as the slot's level | 11 | 9 |

@@ -40,7 +40,7 @@ class PrototypePackTest {
         for (pair in rebuilt.chunked(2)) {
             val slot = pair[0].motifs.single { it.startsWith("Slot: L") }
             assertEquals(slot, pair[1].motifs.single { it.startsWith("Slot: L") })
-            assertTrue("Prototype: old (shipped campaign)" in pair[0].motifs && "Prototype: new (rebuilt)" in pair[1].motifs, slot)
+            assertTrue(pair[0].motifs.any { it.startsWith("Prototype: old") } && pair[1].motifs.any { it.startsWith("Prototype: new") }, slot)
             for (p in pair) assertTrue(p.level.queuePreview <= 20, "$slot belt ${p.level.queuePreview}")
         }
     }

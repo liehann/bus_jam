@@ -30,7 +30,7 @@ internal class Stage0(
     val tryIndex: Int,
     val directorSeed: Long,
     val tag: Any? = null,
-    /** The construction that built the try ("default", or a [readableDef] spec); constructions compete in one pool. */
+    /** The construction that built the try ("default", or a [cluedDef] spec); constructions compete in one pool. */
     val construction: String = "default",
 ) {
     val baseOk: Boolean get() = baseFails.isEmpty()
@@ -59,7 +59,7 @@ internal class Scored(
     /** Line fairness on the solver line (the report's view). */
     val solver: LineFairness get() = lines.last()
     /** Share of the solver line's forks whose deciding batch is within carousel + belt ([Readability.arrivals]). */
-    val readableShare: Double by lazy { Readability.arrivals(level, solverLine, solver.m.quality.states).readableShare }
+    val cluedShare: Double by lazy { Readability.arrivals(level, solverLine, solver.m.quality.states).cluedShare }
 }
 
 /** Timings and counts of one selection, for the report. */
@@ -81,7 +81,7 @@ internal class SelectStats {
 internal class Selection(val best: Scored, val bestOff: Scored?, val bestOn: Scored?, val byConstruction: Map<String, Scored> = emptyMap())
 
 /**
- * Scores of one slot's pool kept across several [select5v] calls on that pool (e.g. one per readability weight):
+ * Scores of one slot's pool kept across several [select5v] calls on that pool (e.g. one per clued weight):
  * the measurements do not depend on the ranking, only the choice of finalists does. One per slot, not shared across threads.
  */
 internal class SelectCache {
@@ -99,16 +99,16 @@ internal class SelectCache {
  *     [dist5]) is the slot's level.
  * Fitness5 = the try's fitness3 (at 40 seats, as fitness4 in OfficialPack) + the fairness bonus at the ring.
  *
- * When the pool holds tries of several constructions ([Stage0.construction], e.g. default and readable stalls), each
+ * When the pool holds tries of several constructions ([Stage0.construction], e.g. default and clued squeezes), each
  * gets its own prefilter (best [Fitness5Config.prefilterTop]) and finalists per repair variant, and all finalists
- * compete for the slot (as the repair variants do). [readableWeight] adds a readability term to the ranking after the
- * floors: dist5(fitness5) - readableWeight * [Scored.readableShare] (0 = the plain fitness5 order). [cache] reuses the
+ * compete for the slot (as the repair variants do). [cluedWeight] adds a clued term to the ranking after the
+ * floors: dist5(fitness5) - cluedWeight * [Scored.cluedShare] (0 = the plain fitness5 order). [cache] reuses the
  * measurements across calls on the same pool.
  */
 internal fun select5v(
     pool: List<Stage0>, tier: Int, ring: Int, dist5: (Double) -> Double, dist4: (HybridEval) -> Double,
     c5: Fitness5Config, fc: HybridFitnessConfig, repair: RepairMode, stats: SelectStats,
-    readableWeight: Double = 0.0, cache: SelectCache? = null,
+    cluedWeight: Double = 0.0, cache: SelectCache? = null,
 ): Selection? {
     stats.stage0 = pool.size
     stats.stage0Ok = pool.count { it.baseOk }
@@ -151,8 +151,8 @@ internal fun select5v(
     stats.prefiltered = off.size + on.size
     stats.stage1Seconds = (System.nanoTime() - t1) / 1e9
     val t2 = System.nanoTime()
-    val order = if (readableWeight == 0.0) compareBy<Scored>({ !it.accepted }, { it.fails.size }, { dist5(it.fitness5) })
-        else compareBy<Scored>({ !it.accepted }, { it.fails.size }, { dist5(it.fitness5) - readableWeight * it.readableShare })
+    val order = if (cluedWeight == 0.0) compareBy<Scored>({ !it.accepted }, { it.fails.size }, { dist5(it.fitness5) })
+        else compareBy<Scored>({ !it.accepted }, { it.fails.size }, { dist5(it.fitness5) - cluedWeight * it.cluedShare })
     fun final(p: Scored): Scored = cache?.stage2?.get(p)
         ?: score(p.s0, p.level, p.line, p.repair, p.arrival, c5.final, true).also { cache?.stage2?.put(p, it) }
     fun finals(xs: List<Scored>) = xs.groupBy { it.s0.construction }.values.flatMap { g -> g.sortedWith(order).take(c5.finalists).map(::final) }

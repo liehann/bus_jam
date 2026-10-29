@@ -54,7 +54,7 @@ fun main(args: Array<String>) {
                 if (lv.containers[tapped].color in f.colors) who += "tap:" + (sl.roles[tapped] ?: "?")
                 for (d in states[k + 1].dock.filterNotNull() + states[k].dock.filterNotNull()) if (d.color in f.colors) who += "dock:" + (sl.roles[d.containerId] ?: "?")
             }
-            if (!f.readable) for (w in who) roleCount.merge(w.replace(Regex("[0-9]+$"), ""), 1, Int::plus)
+            if (!f.clued) for (w in who) roleCount.merge(w.replace(Regex("[0-9]+$"), ""), 1, Int::plus)
             val qs = q.states[f.step]
             val st = states[f.step]
             val legal = Engine.legalMoves(st)
@@ -69,5 +69,5 @@ fun main(args: Array<String>) {
         }
     }
     println("hidden elements by (own batch / recipient) and tapped role: " + elemCount.entries.sortedByDescending { it.value })
-    println("roles boarding deciding batches (unreadable forks): " + roleCount.entries.sortedByDescending { it.value })
+    println("roles boarding deciding batches (unclued forks): " + roleCount.entries.sortedByDescending { it.value })
 }

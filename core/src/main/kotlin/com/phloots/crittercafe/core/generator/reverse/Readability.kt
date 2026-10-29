@@ -13,30 +13,30 @@ import com.phloots.crittercafe.core.model.Status
  * window is the deepest loser's horizon (capped at [Readability.WINDOW_CAP]): the moves over which a wrong choice is
  * found out. The *deciding batch* is what the line boards in the window that was not on show when the choice was made:
  * elements boarded during steps [step] until [step] + [window] whose queue position was beyond the carousel plus the
- * belt at [step] (position >= queueIndex + shown). A fork is *readable* when that batch is empty: every element the
+ * belt at [step] (position >= queueIndex + shown). A fork is *clued* when that batch is empty: every element the
  * winning continuation consumes over the window is on the carousel or the belt at decision time.
  *
  * @property hiddenBoarded elements of the deciding batch
- * @property lag how far beyond the belt its last element was (0 = readable)
+ * @property lag how far beyond the belt its last element was (0 = clued)
  * @property deep the fork has a loser with h > 3 (the player cannot look the loss up)
  * @property colors colours of the deciding batch
  */
 data class ForkArrival(val step: Int, val window: Int, val hiddenBoarded: Int, val lag: Int, val deep: Boolean, val colors: Set<Int>) {
-    val readable: Boolean get() = hiddenBoarded == 0
+    val clued: Boolean get() = hiddenBoarded == 0
 }
 
 /** [ForkArrival] for every fork of a line, at belt [shown]. */
 data class ArrivalMetrics(val forks: List<ForkArrival>, val shown: Int) {
-    val unreadable: Int get() = forks.count { !it.readable }
-    val unreadableDeep: Int get() = forks.count { !it.readable && it.deep }
-    val readableShare: Double get() = if (forks.isEmpty()) 1.0 else forks.count { it.readable }.toDouble() / forks.size
+    val unclued: Int get() = forks.count { !it.clued }
+    val uncluedDeep: Int get() = forks.count { !it.clued && it.deep }
+    val cluedShare: Double get() = if (forks.isEmpty()) 1.0 else forks.count { it.clued }.toDouble() / forks.size
     val maxLag: Int get() = forks.maxOfOrNull { it.lag } ?: 0
     val meanLag: Double get() = if (forks.isEmpty()) 0.0 else forks.map { it.lag.toDouble() }.average()
-    /** Mean lag over the unreadable forks only (how far beyond the belt the deciding batch typically sits). */
-    val meanLagUnreadable: Double get() = forks.filter { !it.readable }.let { u -> if (u.isEmpty()) 0.0 else u.map { it.lag.toDouble() }.average() }
+    /** Mean lag over the unclued forks only (how far beyond the belt the deciding batch typically sits). */
+    val meanLagUnclued: Double get() = forks.filter { !it.clued }.let { u -> if (u.isEmpty()) 0.0 else u.map { it.lag.toDouble() }.average() }
 
-    fun summary(): String = "forks %d, readable %.0f%% (deep unreadable %d), lag max %d mean %.1f (unreadable %.1f), belt %d".format(
-        forks.size, readableShare * 100, unreadableDeep, maxLag, meanLag, meanLagUnreadable, shown)
+    fun summary(): String = "forks %d, clued %.0f%% (deep unclued %d), lag max %d mean %.1f (unclued %.1f), belt %d".format(
+        forks.size, cluedShare * 100, uncluedDeep, maxLag, meanLag, meanLagUnclued, shown)
 }
 
 /** Result of [Readability.repair]: the level with a repaired queue, the elements moved and the metric before / after. */
@@ -132,7 +132,7 @@ object Readability {
     /**
      * The deciding batch of a fork at [start] (a state whose staged elements sit at queue positions 0 until
      * staging.size, see [boardedFrom]): elements the continuation [line] boards over its first [window] moves whose
-     * queue position is at or beyond [edge] (carousel + belt at the fork). 0 = the fork is readable.
+     * queue position is at or beyond [edge] (carousel + belt at the fork). 0 = the fork is clued.
      */
     fun hiddenBoarded(start: GameState, line: List<Move>, window: Int, edge: Int): Int {
         val (_, b) = boardedFrom(start, line, minOf(window, WINDOW_CAP))

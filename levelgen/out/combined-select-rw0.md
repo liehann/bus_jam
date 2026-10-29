@@ -1,6 +1,6 @@
 # Rebuild preview (fitness5, tier floors, belt dial, deciding-batch repair)
 
-Constructions competing in one pool: `off,w3:d10` (`off` = default, else a `ReadableDef` spec at the ring and belt of each slot); readability weight 0.0 (ranking after the floors: dist5(fitness5) - weight x readable-fork share, solver line). Old = `app/src/main/assets/levels.json`.
+Constructions competing in one pool: `off,w3:d10` (`off` = default, else a `CluedDef` spec at the ring and belt of each slot); clued weight 0.0 (ranking after the floors: dist5(fitness5) - weight x clued-fork share, solver line). Old = `app/src/main/assets/levels.json`.
 
 Replacements for 20 official slots, same recipe / tier / ring schedule and director seeds as `OfficialPack` (seed 7, 400 tries, x2 on tier >= 2), selected by fitness5 with the tier floors (`Fitness5Config`): stage 0 = every try evaluated as OfficialPack does (fitness4 at 40 seats); stage 1 = the best 16 by fitness4 at the slot's ring, short chain (x1) on the intended and solver line, with and without the queue repair (`--repair both`); stage 2 = the best 4 per variant re-measured with the long chain (x16). Belt (`queuePreview`): 10 on tier 0 and in cycles 1-2 (12 / 16 on tiers 2 / 3 there), else 14 / 16 / 20 on tiers 1 / 2 / 3. Commit 8ce5435-dirty, wall time 5085 s on 6 threads.
 
@@ -8,7 +8,7 @@ Old = the shipped level (`app/src/main/assets/levels.json`, belt 10), new = the 
 
 ## Per level, solver line (old → new)
 
-| slot | recipe | tier | ring | belt | moves | unfair | traps | fair share | blind bits | winnable uniform start / 1/3 | winnable 1/3, H=40 | w>=2 share, mean w | hidden bits | fair hidden bits | solve nodes | readable forks (lag mean) | old @ new belt: unfair / traps / blind |
+| slot | recipe | tier | ring | belt | moves | unfair | traps | fair share | blind bits | winnable uniform start / 1/3 | winnable 1/3, H=40 | w>=2 share, mean w | hidden bits | fair hidden bits | solve nodes | clued forks (lag mean) | old @ new belt: unfair / traps / blind |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | L4 | juggle + just-enough cascade | 0 | 40 → 40 | 10 → 10 | 35 → 35 | 0 → 0 | 0 → 0 | 100% → 100% | 0.0 → 0.0 | 100% / 100% → 100% / 100% | 100% → 100% | 94%, 4.85 → 94%, 4.85 | 2.0 → 2.0 | 2.0 → 2.0 | 399 → 399 | 0% (29.0) → 0% (29.0) | same belt |
 | L10 | hard: juggle, scarce key -> heralded chain climax | 3 | 40 → 40 | 16 → 16 | 64 → 64 | 0 → 0 | 0 → 0 | 100% → 100% | 2.8 → 2.8 | 0% / 0% → 0% / 0% | 0% → 0% | 46%, 1.71 → 46%, 1.71 | 39.9 → 39.9 | 39.9 → 39.9 | 1801 → 1801 | 32% (23.2) → 32% (23.2) rep 60 | same belt |
@@ -74,11 +74,11 @@ Old = the shipped level (`app/src/main/assets/levels.json`, belt 10), new = the 
 | choices with w >= 2 (mean) | 76% | 74% |
 | mean w (mean) | 3.29 | 3.30 |
 | levels at <= 5% winnable from start (uniform) | 11 | 11 |
-| readable forks, deciding batch on show (mean share) | 36% | 38% |
+| clued forks, deciding batch on show (mean share) | 36% | 38% |
 | floors passed (mean over lines) | 15 | 16 |
 | construction chosen | | default 12, w3:d10 8 |
 
-## Best finalist per construction (solver line; slot: construction unfair / readable / f5 / floors)
+## Best finalist per construction (solver line; slot: construction unfair / clued / f5 / floors)
 
 - L4: default 0 / 0% / 16.1 / pass; w3:d10 0 / 80% / 15.5 / pass -> default
 - L10: default 0 / 32% / 72.1 / order 0.00; w3:d10 0 / 24% / 58.6 / order 0.00 -> default
@@ -110,7 +110,7 @@ Old = the shipped level (`app/src/main/assets/levels.json`, belt 10), new = the 
 | blind bits (mean) | 3.5 | 3.4 |
 | fair hidden bits (mean) | 24.4 | 21.7 |
 | winnable at 1/3, H=40 (mean) | 54% | 45% |
-| readable forks, solver line (mean share) | 35% | 40% |
+| clued forks, solver line (mean share) | 35% | 40% |
 | fitness5 (mean) | 36.0 | 36.8 |
 | floors passed | 16 | 13 |
 | chosen as the slot's level | 12 | 8 |

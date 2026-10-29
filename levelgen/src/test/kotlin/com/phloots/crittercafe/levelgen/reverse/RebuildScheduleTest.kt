@@ -33,8 +33,8 @@ class RebuildScheduleTest {
         assertEquals((0..3).toList(), REBUILD_SLOTS.map { n -> rs[plan().first { it.number == n }.recipe].tier }.distinct().sorted())
     }
 
-    private fun summary(f5: Double, fails: List<String> = emptyList(), solved2M: Boolean = true) =
-        F5Summary(emptyMap(), emptyMap(), 0.0, f5, emptyList(), fails, 1000, solved2M, 40, 10, 2)
+    private fun summary(f5: Double, fails: List<String> = emptyList(), solved2M: Boolean = true, clued: Double? = null) =
+        F5Summary(if (clued == null) emptyMap() else mapOf("clued" to clued), emptyMap(), 0.0, f5, emptyList(), fails, 1000, solved2M, 40, 10, 2)
 
     /** Keep or replace (OfficialPackF5): a passing shipped level stays unless the new one is clearly better. */
     @Test
@@ -60,5 +60,43 @@ class RebuildScheduleTest {
         // the new level must win on its line and be solved at 2M nodes
         assertEquals(false, decide(failing, summary(40.0), MAX4, false, CHURN_MARGIN).first)
         assertEquals(false, decide(failing, summary(40.0, solved2M = false), MAX4, true, CHURN_MARGIN).first)
+    }
+
+    /**
+     * Keep or replace with the clued weight: the score is dist5(fitness5) - w x clued-fork share, as in select5v's
+     * ranking, so a candidate that is better once its clued share is counted replaces the shipped level; the floors
+     * still come first.
+     */
+    @Test
+    fun keepOrReplaceCountsCluedSqueezes() {
+        val w = 15.0
+        val old = summary(30.0, clued = 0.30)
+        // fitness5 a little lower but many more clued forks: 15 x 0.4 = 6 more than makes up for 2 points
+        val cluedNew = summary(28.0, clued = 0.70)
+        assertEquals(false, decide(old, cluedNew, MAX4, true, CHURN_MARGIN).first, "without the weight fitness5 alone decides")
+        assertEquals(true, decide(old, cluedNew, MAX4, true, CHURN_MARGIN, w).first)
+        // the margin applies to the combined score: 31 - 15 x 0.30 vs 30 - 15 x 0.30 is within it
+        assertEquals(false, decide(old, summary(31.0, clued = 0.30), MAX4, true, CHURN_MARGIN, w).first)
+        // a better fitness5 that loses clued forks can be worse overall
+        assertEquals(false, decide(old, summary(33.0, clued = 0.0), MAX4, true, CHURN_MARGIN, w).first)
+        // on a target recipe: the distance to the target, less the clued term
+        assertEquals(true, decide(summary(20.0, clued = 0.2), summary(21.0, clued = 0.6), 20.0, true, CHURN_MARGIN, w).first)
+        // a candidate failing more floors never wins on its clued share; failing the same floors, the score decides
+        assertEquals(false, decide(old, summary(40.0, listOf("order 0.00"), clued = 1.0), MAX4, true, CHURN_MARGIN, w).first)
+        assertEquals(true, decide(summary(64.7, listOf("order 0.00"), clued = 0.2), summary(64.0, listOf("order 0.00"), clued = 0.6), MAX4, true, CHURN_MARGIN, w).first)
+        // a shipped level that fails a floor is still replaced by one that passes, whatever the clued shares
+        assertEquals(true, decide(summary(60.0, listOf("unfair 2.0"), clued = 1.0), summary(10.0, clued = 0.0), MAX4, true, CHURN_MARGIN, w).first)
+        // a summary without the clued share (an old checkpoint) falls back to fitness5 alone
+        assertEquals(false, decide(summary(30.0), cluedNew, MAX4, true, CHURN_MARGIN, w).first)
+    }
+
+    /** Provenance written before the rename names the construction `readable`; it is still read. */
+    @Test
+    fun constructionKeyAcceptsTheOldName() {
+        fun meta(vararg kv: Pair<String, String>) = kotlinx.serialization.json.JsonObject(kv.associate { it.first to kotlinx.serialization.json.JsonPrimitive(it.second) })
+        assertEquals("off", constructionOf(null))
+        assertEquals("off", constructionOf(meta("recipe" to "x")))
+        assertEquals("w3:d10", constructionOf(meta("clued" to "w3:d10")))
+        assertEquals("w3:d10", constructionOf(meta("readable" to "w3:d10")))
     }
 }

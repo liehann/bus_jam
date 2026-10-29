@@ -68,6 +68,13 @@ candidate is clearly better (`levelgen/out/campaign-f5.md` records each decision
 ./gradlew :levelgen:reversePreview -PreverseMain=com.phloots.crittercafe.levelgen.reverse.OfficialPackF5Kt --args="--write true"
 # patch some levels against the pack as shipped (redoes those slots' checkpoints)
 ./gradlew :levelgen:reversePreview -PreverseMain=com.phloots.crittercafe.levelgen.reverse.OfficialPackF5Kt --args="--only 37,52 --write true"
+# favour clued squeezes: default and clued-squeeze constructions compete, ranked and kept-or-replaced with clued
+# weight 15; a separate output base first (checkpoints in levelgen/out/clued-rebuild/, report clued-rebuild.md,
+# candidate clued-rebuild-levels.json / -lines.json / -meta.json); --assemble true --write true installs it
+./gradlew :levelgen:reversePreview -PreverseMain=com.phloots.crittercafe.levelgen.reverse.OfficialPackF5Kt \
+  --args="--threads 6 --reuse none --clued off,w3:d10 --clued-weight 15 --out levelgen/out/clued-rebuild"
+# determinism: rebuild every shipped level from official-meta.json and compare (--pack / --meta for a candidate)
+./gradlew :levelgen:reversePreview -PreverseMain=com.phloots.crittercafe.levelgen.reverse.OfficialReplayKt --args="--threads 6"
 # the older fitness4 builder (overwrites the fitness5 campaign on a full run)
 ./gradlew :levelgen:reversePreview -PreverseMain=com.phloots.crittercafe.levelgen.reverse.OfficialPackKt [--args="--only 37,52"]
 ```
@@ -75,7 +82,15 @@ candidate is clearly better (`levelgen/out/campaign-f5.md` records each decision
 Writes `app/src/main/assets/levels.json`, `levelgen/out/official.md`, `levelgen/out/official-lines.json` and
 `levelgen/out/official-meta.json` (per level, keyed by its content hash as the app's analytics reports it: recipe, seeds,
 try, generator commit; for the fitness5 pass also the belt, fitness5, its config id and the floors). Without
-`--write true`, `OfficialPackF5` only writes the report and the candidate pack `levelgen/out/campaign-f5-levels.json`.
+`--write true`, `OfficialPackF5` only writes the report and the candidate pack `<out>-levels.json` (default
+`levelgen/out/campaign-f5`).
+
+A **squeeze** is a point where the dock is filling and the player must choose carefully (a "stall" in the generator's
+code); it is **clued** when the plates that decide the right choice are already on the carousel or the belt at decision
+time. `--clued` lists the constructions competing in each slot's pool (`off` = default, `w3:d10` = the clued-squeeze
+construction) and `--clued-weight w` ranks candidates by `dist5(fitness5) - w x clued-fork share` after the floors,
+both in the selection and in the keep-or-replace rule. Each level's construction is recorded under `clued` in its
+provenance (`readable` in records written before the rename is read the same way).
 Mechanics preview (intro + harder levels per v4 mechanic):
 `-PreverseMain=com.phloots.crittercafe.levelgen.reverse.MechanicsPreviewKt` -> `levelgen/out/mechanics-preview.md`.
 

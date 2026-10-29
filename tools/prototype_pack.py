@@ -6,11 +6,11 @@ blocks of four, then 4 mixes). The prototype takes per mechanic the intro and th
 the mixes. Each pack entry gets a "theme" (a CafeThemes id; the app draws the level in that theme) and a "group"
 (the level list's heading); both sit beside "level" and are ignored by core's LevelPackCodec.
 
-After those 25 comes "Rebuilt levels (new rules)": for each level of levelgen/out/rebuild-preview-levels.json (made by
-RebuildPreview: fitness5, tier floors, belt dial, deciding-batch repair) the campaign level of the same slot before the
-fitness5 rebuild (levelgen/prototype/campaign-v1-levels.json, the pack as of commit 8ce5435; the shipped
-app/src/main/assets/levels.json now holds most of the rebuilt levels) and then its replacement, in a section of their
-own ("... · L72: old, new") so a tester can play them side by side.
+After those 25 comes "Rebuilt levels (new rules)": for each slot of the rebuild sample (the slots of
+levelgen/out/rebuild-preview-levels.json) the campaign level of that slot before the fitness5 rebuild
+(levelgen/prototype/campaign-v1-levels.json, the pack as of commit 8ce5435) and then the level the shipped campaign
+(app/src/main/assets/levels.json: fitness5, tier floors, belt dial, clued squeezes) has there now, in a section of
+their own ("... · L72: old, new") so a tester can play them side by side.
 
     python3 tools/prototype_pack.py
     ./gradlew :app:assembleDebug -Pprototype
@@ -35,6 +35,8 @@ BLOCKS = [
 PER_BLOCK = 3
 MIXES = (29, 32, 'jungle', 'Jungle Café · Mixes')
 REBUILT = ROOT / 'levelgen/out/rebuild-preview-levels.json'
+# the campaign as shipped now: the "new" level of each pair
+SHIPPED = ROOT / 'app/src/main/assets/levels.json'
 # the campaign before the fitness5 rebuild (OfficialPackF5 replaced most slots of app/src/main/assets/levels.json)
 CAMPAIGN = ROOT / 'levelgen/prototype/campaign-v1-levels.json'
 REBUILT_THEME = 'luau_night'
@@ -60,13 +62,13 @@ def main():
         picked.append((src[n - 1], theme, group))
     if REBUILT.exists():
         campaign = json.loads(CAMPAIGN.read_text())['levels']
-        for new in json.loads(REBUILT.read_text())['levels']:
-            n = slot_of(new)
+        shipped = json.loads(SHIPPED.read_text())['levels']
+        for n in [slot_of(e) for e in json.loads(REBUILT.read_text())['levels']]:
             group = f'{REBUILT_GROUP} · L{n}: old, new'
             old = dict(campaign[n - 1])
             old['motifs'] = list(old.get('motifs', [])) + [f'Slot: L{n}', 'Prototype: old (campaign before the fitness5 rebuild)']
-            new = dict(new)
-            new['motifs'] = list(new.get('motifs', [])) + ['Prototype: new (rebuilt)']
+            new = dict(shipped[n - 1])
+            new['motifs'] = list(new.get('motifs', [])) + [f'Slot: L{n}', 'Prototype: new (shipped campaign)']
             picked.append((old, REBUILT_THEME, group))
             picked.append((new, REBUILT_THEME, group))
     levels = []

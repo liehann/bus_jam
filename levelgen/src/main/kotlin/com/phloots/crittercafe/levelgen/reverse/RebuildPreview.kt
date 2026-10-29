@@ -106,10 +106,10 @@ fun main(args: Array<String>) {
     val beltOverride = opts["belt"]?.toInt()
     // Clued-squeeze construction (CluedDef spec, see cluedDef; "off" = the default construction). A comma-separated
     // list ("off,w3:d10") lets the constructions' tries compete in one pool (select5v).
-    val clued = opts["clued"] ?: "off"
-    // clued term in the ranking (select5v cluedWeight); a comma-separated list runs the selection once per
+    val clued = opts["clued"] ?: opts["readable"] ?: "off"
+    // Clued term in the ranking (select5v cluedWeight); a comma-separated list runs the selection once per
     // weight on the same pools (outputs <out>-rw<weight>.* when more than one).
-    val weights = (opts["clued-weight"] ?: "0").split(",").map { it.trim().toDouble() }
+    val weights = (opts["clued-weight"] ?: opts["readable-weight"] ?: "0").split(",").map { it.trim().toDouble() }
     // The levels compared against: a 100-level pack indexed by slot, or a preview pack whose tags name the slot
     // ("Slot: L<n>"); --old-meta: provenance file whose lines are the old levels' intended lines (keyed by slot).
     val oldMeta = opts["old-meta"]?.let { File(it) }

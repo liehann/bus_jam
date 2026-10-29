@@ -1,0 +1,95 @@
+package com.phloots.crittercafe.ui
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.phloots.crittercafe.BuildConfig
+import com.phloots.crittercafe.data.AndroidAssetSource
+import com.phloots.crittercafe.data.GameModeStore
+import com.phloots.crittercafe.data.LevelRepository
+import com.phloots.crittercafe.data.PackCatalog
+import com.phloots.crittercafe.data.PackInfo
+import com.phloots.crittercafe.data.PackSelectionStore
+import com.phloots.crittercafe.data.Progress
+import com.phloots.crittercafe.data.ProgressStore
+import com.phloots.crittercafe.data.SkinStore
+import com.phloots.crittercafe.data.progressDataStore
+import com.phloots.crittercafe.core.io.PackedLevel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+/** A pack with its levels loaded (empty if the file could not be decoded). */
+data class LoadedPack(val info: PackInfo, val levels: List<PackedLevel>)
+
+/**
+ * App-wide data: the level packs, the selected pack and its progress. Release builds only know the campaign;
+ * debug builds also offer every `assets/packs/<name>.json` and remember the selection.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class AppViewModel(application: Application) : AndroidViewModel(application) {
+    private val dataStore = application.progressDataStore
+    private val assets = AndroidAssetSource(application.assets)
+    val repository = LevelRepository(assets)
+    val packs: List<PackInfo> = PackCatalog.discover(assets, includeExtra = false) // the official campaign only
+    private val selection = PackSelectionStore(dataStore)
+    private val stores = HashMap<String, ProgressStore>()
+
+    /** Progress (and win sink) of [pack]. */
+    fun progressStore(pack: PackInfo): ProgressStore = stores.getOrPut(pack.file) { ProgressStore(dataStore, pack.file) }
+
+    /** Selected pack (falls back to the first, i.e. the campaign); null until the selection has been read. */
+    val pack: StateFlow<PackInfo?> = selection.selected
+        .map { file -> packs.firstOrNull { it.file == file } ?: packs.first() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** The selected pack's levels; null while loading. */
+    val loaded: StateFlow<LoadedPack?> = pack.filterNotNull()
+        .flatMapLatest { p ->
+            flow {
+                emit(null)
+                emit(LoadedPack(p, runCatching { repository.levels(p.file) }.getOrElse { emptyList() }))
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** The selected pack's progress; null while loading. */
+    val progress: StateFlow<Progress?> = pack.filterNotNull()
+        .flatMapLatest { p -> progressStore(p).progress }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val mode = GameModeStore(dataStore)
+
+    /** Real-time carousel mode: always on (the turn-based mode stays in the code, without a switch). */
+    val realTime: StateFlow<Boolean?> = mode.realTime
+        .map { true }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null) // null until the setting has been read
+
+    fun setRealTime(on: Boolean) {
+        viewModelScope.launch { mode.setRealTime(on) }
+    }
+
+    private val skinStore = SkinStore(dataStore)
+
+    /** Critter Café skin: always on (the flat skin stays in the code, without a switch). */
+    val critterCafe: StateFlow<Boolean?> = skinStore.critterCafe
+        .map { true }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setCritterCafe(on: Boolean) {
+        viewModelScope.launch { skinStore.setCritterCafe(on) }
+    }
+
+    /** Everything the first home frame needs has been read: skin, mode, the selected pack and its progress. */
+    fun isReady(): Boolean = critterCafe.value != null && realTime.value != null && loaded.value != null && progress.value != null
+
+    fun selectPack(file: String) {
+        viewModelScope.launch { selection.select(file) }
+    }
+}

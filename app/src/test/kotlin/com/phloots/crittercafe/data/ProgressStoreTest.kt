@@ -1,0 +1,157 @@
+package com.phloots.crittercafe.data
+
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+
+/** ProgressStore against a real Preferences DataStore in a temp file. */
+class ProgressStoreTest {
+    @get:Rule
+    val tmp = TemporaryFolder()
+
+    private lateinit var scope: CoroutineScope
+    private lateinit var store: ProgressStore
+
+    @Before
+    fun setUp() {
+        scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        store = ProgressStore(
+            PreferenceDataStoreFactory.create(scope = scope) { tmp.newFile("progress.preferences_pb").also { it.delete() } },
+        )
+    }
+
+    @After
+    fun tearDown() = scope.cancel()
+
+    private fun progress() = runBlocking { store.progress.first() }
+
+    @Test
+    fun freshStoreStartsAtLevelOne() {
+        val p = progress()
+        assertEquals(1, p.highestUnlocked)
+        assertTrue(p.stars.isEmpty())
+        assertEquals(1, p.firstUnbeaten(1000))
+    }
+
+    @Test
+    fun keepsBestStars() = runBlocking {
+        store.recordWin(1, 3)
+        store.recordWin(1, 1)
+        assertEquals(3, progress().starsFor(1))
+        store.recordWin(2, 1)
+        store.recordWin(2, 2)
+        assertEquals(2, progress().starsFor(2))
+    }
+
+    @Test
+    fun clampsStarsToOneToThree() = runBlocking {
+        store.recordWin(1, 7)
+        store.recordWin(2, 0)
+        assertEquals(3, progress().starsFor(1))
+        assertEquals(1, progress().starsFor(2))
+    }
+
+    @Test
+    fun winUnlocksTheNextLevelAndNeverRelocks() = runBlocking {
+        store.recordWin(1, 2)
+        assertEquals(2, progress().highestUnlocked)
+        store.recordWin(2, 3)
+        store.recordWin(3, 3)
+        assertEquals(4, progress().highestUnlocked)
+        store.recordWin(1, 3) // replaying an old level does not lower the unlock
+        assertEquals(4, progress().highestUnlocked)
+        assertTrue(progress().isUnlocked(4))
+        assertFalse(progress().isUnlocked(5))
+    }
+
+    @Test
+    fun firstUnbeatenSkipsBeatenLevels() = runBlocking {
+        store.recordWin(1, 3)
+        store.recordWin(2, 1)
+        assertEquals(3, progress().firstUnbeaten(1000))
+    }
+
+    @Test
+    fun firstUnbeatenFindsAGapBelowTheUnlock() {
+        val p = Progress(highestUnlocked = 6, stars = mapOf(1 to 3, 2 to 3, 4 to 1, 5 to 2))
+        assertEquals(3, p.firstUnbeaten(1000))
+    }
+
+    @Test
+    fun firstUnbeatenClampsAtThePackEnd() = runBlocking {
+        for (n in 1..5) store.recordWin(n, 3)
+        val p = progress()
+        assertEquals(6, p.highestUnlocked)
+        assertEquals(5, p.firstUnbeaten(5)) // everything beaten: stay on the last level
+        assertEquals(1, Progress(highestUnlocked = 50).firstUnbeaten(3))
+        assertEquals(3, Progress(highestUnlocked = 50, stars = mapOf(1 to 1, 2 to 1)).firstUnbeaten(3))
+        assertEquals(1, Progress().firstUnbeaten(0))
+    }
+
+    @Test
+    fun persistsAcrossStoreInstances() = runBlocking {
+        store.recordWin(1, 2)
+        scope.cancel()
+        scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        val again = ProgressStore(
+            PreferenceDataStoreFactory.create(scope = scope) { java.io.File(tmp.root, "progress.preferences_pb") },
+        )
+        val p = again.progress.first()
+        assertEquals(2, p.starsFor(1))
+        assertEquals(2, p.highestUnlocked)
+    }
+
+    @Test
+    fun packsKeepSeparateProgress() = runBlocking {
+        val ds = PreferenceDataStoreFactory.create(scope = scope) { java.io.File(tmp.root, "packs.preferences_pb") }
+        val campaign = ProgressStore(ds) // default pack = levels.json
+        val motif = ProgressStore(ds, "packs/motif-preview.json")
+        val reverse = ProgressStore(ds, "packs/reverse-preview.json")
+        campaign.recordWin(1, 3)
+        campaign.recordWin(2, 2)
+        motif.recordWin(1, 1)
+        assertEquals(mapOf(1 to 3, 2 to 2), campaign.progress.first().stars)
+        assertEquals(3, campaign.progress.first().highestUnlocked)
+        assertEquals(mapOf(1 to 1), motif.progress.first().stars)
+        assertEquals(2, motif.progress.first().highestUnlocked)
+        assertTrue(reverse.progress.first().stars.isEmpty())
+        assertEquals(1, reverse.progress.first().highestUnlocked)
+    }
+
+    @Test
+    fun oldCampaignProgressIsIgnored() = runBlocking {
+        // un-prefixed keys belong to the old 1000-level campaign; the official campaign starts over
+        val file = java.io.File(tmp.root, "legacy.preferences_pb")
+        val ds = PreferenceDataStoreFactory.create(scope = scope) { file }
+        ds.edit {
+            it[intPreferencesKey("stars_1")] = 3
+            it[intPreferencesKey("highest_unlocked")] = 2
+        }
+        assertTrue(ProgressStore(ds).progress.first().stars.isEmpty())
+        assertEquals(1, ProgressStore(ds).progress.first().highestUnlocked)
+        assertTrue(ProgressStore(ds, "packs/x.json").progress.first().stars.isEmpty())
+    }
+
+    @Test
+    fun selectedPackIsRemembered() = runBlocking {
+        val ds = PreferenceDataStoreFactory.create(scope = scope) { java.io.File(tmp.root, "sel.preferences_pb") }
+        val sel = PackSelectionStore(ds)
+        assertEquals(null, sel.selected.first())
+        sel.select("packs/reverse-preview.json")
+        assertEquals("packs/reverse-preview.json", PackSelectionStore(ds).selected.first())
+    }
+}

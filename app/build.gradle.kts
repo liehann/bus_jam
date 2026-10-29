@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.phloots.busjam"
+    namespace = "com.phloots.crittercafe"
     // Current AndroidX/Compose (core 1.19, compose 1.12) require compileSdk >= 37. AGP 9 DSL for minor API levels:
     compileSdk {
         version = release(37) {
@@ -14,7 +14,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.phloots.busjam"
+        applicationId = "com.phloots.crittercafe"
         minSdk = 26
         targetSdk = 37
         versionCode = 1

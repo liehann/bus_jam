@@ -1,7 +1,8 @@
 package com.phloots.crittercafe.core.realtime
 
 import com.phloots.crittercafe.core.engine.Engine
-import com.phloots.crittercafe.core.engine.LevelData
+import com.phloots.crittercafe.core.model.Dir
+import com.phloots.crittercafe.core.model.MechanicsView
 import com.phloots.crittercafe.core.model.Bits128
 import com.phloots.crittercafe.core.model.DockedContainer
 import com.phloots.crittercafe.core.model.GameState
@@ -230,6 +231,27 @@ class RealTimeState internal constructor(
 
     val dockUsed: Int get() = dock.count { it != null }
 
+    // ---- v4 mechanic views (same meaning as GameState's; they change at the tap, not over time) ----
+
+    /** Releases so far (taps that released a container). */
+    val releases: Int get() = MechanicsView.releases(level, onBoard)
+
+    fun frozenRemaining(id: Int): Int = MechanicsView.frozenRemaining(level, onBoard, id)
+
+    fun isTieLocked(id: Int): Boolean = MechanicsView.isTieLocked(level, onBoard, id)
+
+    fun dirOf(id: Int): Dir = MechanicsView.dirOf(level, onBoard, id)
+
+    fun isGateOpen(gate: Int): Boolean = MechanicsView.isGateOpen(level, onBoard, gate)
+
+    fun isRevealed(id: Int): Boolean = MechanicsView.isRevealed(level, onBoard, id)
+
+    /** True iff dock [slot] holds the right half of a wide container whose left half is at `slot - 1`. */
+    fun isWideTail(slot: Int): Boolean {
+        val s = dock[slot] ?: return false
+        return slot > 0 && dock[slot - 1]?.containerId == s.containerId
+    }
+
     /** Colours of the ring elements ordered by queue index (oldest first). */
     fun ringColors(): List<Int> = seats.filter { it >= 0 }.sorted().map { level.queue[it] }
 
@@ -355,34 +377,26 @@ object RealTime {
 
     /**
      * A tap at the current tick. Same rules and check order as Engine.apply: GAME_OVER (status != PLAYING — only
-     * possible when settled), INVALID_ID, NOT_ON_BOARD, DOCK_FULL, then Blocked. DOCK_FULL counts EVERY occupied
-     * slot, including containers still arriving, waiting for their last walker, or mid-dispatch (a slot frees only
-     * when the dispatch drive ends). Otherwise the container leaves the board at once and reserves the leftmost free
-     * slot; it accepts elements from `tick + releaseTicks`.
+     * possible when settled), INVALID_ID, NOT_ON_BOARD, FROZEN, TIED, DOCK_FULL, NO_FITTING_SLOT, then Blocked
+     * (container or closed gate). DOCK_FULL and slot fitting count EVERY occupied slot, including containers still
+     * arriving, waiting for their last walker, or mid-dispatch (a slot frees only when the dispatch drive ends).
+     * Otherwise the container leaves the board at once and reserves the leftmost free slot that accepts its colour
+     * (a wide one: two adjacent ones, both holding the same [RtSlot]); it accepts elements from
+     * `tick + releaseTicks`. v4 mechanics advance at this moment (they count releases, never ticks).
      */
     fun tap(state: RealTimeState, containerId: Int): Pair<RealTimeState, List<RtEvent>> {
         val id = containerId
         val level = state.level
         if (state.status != Status.PLAYING) return state to listOf(RtEvent.Ignored(id, IgnoreReason.GAME_OVER))
-        if (id !in level.containers.indices) return state to listOf(RtEvent.Ignored(id, IgnoreReason.INVALID_ID))
-        if (!state.onBoard[id]) return state to listOf(RtEvent.Ignored(id, IgnoreReason.NOT_ON_BOARD))
-        val slot = state.dock.indexOfFirst { it == null }
-        if (slot < 0) return state to listOf(RtEvent.Ignored(id, IgnoreReason.DOCK_FULL))
-        val d = LevelData.of(level)
-        if (!d.rayClear(id, state.onBoard.lo, state.onBoard.hi)) {
-            val v = level.containers[id]
-            for ((k, cell) in d.rayCells[id].withIndex()) {
-                val o = d.occupant[cell]
-                if (o >= 0 && o != id && state.onBoard[o]) {
-                    return state to listOf(RtEvent.Blocked(id, v.row + v.dir.dRow * k, v.col + v.dir.dCol * k, o))
-                }
-            }
-            error("ray mask says blocked but no blocker found")
-        }
+        val check = Engine.checkTap(level, state.onBoard, Engine.occupiedMask(state.dock), id)
+        check.ignore?.let { return state to listOf(RtEvent.Ignored(id, it)) }
+        check.blocked?.let { return state to listOf(RtEvent.Blocked(id, it.stopRow, it.stopCol, it.blockerId)) }
+        val slot = check.slot
         val v = level.containers[id]
         val docked = state.tick + state.config.releaseTicks
         val dock = state.dock.toMutableList()
         dock[slot] = RtSlot(id, v.color, v.size.capacity, v.size.capacity, state.tick, docked)
+        if (v.wide) dock[slot + 1] = dock[slot]
         val next = state.copy(onBoard = state.onBoard.without(id), dock = dock, settled = false, status = Status.PLAYING)
         return next to listOf(RtEvent.Released(id, slot, docked))
     }
@@ -391,7 +405,7 @@ object RealTime {
     fun isTappable(state: RealTimeState, containerId: Int): Boolean {
         if (state.status != Status.PLAYING || state.dock.none { it == null }) return false
         if (containerId !in state.level.containers.indices || !state.onBoard[containerId]) return false
-        return LevelData.of(state.level).rayClear(containerId, state.onBoard.lo, state.onBoard.hi)
+        return Engine.checkTap(state.level, state.onBoard, Engine.occupiedMask(state.dock), containerId).slot >= 0
     }
 
     /**
@@ -422,14 +436,21 @@ object RealTime {
         // 2. slot timers
         var dock = state.dock
         var dockCopied = false
-        for (i in 0 until Limits.DOCK_SLOTS) {
-            val s = dock[i] ?: continue
+        var i0 = 0
+        while (i0 < Limits.DOCK_SLOTS) {
+            val i = i0
+            val s = dock[i]
+            if (s == null) { i0++; continue }
+            // a wide container holds slots i and i + 1 (same value); its timers fire once, at the left slot
+            val tail = i + 1 < Limits.DOCK_SLOTS && dock[i + 1]?.containerId == s.containerId
+            i0 += if (tail) 2 else 1
             when (t) {
                 s.dockedAt -> emit(RtEvent.Docked(s.containerId, i))
                 s.dispatchAt -> emit(RtEvent.DispatchStarted(i, s.containerId))
                 s.freeAt -> {
                     if (!dockCopied) { dock = dock.toMutableList(); dockCopied = true }
                     (dock as MutableList)[i] = null
+                    if (tail) (dock as MutableList)[i + 1] = null
                     emit(RtEvent.Dispatched(i, s.containerId))
                 }
             }
@@ -471,8 +492,10 @@ object RealTime {
                         val da = t + cfg.boardTicks
                         s.copy(spaceLeft = 0, fullAt = t, dispatchAt = da, freeAt = da + cfg.dispatchTicks)
                     } else s.copy(spaceLeft = left)
+                    val tail = i + 1 < Limits.DOCK_SLOTS && dock[i + 1]?.containerId == s.containerId
                     if (!dockCopied) { dock = dock.toMutableList(); dockCopied = true }
                     (dock as MutableList)[i] = ns
+                    if (tail) (dock as MutableList)[i + 1] = ns
                     walkers = walkers + RtWalker(e, c, g, pos, i, s.containerId, t, t + cfg.boardTicks)
                     emit(RtEvent.BoardingStarted(e, g, i, s.containerId))
                     nextBoard = t + cfg.boardStaggerTicks

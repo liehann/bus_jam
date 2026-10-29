@@ -88,6 +88,15 @@ data class FullAnalysis(
  *  - Move ordering (solve only, heuristic): fewest docked slots after the move, then staged-colour containers,
  *    then blockers of the cheapest staged-colour release, then by distance to the colour's next queue element,
  *    then most elements boarded; ties prefer containers that block more.
+ *
+ * v4 mechanics (levels where [LevelData.mech] is set; v2 levels take exactly the paths above): frozen counters,
+ * ties, turntable facings and gate phases are functions of the number of releases, i.e. of onBoard, so the key is
+ * unchanged and lossless (a wide container's right half is a TAIL marker in its slot). Moves need a fitting slot
+ * ([LevelData.fits]). The release lookahead becomes a lower bound that also counts tie partners, wide halves and
+ * frozen counters (turntable rays, gates and benches relaxed away); the relaxed game keeps the exact dock rules
+ * (benches, wide pairs) and drops the board ones; free-leaf symmetry only covers plain containers
+ * ([LevelData.symOk]); the closed-form loss depth of [analyze] and the bounded trap depth are not used (searched
+ * instead).
  */
 object Solver {
     /** Default state cap for [analyze]. */
@@ -201,9 +210,10 @@ object Solver {
                     while (m != 0L) {
                         val v = numberOfTrailingZeros(m) + base
                         m = m and (m - 1)
+                        if (!d.fits(a, v)) continue
                         // Interchangeable free leaves have identical values: evaluate one, count all.
                         var mult = 1
-                        if (d.blocksNone(v, lo, hi)) {
+                        if (d.isFreeLeaf(v, lo, hi)) {
                             val g = 1 shl d.group[v]
                             if (seenGroups and g != 0) continue
                             seenGroups = seenGroups or g
@@ -323,7 +333,7 @@ object Solver {
             val eLo = ex[0]
             val eHi = ex[1]
             val used = LevelData.dockUsed(a)
-            val lineLeaf = d.blocksNone(lineMove, lo, hi)
+            val lineLeaf = d.isFreeLeaf(lineMove, lo, hi)
             var legal = 0
             var wins = 0
             var losses = 0
@@ -335,8 +345,9 @@ object Solver {
                 while (m != 0L) {
                     val v = numberOfTrailingZeros(m) + base
                     m = m and (m - 1)
+                    if (!d.fits(a, v)) continue
                     var mult = 1
-                    val leaf = d.blocksNone(v, lo, hi)
+                    val leaf = d.isFreeLeaf(v, lo, hi)
                     if (leaf) {
                         val g = 1 shl d.group[v]
                         if (seenGroups and g != 0) continue
@@ -435,7 +446,7 @@ object Solver {
             var dead = 0
             for (s in 0 until 4) {
                 val f = ((a ushr (8 * s)) and 0xFFL).toInt()
-                if (f and 0xF == 0) continue
+                if (f and 0xF == 0 || f and 0xF == LevelData.TAIL) continue
                 val col = f ushr 4
                 docked = docked or (1 shl col)
                 if ((staged ushr col) and 1 == 0) dead++
@@ -477,12 +488,12 @@ object Solver {
         var m = eLo and d.groupLo[group]
         while (m != 0L) {
             val u = numberOfTrailingZeros(m); m = m and (m - 1)
-            if (d.blocksNone(u, lo, hi)) k++
+            if (d.isFreeLeaf(u, lo, hi)) k++
         }
         m = eHi and d.groupHi[group]
         while (m != 0L) {
             val u = numberOfTrailingZeros(m) + 64; m = m and (m - 1)
-            if (d.blocksNone(u, lo, hi)) k++
+            if (d.isFreeLeaf(u, lo, hi)) k++
         }
         return k
     }
@@ -581,12 +592,13 @@ object Solver {
                 while (m != 0L) {
                     val v = numberOfTrailingZeros(m) + base
                     m = m and (m - 1)
+                    if (!d.fits(a, v)) continue
                     val c = d.color[v]
                     val inStaging = (staged ushr c) and 1 != 0
                     // Filling the last slot with a container nobody staged can board deadlocks immediately.
                     if (used == 3 && !inStaging) continue
                     val blockedCount = bitCount(d.blkLo[v] and lo) + bitCount(d.blkHi[v] and hi)
-                    if (blockedCount == 0) {
+                    if (blockedCount == 0 && d.symOk[v]) {
                         val g = 1 shl d.group[v]
                         if (seenGroups and g != 0) continue
                         seenGroups = seenGroups or g
@@ -665,7 +677,13 @@ object Solver {
                     if (cnt == 0L) continue
                     val n0 = if (off < 64) r0 - (1L shl off) else r0
                     val n1 = if (off < 64) r1 else r1 - (1L shl (off - 64))
-                    d.dockAndBoard(a, b, c, d.relCap[k], po)
+                    if (d.mech) {
+                        // same dock rules as the real game (benches, wide pairs); frozen / ties / turntables / gates
+                        // only restrict the board, which the relaxed game ignores
+                        if (!d.dockAndBoardMech(a, b, c, d.relCap[k], d.relWide[k], po)) continue
+                    } else {
+                        d.dockAndBoard(a, b, c, d.relCap[k], po)
+                    }
                     if (wins(n0, n1, po[0], po[1])) {
                         win = true
                         break@loop
@@ -703,7 +721,7 @@ object Solver {
             if (++nodes > budget) throw CapExceeded()
             if (d.status(lo, hi, a, b) != LevelData.PLAYING) return 0
             if (depth >= cap) return 0
-            if (d.cheapestRelease(lo, hi, a, b, tmp, tmp2) < 0) {
+            if (!d.mech && d.cheapestRelease(lo, hi, a, b, tmp, tmp2) < 0) {
                 return minOf(4 - LevelData.dockUsed(a), d.extractableCount(lo, hi, tmp), cap - depth)
             }
             val ex = exs[depth]
@@ -718,7 +736,8 @@ object Solver {
                 while (m != 0L) {
                     val v = numberOfTrailingZeros(m) + base
                     m = m and (m - 1)
-                    if (d.blocksNone(v, lo, hi)) {
+                    if (!d.fits(a, v)) continue
+                    if (d.isFreeLeaf(v, lo, hi)) {
                         val g = 1 shl d.group[v]
                         if (seenGroups and g != 0) continue
                         seenGroups = seenGroups or g
@@ -759,7 +778,7 @@ object Solver {
             // Exact shortcut: no staged-colour container can be released in time, so nothing boards again and the
             // longest play is min(free slots, containers extractable in sequence). Not memoized.
             val used = LevelData.dockUsed(a)
-            if (d.cheapestRelease(lo, hi, a, b, tmp, tmp2) < 0) {
+            if (!d.mech && d.cheapestRelease(lo, hi, a, b, tmp, tmp2) < 0) {
                 return minOf(4 - used, d.extractableCount(lo, hi, tmp)) shl 12
             }
             d.exitable(lo, hi, tmp)
@@ -786,7 +805,8 @@ object Solver {
                 while (m != 0L) {
                     val v = numberOfTrailingZeros(m) + base
                     m = m and (m - 1)
-                    if (d.blocksNone(v, lo, hi)) {
+                    if (!d.fits(a, v)) continue
+                    if (d.isFreeLeaf(v, lo, hi)) {
                         val g = 1 shl d.group[v]
                         if (seenGroups and g != 0) continue
                         seenGroups = seenGroups or g

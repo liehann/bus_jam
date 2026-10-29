@@ -106,3 +106,5 @@
 | 100 | hard: juggle, scarce key -> heralded chain climax | hard | 40 (planned 24) | 9 | 64 | 12x14 | 36.7 | 36.7 | 19 | 76.8 | yes |
 
 Rebuilt under fitness5 (88 slots replaced, see campaign-f5.md).
+
+Rebuilt under fitness5 (51 slots replaced, see clued-rebuild.md).

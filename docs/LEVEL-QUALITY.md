@@ -193,3 +193,11 @@ the official plan (same recipes, rings, seeds) and kept the shipped level unless
 decisions went from 173 to 18, traps from 104 to 2, and levels passing their floors from 13 to 81. Fair hidden bits
 stayed level (20.2 to 19.5 mean), but raw hidden bits dropped (23.0 to 19.7): several closers and tier-2 levels are
 easier than before (see the report's flag list).
+
+**Clued-squeeze rebuild (2026-10-29).** A squeeze (a stall in the generator) is clued when the plates that decide the
+right choice are on the carousel or belt at decision time. `OfficialPackF5 --clued off,w3:d10 --clued-weight 15` let
+the default and the clued-squeeze construction compete in each slot's pool and ranked by
+`dist5(fitness5) - 15 x clued-fork share` after the floors, in selection and in keep-or-replace alike
+(`levelgen/out/clued-rebuild.md`): 51 slots replaced (34 clued-squeeze builds). Clued-fork share 39% to 56%, unfair
+decisions 18 to 16, traps 2 to 2, blind bits 3.1 to 2.6, winnable at 1/3 (H = 40) 58% to 59%, floors passed 81 to 90;
+fair hidden bits 19.5 to 19.1.

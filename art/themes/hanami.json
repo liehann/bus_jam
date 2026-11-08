@@ -19,5 +19,15 @@
     "mood": "gentle, dreamy and cheerful, with everyone happily eating",
     "lighting": "Soft bright spring light",
     "extra_avoid": "petals covering the plates or reservation cards, animals in the pond"
+  },
+  "kit": {
+    "backdrop_ground": "soft pale green lawn",
+    "backdrop_edges": "cherry blossom branches along the top edge and in the top corners, a few falling pink petals, soft grass tufts along the left and right edges, a small stone lantern in one bottom corner",
+    "belt_rim": "a light wooden rim",
+    "mat_surface": "a very pale blue plain picnic mat",
+    "mat_texture": "a smooth, even, almost plain fabric with a barely visible weave",
+    "frame_piece": "light wood rail with softly rounded edges",
+    "frame_corner": "a corner joint where two short light wood rails meet at a right angle",
+    "props_decor": "a cherry blossom branch, a small stone lantern and a paper parasol"
   }
 }

@@ -1,0 +1,4 @@
+<resources>
+    <!-- -Pprototype builds (app/build.gradle.kts) -->
+    <string name="app_name">Critter Café Proto</string>
+</resources>

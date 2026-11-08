@@ -25,6 +25,36 @@ The kitten head is 56 dp wide with the ear tips 24 dp from the top of the 108 dp
 the ears and the cut through the body falls below every mask. Background `#C9EAD1`
 (`values/ic_launcher_background.xml`); the launch splash uses the same icon on the café cream `#F6EBD9`.
 
+## Level themes (theme kits)
+
+A theme is a set of separate Gemini pieces, not one full-screen painting: a single painting never lines up with the
+layout (the sushi backdrop reached a mean zone IoU of 0.47), while pieces placed by code always do. The rule for
+splitting a theme: **anything whose shape follows the level or the gameplay is drawn by code, anything decorative
+that sits at a fixed place or tiles is generated.** Code-drawn parts still take their look from generated textures.
+
+| Piece | Generated | Drawn by the app (`CafeSkin` with a `ThemeKit`) |
+|---|---|---|
+| `backdrop` | edge decoration around a plain middle, phone aspect | fills the screen behind the field; its middle's colour fills the status bar |
+| `belt` | one straight, tileable strip | bent along the belt and loop paths (`drawStripAlong`, one bitmap mesh per repeat), the loop's moving with the plates |
+| `loop` | the loop interior as a wide picture (3:1) | cropped to the loop's proportions, clipped to its shape |
+| `kitchen`, `bench` | sprites | placed from `RingLayout` (kitchen rect, each table) |
+| `counter` | tileable strip | repeated across the width behind the tables |
+| `mat`, `frame` | seamless mat tile, tileable frame piece | mat tiled in the board, the frame bent along its four edges |
+| `props` | 4 x 2 sheet: card stand, frame corner joint (an L, corner at the top left), the theme's 3 obstacles, 3 decor items | the corner joint at each board corner; the rest is cut out for later (obstacles have no game rule yet) |
+| Cards, plates, pills, window, critters | | shared by every theme |
+
+Steps for a theme (`<id>` from `art/themes/worlds.json`):
+1. Level mock: run `art/prompts/generated/<id>.txt` in Gemini, save it as `art/raw/<id>/mock.jpeg`.
+2. Pieces: `python3 tools/art/build_prompt.py --kit <id>` renders `art/prompts/generated/<id>_kit.md` from
+   `art/prompts/kit.template.txt`, the theme's slots and its `kit` object. Run each prompt in a new chat with the
+   mock attached as image 1; save each result as `art/raw/<id>/<piece>.<ext>`.
+3. `python3 art/tools/theme_kit.py <id>` (or `--all`) writes `drawable-nodpi/kit_<id>_*.webp` (cutouts key out all
+   light neutral pixels; strips get their lighting evened out and their ends cross-faded so they tile; the mat is
+   made seamless and flattened) and a preview at `app/build/kit_<id>.png`. Missing pieces are skipped, and the app
+   draws its vector version for them.
+4. The app picks the theme up by itself (`CafeThemes.available`: any world theme with a `kit_<id>_backdrop`). The
+   debug build's in-game Settings card has a theme switch; `ScreenshotTest.pixel9ProLuauNight` renders luau night.
+
 ## Generating with Gemini (Chrome)
 
 Prompts that worked: paste the kitten front and side views, then ask for "the same chibi style, same proportions and
@@ -38,7 +68,21 @@ needed one revision).
 - **Set the clipboard right before each paste and check the prompt box before sending.** Anything the user copied
   in between gets pasted instead (once, a private Sheets link landed in the prompt). Pasting replaces the user's
   clipboard; say so afterwards.
-- **Downloading:** use the image's "Download full size image" button (the preview is low resolution). Then
+- **Downloading:** use the image's "Download full size image" button (the preview is low resolution). The button
+  only works while the pointer is over the image: hover the image, then click the button's coordinates (clicking the
+  element reference found while the pointer is elsewhere does nothing). After loading a new chat, the first click
+  into the prompt box can be lost; check the prompt holds the image and the text before sending. Then
   `art/tools/grab.sh art/raw/<species>/<name>.png`; run `grab.sh --reset` first so only downloads made after that
   move. Never move other `Gemini_Generated_Image_*` files: older ones in `~/Downloads` belong to the user.
 - **Don't run the level generator at the same time.** It pins every core and Chrome stops responding to automation.
+
+## Art TODO
+
+- **Plates must read as holding food.** A playtester couldn't tell that the plates on the belt carry food. Evaluate:
+  bolder, higher-contrast food art (a larger food shape filling more of the plate, a darker outline, less plate
+  rim), or larger plates. Space is limited, since the belt is narrow and the loop must hold 20-40 plates, so try
+  the art change first and measure what size the layout can afford.
+- Theme foods on the plates (each theme draws the same plates today).
+- The luau counter strip reads thin; try a taller counter or a darker front edge.
+- Unused props: each kit's props sheet is cut into sprites, but only the corner joint is placed in the scene.
+- Luau lantern and torch props keep a pale glow halo from the white background; key them out or regenerate them.

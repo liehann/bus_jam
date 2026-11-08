@@ -171,6 +171,76 @@ class Errors(unittest.TestCase):
             bp.render("t", t)
 
 
+class KitPrompts(unittest.TestCase):
+    PIECES = ["backdrop", "kitchen", "belt", "loop", "counter", "bench", "mat", "frame", "props"]
+
+    def world_ids(self):
+        data = json.loads((bp.THEMES_DIR / "worlds.json").read_text(encoding="utf-8"))
+        return [w["theme"] for w in data["worlds"]]
+
+    def test_every_world_has_a_kit_that_renders(self):
+        self.assertEqual(sorted(self.world_ids()), sorted(t for t in bp.kit_theme_ids() if t in self.world_ids()))
+        for tid in self.world_ids():
+            with self.subTest(theme=tid):
+                out = bp.render_kit(tid, bp.load_theme(tid))
+                self.assertNotIn("{{", out)
+                self.assertNotIn("}}", out)
+                self.assertEqual([line[3:] for line in out.splitlines() if line.startswith("## ")], self.PIECES)
+                for piece in self.PIECES:
+                    self.assertIn(f"Save as `{piece}`", out)
+
+    def test_style_follows_variant(self):
+        night = bp.render_kit("luau_night", bp.load_theme("luau_night"))
+        self.assertIn(
+            "Using exactly its art style (flat 2D illustration, soft cel shading, thick dark brown outlines, warm tropical "
+            "palette with deep indigo night accents, warm soft torchlight and festoon glow at night)", night)
+        # the mat has no outlines
+        self.assertIn("(flat 2D illustration, soft cel shading, warm tropical palette", night)
+        day = bp.render_kit("sushi", bp.load_theme("sushi"))
+        self.assertIn("warm pastel palette, soft natural light)", day)
+        self.assertNotIn("at night", day)
+
+    def test_props_sheet_lists_eight_items_in_order(self):
+        out = bp.render_kit("luau_night", bp.load_theme("luau_night"))
+        self.assertIn(
+            "a small empty bamboo card stand with a slot; a rope-lashed bamboo corner joint where two short bamboo poles "
+            "cross at a right angle, with its corner at the top left, one arm running right and one running down; a coconut; "
+            "a pineapple; a small ukulele; a small glowing hanging lantern; a pink hibiscus flower; a palm frond.", out)
+
+    def kit_base(self):
+        return json.loads(json.dumps(bp.load_theme("sushi")))
+
+    def test_missing_kit_slot(self):
+        t = self.kit_base()
+        del t["kit"]["frame_piece"]
+        with self.assertRaisesRegex(bp.PromptError, "missing slot.*frame_piece"):
+            bp.render_kit("t", t)
+
+    def test_unknown_kit_slot(self):
+        t = self.kit_base()
+        t["kit"]["garnish"] = "parsley"
+        with self.assertRaisesRegex(bp.PromptError, "unknown slot.*garnish"):
+            bp.render_kit("t", t)
+
+    def test_kit_slot_repeating_theme_slot(self):
+        t = self.kit_base()
+        t["kit"]["counter"] = "a bar"
+        with self.assertRaisesRegex(bp.PromptError, "repeat a theme slot"):
+            bp.render_kit("t", t)
+
+    def test_decor_needs_three_items(self):
+        t = self.kit_base()
+        t["kit"]["props_decor"] = "a lantern and a plant"
+        with self.assertRaisesRegex(bp.PromptError, "exactly three items"):
+            bp.render_kit("t", t)
+
+    def test_theme_without_kit(self):
+        t = self.kit_base()
+        del t["kit"]
+        with self.assertRaisesRegex(bp.PromptError, "no 'kit' object"):
+            bp.render_kit("t", t)
+
+
 class Worlds(unittest.TestCase):
     def test_worlds_reference_themes(self):
         data = json.loads((bp.THEMES_DIR / "worlds.json").read_text(encoding="utf-8"))

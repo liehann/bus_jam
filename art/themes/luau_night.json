@@ -22,5 +22,15 @@
     "light_sources": "tall tiki torches along the left and right edges, strings of warm festoon bulbs above both belts, two lanterns on the tiki bar and a lantern on the grill hut",
     "effects": "three tiki torches on each side at the left and right edges, evenly spaced over the belt and board areas, festoon strings over both belts, a few fireflies near the edges, and moonlight on the water inside the loop",
     "extra_avoid": "large flames, smoke covering anything, animals in the water, torches or fireflies over the board"
+  },
+  "kit": {
+    "backdrop_ground": "dark indigo-blue ground with a few soft warm glow pools",
+    "backdrop_edges": "a deep indigo sky with small stars and a soft moon glow along the top edge, one string of warm festoon bulbs across the top, a few palm fronds and hibiscus flowers in the four corners, small glowing tiki torches close to the left and right edges, a few fireflies",
+    "belt_rim": "a light bamboo rim",
+    "mat_surface": "the pale cream woven palm-leaf mat",
+    "mat_texture": "a soft, even, low-contrast basket weave",
+    "frame_piece": "bamboo pole with a slightly darker node ring at regular intervals",
+    "frame_corner": "a rope-lashed bamboo corner joint where two short bamboo poles cross at a right angle",
+    "props_decor": "a small glowing hanging lantern, a pink hibiscus flower and a palm frond"
   }
 }

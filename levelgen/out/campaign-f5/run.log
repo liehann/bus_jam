@@ -1,0 +1,380 @@
+phase 1: 96 slots on 8 threads (reusing 18 from levelgen/out/rebuild-preview)
+L80 dense pack, mirror spine (tier 3, ring 24, belt 20): old f5 45.0 unfair 6.0,deeptraps 2.0,multi 0.45,order 0.00 | new f5 63.3 pass -> REPLACED (new level passes the floors, the shipped one fails) 322 s 
+L60 dense pack, gutter halves, heralded (tier 3, ring 28, belt 20): old f5 46.8 unfair 4.5,deeptraps 1.5 | new f5 60.4 pass -> REPLACED (new level passes the floors, the shipped one fails) 772 s 
+L10 hard: juggle, scarce key -> heralded chain climax (tier 3, ring 40, belt 16): old f5 60.2 unfair 3.0,deeptraps 1.5,order 0.00 | new f5 72.1 order 0.00 -> REPLACED (fewer failed floors) 481 s 
+L99 juggle, rolling + squatter (tier 2, ring 28, belt 16): old f5 21.6 unfair 4.5,deeptraps 3.0,order 0.08 | new f5 40.4 order 0.02 -> REPLACED (fewer failed floors) 354 s 
+L50 dense pack + interrupted run (tier 3, ring 28, belt 20): old f5 41.0 unfair 3.0,deeptraps 2.0,order 0.02 | new f5 48.3 pass -> REPLACED (new level passes the floors, the shipped one fails) 4766 s 
+L100 hard: juggle, scarce key -> heralded chain climax (tier 3, ring 24, belt 20): old f5 64.7 order 0.00 | new f5 68.0 order 0.00 -> REPLACED (same number of failed floors, new fitness5 closer to target) 5209 s 
+L40 superhard: dense pack, juggle, scarce key, heralded climax (tier 3, ring 28, belt 20): old f5 70.0 order 0.00 | new f5 60.2 pass -> REPLACED (new level passes the floors, the shipped one fails) 5711 s 
+L20 hard: juggle, scarce key -> heralded chain climax (tier 3, ring 32, belt 16): old f5 71.9 multi 0.35,order 0.00 | new f5 54.4 pass -> REPLACED (new level passes the floors, the shipped one fails) 5913 s 
+L30 juggle, everything, scarce key -> heralded long chain (tier 3, ring 28, belt 20): old f5 67.8 order 0.00 | new f5 61.6 pass -> REPLACED (new level passes the floors, the shipped one fails) 6705 s 
+L70 dense pack, squatter dig (tier 3, ring 24, belt 20): old f5 61.7 unfair 4.0,deeptraps 1.5,order 0.00 | new f5 65.4 order 0.00 -> REPLACED (fewer failed floors) 6746 s 
+L98 juggle, keystone + cascades, heralded climax (tier 2, ring 28, belt 16): old f5 37.1 deeptraps 0.5,order 0.09 | new f5 47.0 pass -> REPLACED (new level passes the floors, the shipped one fails) 5165 s 
+L89 juggle, rolling + squatter (tier 2, ring 28, belt 16): old f5 36.1 unfair 1.5,order 0.00 | new f5 40.0 order 0.06 -> REPLACED (fewer failed floors) 361 s 
+L93 juggle, gutter halves + heralded climax (tier 2, ring 30, belt 16): old f5 39.2 pass | new f5 35.4 pass -> REPLACED (both pass, new fitness5 closer to target by >= 2.0) 533 s 
+L90 juggle, everything, scarce key -> heralded long chain (tier 3, ring 24, belt 20): old f5 47.4 fairhidden 21.4,order 0.02 | new f5 53.4 pass -> REPLACED (new level passes the floors, the shipped one fails) 7403 s 
+L97 juggle + chained runs (tier 2, ring 28, belt 16): old f5 32.8 unfair 3.0,deeptraps 2.0,blindratio 0.46 | new f5 35.7 order 0.00 -> REPLACED (fewer failed floors) 2850 s 
+L94 juggle, domino stacks + interrupted run (tier 2, ring 30, belt 16): old f5 38.8 order 0.00 | new f5 36.4 pass -> REPLACED (new level passes the floors, the shipped one fails) 1452 s 
+L85 juggle, squatter dig + steal (tier 2, ring 30, belt 16): old f5 29.1 unfair 3.0,deeptraps 4.0,order 0.00 | new f5 40.7 pass -> REPLACED (new level passes the floors, the shipped one fails) 90 s 
+L92 juggle, mirror spine + steal (tier 2, ring 30, belt 16): old f5 29.4 unfair 2.0,deeptraps 1.0,order 0.02 | new f5 33.6 pass -> REPLACED (new level passes the floors, the shipped one fails) 971 s 
+L96 juggle, squatter dig + steal (tier 2, ring 30, belt 16): old f5 40.4 order 0.00 | new f5 41.6 pass -> REPLACED (new level passes the floors, the shipped one fails) 2739 s 
+L82 juggle, mirror spine + steal (tier 2, ring 30, belt 16): old f5 36.8 pass | new f5 32.3 pass -> REPLACED (both pass, new fitness5 closer to target by >= 2.0) 384 s 
+L95 juggle, squatter dig + steal (tier 2, ring 30, belt 16): old f5 36.0 order 0.00 | new f5 43.0 pass -> REPLACED (new level passes the floors, the shipped one fails) 2590 s 
+L84 juggle, domino stacks + interrupted run (tier 2, ring 30, belt 16): old f5 25.1 unfair 3.0,deeptraps 2.0,order 0.00 | new f5 33.8 fairhidden 7.5 -> REPLACED (fewer failed floors) 686 s 
+L83 juggle, gutter halves + heralded climax (tier 2, ring 30, belt 16): old f5 40.5 unfair 2.0,deeptraps 1.0 | new f5 36.1 pass -> REPLACED (new level passes the floors, the shipped one fails) 694 s 
+L87 juggle + chained runs (tier 2, ring 28, belt 16): old f5 30.8 unfair 1.5,deeptraps 1.0,order 0.09 | new f5 39.8 pass -> REPLACED (new level passes the floors, the shipped one fails) 1253 s 
+L88 juggle, keystone + cascades, heralded climax (tier 2, ring 28, belt 16): old f5 37.2 pass | new f5 39.1 pass -> kept (both pass, new fitness5 within 2.0 of the shipped one's distance to target) 1490 s 
+L78 juggle, keystone + cascades, heralded climax (tier 2, ring 28, belt 16): old f5 39.2 order 0.00 | new f5 39.4 order 0.00 -> kept (new level is not better) 676 s 
+L72 juggle, mirror spine + steal (tier 2, ring 30, belt 16): old f5 9.0 unfair 8.0,deeptraps 4.0,blindratio 0.43 | new f5 31.7 pass -> REPLACED (new level passes the floors, the shipped one fails) 70 s 
+L86 juggle, squatter dig + steal (tier 2, ring 30, belt 16): old f5 23.7 unfair 3.0,deeptraps 1.0,order 0.00 | new f5 53.1 pass -> REPLACED (new level passes the floors, the shipped one fails) 1529 s 
+L77 juggle + chained runs (tier 2, ring 28, belt 16): old f5 9.7 unfair 6.0,deeptraps 5.0,blindratio 0.44,order 0.00 | new f5 38.0 pass -> REPLACED (new level passes the floors, the shipped one fails) 855 s 
+L73 juggle, gutter halves + heralded climax (tier 2, ring 30, belt 16): old f5 31.2 blindratio 0.30,fairhidden 12.3 | new f5 33.6 pass -> REPLACED (new level passes the floors, the shipped one fails) 610 s 
+L74 juggle, domino stacks + interrupted run (tier 2, ring 30, belt 16): old f5 31.6 blindratio 0.47 | new f5 34.1 pass -> REPLACED (new level passes the floors, the shipped one fails) 769 s 
+L67 juggle + chained runs (tier 2, ring 28, belt 16): old f5 19.9 unfair 6.0,deeptraps 1.0,blindratio 0.48,order 0.00 | new f5 37.4 order 0.00 -> REPLACED (fewer failed floors) 115 s 
+L75 juggle, squatter dig + steal (tier 2, ring 30, belt 16): old f5 37.5 order 0.00 | new f5 45.9 pass -> REPLACED (new level passes the floors, the shipped one fails) 939 s 
+L76 juggle, squatter dig + steal (tier 2, ring 30, belt 16): old f5 21.0 unfair 4.0,deeptraps 3.0,blindratio 0.48,order 0.08 | new f5 37.7 order 0.00 -> REPLACED (fewer failed floors) 1160 s 
+L68 juggle, keystone + cascades, heralded climax (tier 2, ring 28, belt 16): old f5 46.9 order 0.00 | new f5 44.0 pass -> REPLACED (new level passes the floors, the shipped one fails) 799 s 
+L63 juggle, mirror spine + steal (tier 2, ring 30, belt 16): old f5 35.3 pass | new f5 35.3 pass -> kept (shipped level passes and scores at least as well) 397 s 
+L64 juggle, gutter halves + heralded climax (tier 2, ring 30, belt 16): old f5 15.5 unfair 3.0,deeptraps 2.0,blindratio 0.81 | new f5 29.9 pass -> REPLACED (new level passes the floors, the shipped one fails) 585 s 
+L79 juggle, rolling + squatter (tier 2, ring 28, belt 16): old f5 40.8 order 0.00 | new f5 50.9 pass -> REPLACED (new level passes the floors, the shipped one fails) 1973 s 
+L65 juggle, domino stacks + interrupted run (tier 2, ring 30, belt 16): old f5 29.6 blindratio 0.49,order 0.00 | new f5 34.5 pass -> REPLACED (new level passes the floors, the shipped one fails) 793 s 
+L54 juggle, mirror spine + steal (tier 2, ring 32, belt 16): old f5 16.8 unfair 4.0,deeptraps 4.0,blindratio 0.49 | new f5 34.1 pass -> REPLACED (new level passes the floors, the shipped one fails) 34 s 
+L69 juggle, rolling + squatter (tier 2, ring 28, belt 16): old f5 27.6 unfair 3.5,deeptraps 1.5,order 0.00 | new f5 40.0 order 0.02 -> REPLACED (fewer failed floors) 1573 s 
+L66 juggle, squatter dig + steal (tier 2, ring 30, belt 16): old f5 37.8 order 0.00 | new f5 42.9 pass -> REPLACED (new level passes the floors, the shipped one fails) 1297 s 
+L58 juggle, keystone + cascades, heralded climax (tier 2, ring 30, belt 16): old f5 32.9 unfair 2.0,deeptraps 2.0,blindratio 0.39,order 0.06 | new f5 38.6 pass -> REPLACED (new level passes the floors, the shipped one fails) 841 s 
+L57 juggle + chained runs (tier 2, ring 30, belt 16): old f5 22.6 unfair 4.0,deeptraps 3.0,blindratio 0.48,order 0.00 | new f5 41.7 order 0.01 -> REPLACED (fewer failed floors) 989 s 
+L49 juggle, keystone + cascades, heralded climax (tier 2, ring 32, belt 16): old f5 40.8 order 0.00 | new f5 40.8 pass -> REPLACED (new level passes the floors, the shipped one fails) 674 s 
+L55 juggle, gutter halves + heralded climax (tier 2, ring 32, belt 16): old f5 41.2 order 0.03 | new f5 36.0 unsolved -> REPLACED (same number of failed floors, new fitness5 closer to target) 847 s 
+L59 juggle, rolling + squatter (tier 2, ring 30, belt 16): old f5 34.0 blindratio 0.48,order 0.00 | new f5 42.9 pass -> REPLACED (new level passes the floors, the shipped one fails) 1374 s 
+L37 juggle, gutter halves + heralded climax (tier 2, ring 34, belt 16): old f5 23.1 unfair 2.0,deeptraps 3.0,blindratio 0.39,order 0.00 | new f5 33.1 pass -> REPLACED (new level passes the floors, the shipped one fails) 86 s 
+L56 juggle, squatter dig + steal (tier 2, ring 32, belt 16): old f5 40.5 order 0.00 | new f5 37.6 fairhidden 12.2 -> REPLACED (same number of failed floors, new fitness5 closer to target) 1182 s 
+L45 juggle, mirror spine + steal (tier 2, ring 34, belt 16): old f5 17.6 unfair 3.0,deeptraps 2.0 | new f5 31.7 pass -> REPLACED (new level passes the floors, the shipped one fails) 412 s 
+L28 juggle, gutter halves + heralded climax (tier 2, ring 36, belt 16): old f5 8.6 unfair 5.0,deeptraps 4.0,blindratio 0.43,fairhidden 13.0 | new f5 33.1 pass -> REPLACED (new level passes the floors, the shipped one fails) 24 s 
+L47 juggle, domino stacks + interrupted run (tier 2, ring 32, belt 16): old f5 33.6 unfair 3.0 | new f5 36.2 pass -> REPLACED (new level passes the floors, the shipped one fails) 642 s 
+L19 juggle, mirror spine + steal (tier 2, ring 40, belt 12): old f5 32.1 order 0.03 | new f5 39.6 pass -> REPLACED (new level passes the floors, the shipped one fails) 26 s 
+L46 juggle, gutter halves + heralded climax (tier 2, ring 34, belt 16): old f5 36.9 blindratio 0.35,fairhidden 14.3 | new f5 38.9 pass -> REPLACED (new level passes the floors, the shipped one fails) 630 s 
+L38 juggle, domino stacks + interrupted run (tier 2, ring 34, belt 16): old f5 27.6 deeptraps 2.0,blindratio 0.57,fairhidden 14.8 | new f5 37.8 pass -> REPLACED (new level passes the floors, the shipped one fails) 441 s 
+L62 juggle + rolling + heralded climax, mirror (tier 1, ring 30, belt 14): old f5 22.3 unfair 2.0,deeptraps 3.0,blindratio 0.33 | new f5 38.7 pass -> REPLACED (new level passes the floors, the shipped one fails) 18 s 
+L36 juggle, mirror spine + steal (tier 2, ring 36, belt 16): old f5 28.1 unfair 2.0,deeptraps 1.0,blindratio 0.32 | new f5 33.6 pass -> REPLACED (new level passes the floors, the shipped one fails) 353 s 
+L43 juggle + steal + keystone (tier 1, ring 34, belt 14): old f5 5.7 unfair 6.0,deeptraps 2.0,blindratio 0.47 | new f5 34.2 pass -> REPLACED (new level passes the floors, the shipped one fails) 33 s 
+L53 juggle + rolling + heralded climax, mirror (tier 1, ring 32, belt 14): old f5 8.3 unfair 5.0,deeptraps 5.0,blindratio 0.42,order 0.09 | new f5 30.3 pass -> REPLACED (new level passes the floors, the shipped one fails) 211 s 
+L27 juggle, mirror spine + steal (tier 2, ring 36, belt 16): old f5 38.4 unfair 2.0,deeptraps 2.0 | new f5 32.4 pass -> REPLACED (new level passes the floors, the shipped one fails) 323 s 
+L44 juggle + rolling + heralded climax, mirror (tier 1, ring 34, belt 14): old f5 6.8 unfair 5.0,deeptraps 5.0,blindratio 0.42 | new f5 36.7 pass -> REPLACED (new level passes the floors, the shipped one fails) 304 s 
+L33 juggle + interrupted run + cascade (tier 1, ring 36, belt 14): old f5 21.5 unfair 1.0,blindratio 0.31,order 0.03 | new f5 25.0 pass -> REPLACED (new level passes the floors, the shipped one fails) 21 s 
+L42 juggle + interrupted run + cascade (tier 1, ring 34, belt 14): old f5 21.5 unfair 2.0,deeptraps 3.0 | new f5 25.6 pass -> REPLACED (new level passes the floors, the shipped one fails) 166 s 
+L52 juggle + steal + keystone (tier 1, ring 32, belt 14): old f5 21.5 unfair 1.5,deeptraps 1.0,blindratio 0.29,fairhidden 7.0,order 0.00 | new f5 29.0 pass -> REPLACED (new level passes the floors, the shipped one fails) 373 s 
+L35 juggle + rolling + heralded climax, mirror (tier 1, ring 36, belt 14): old f5 30.9 unfair 1.0 | new f5 32.3 pass -> REPLACED (new level passes the floors, the shipped one fails) 179 s 
+L25 juggle + steal + keystone (tier 1, ring 38, belt 14): old f5 9.8 unfair 5.5,deeptraps 2.0,blindratio 0.52,order 0.20 | new f5 29.1 pass -> REPLACED (new level passes the floors, the shipped one fails) 60 s 
+L48 juggle, squatter dig + steal (tier 2, ring 32, belt 16): old f5 35.2 order 0.02 | new f5 33.8 deeptraps 1.5 -> kept (new level is not better) 1258 s 
+L17 juggle + steal + keystone (tier 1, ring 40, belt 10): old f5 28.7 unfair 0.5,blindratio 0.25 | new f5 27.4 unfair 1.5 -> REPLACED (fewer failed floors) 29 s 
+L29 juggle, domino stacks + interrupted run (tier 2, ring 36, belt 16): old f5 35.8 pass | new f5 34.7 pass -> kept (both pass, new fitness5 within 2.0 of the shipped one's distance to target) 669 s 
+L32 juggle + herald (the climax colour waits early) (tier 1, ring 36, belt 14): old f5 11.7 unfair 4.0,deeptraps 1.0,blindratio 0.64 | new f5 26.4 pass -> REPLACED (new level passes the floors, the shipped one fails) 164 s 
+L26 juggle + rolling + heralded climax, mirror (tier 1, ring 38, belt 14): old f5 18.8 unfair 3.0,deeptraps 1.5,blindratio 0.42 | new f5 28.7 pass -> REPLACED (new level passes the floors, the shipped one fails) 169 s 
+L24 juggle + interrupted run + cascade (tier 1, ring 38, belt 14): old f5 25.6 fairhidden 0.2 | new f5 24.8 fairhidden 2.4 -> REPLACED (same number of failed floors, new fitness5 closer to target) 149 s 
+L39 juggle, squatter dig + steal (tier 2, ring 34, belt 16): old f5 32.4 unfair 2.0,deeptraps 2.0,order 0.00 | new f5 41.9 pass -> REPLACED (new level passes the floors, the shipped one fails) 986 s 
+L18 juggle + rolling + heralded climax, mirror (tier 1, ring 40, belt 10): old f5 27.8 unfair 1.5,deeptraps 0.5,fairhidden 6.2 | new f5 27.3 blindratio 0.39 -> REPLACED (fewer failed floors) 184 s 
+L91 breather juggle (tier 0, ring 40, belt 10): old f5 11.7 unfair 0.5,deeptraps 0.5,blindratio 0.40 | new f5 15.2 pass -> REPLACED (new level passes the floors, the shipped one fails) 11 s 
+L81 breather juggle (tier 0, ring 40, belt 10): old f5 18.7 pass | new f5 16.0 pass -> REPLACED (both pass, new fitness5 closer to target by >= 2.0) 11 s 
+L71 breather juggle (tier 0, ring 40, belt 10): old f5 17.8 pass | new f5 16.2 pass -> kept (both pass, new fitness5 within 2.0 of the shipped one's distance to target) 10 s 
+L15 juggle + herald (the climax colour waits early) (tier 1, ring 40, belt 10): old f5 19.5 unfair 1.5,deeptraps 1.5 | new f5 28.5 pass -> REPLACED (new level passes the floors, the shipped one fails) 154 s 
+L61 breather juggle (tier 0, ring 40, belt 10): old f5 16.6 blindratio 0.73 | new f5 17.3 pass -> REPLACED (new level passes the floors, the shipped one fails) 12 s 
+L51 breather juggle (tier 0, ring 40, belt 10): old f5 17.9 pass | new f5 17.9 pass -> kept (shipped level passes and scores at least as well) 11 s 
+L31 breather juggle (tier 0, ring 40, belt 10): old f5 15.9 blindratio 0.79 | new f5 17.2 pass -> REPLACED (new level passes the floors, the shipped one fails) 11 s 
+L6 juggle + herald (the climax colour waits early) (tier 1, ring 40, belt 10): old f5 17.4 unfair 2.0,deeptraps 1.0,blindratio 0.46 | new f5 29.2 pass -> REPLACED (new level passes the floors, the shipped one fails) 141 s 
+L34 juggle + steal + keystone (tier 1, ring 36, belt 14): old f5 26.7 order 0.00 | new f5 28.6 pass -> REPLACED (new level passes the floors, the shipped one fails) 414 s 
+L21 breather juggle (tier 0, ring 40, belt 10): old f5 18.1 pass | new f5 13.8 pass -> REPLACED (both pass, new fitness5 closer to target by >= 2.0) 11 s 
+L16 juggle + interrupted run + cascade (tier 1, ring 40, belt 10): old f5 27.9 pass | new f5 23.6 pass -> REPLACED (both pass, new fitness5 closer to target by >= 2.0) 195 s 
+L9 juggle + rolling + heralded climax, mirror (tier 1, ring 40, belt 10): old f5 31.2 blindratio 0.48 | new f5 34.8 pass -> REPLACED (new level passes the floors, the shipped one fails) 203 s 
+L7 juggle + interrupted run + cascade (tier 1, ring 40, belt 10): old f5 23.2 unfair 1.0,deeptraps 0.5,blindratio 0.56 | new f5 30.7 pass -> REPLACED (new level passes the floors, the shipped one fails) 180 s 
+L11 breather juggle (tier 0, ring 40, belt 10): old f5 16.5 blindratio 0.34 | new f5 19.0 pass -> REPLACED (new level passes the floors, the shipped one fails) 11 s 
+L22 juggle + just-enough cascade (tier 0, ring 38, belt 10): old f5 14.5 unfair 1.5,deeptraps 2.0,blindratio 0.48 | new f5 17.0 pass -> REPLACED (new level passes the floors, the shipped one fails) 55 s 
+L13 juggle + just-enough cascade (tier 0, ring 40, belt 10): old f5 17.4 unfair 0.5,deeptraps 0.5,blindratio 0.75 | new f5 16.3 pass -> REPLACED (new level passes the floors, the shipped one fails) 46 s 
+L23 juggle + left-slot steal (tier 0, ring 38, belt 10): old f5 24.1 unfair 0.5,order 0.21 | new f5 20.8 pass -> REPLACED (new level passes the floors, the shipped one fails) 77 s 
+L12 juggle + mismatch window (tier 0, ring 40, belt 10): old f5 21.5 unfair 0.5 | new f5 18.2 pass -> REPLACED (new level passes the floors, the shipped one fails) 52 s 
+L3 juggle + mismatch window (tier 0, ring 40, belt 10): old f5 15.2 unfair 1.0,deeptraps 1.0,blindratio 0.63 | new f5 20.0 pass -> REPLACED (new level passes the floors, the shipped one fails) 53 s 
+L14 juggle + left-slot steal (tier 0, ring 40, belt 10): old f5 25.5 pass | new f5 23.2 pass -> REPLACED (both pass, new fitness5 closer to target by >= 2.0) 83 s 
+L5 juggle + left-slot steal (tier 0, ring 40, belt 10): old f5 25.2 pass | new f5 25.0 pass -> kept (both pass, new fitness5 within 2.0 of the shipped one's distance to target) 69 s 
+L8 juggle + steal + keystone (tier 1, ring 40, belt 10): old f5 17.7 unfair 3.0,blindratio 0.29,order 0.00 | new f5 34.2 pass -> REPLACED (new level passes the floors, the shipped one fails) 462 s 
+phase 1 done in 12176 s
+# Official campaign under fitness5
+
+Every slot of the official plan (`OfficialPack`: same recipes, tiers, cycles, planned rings, no mechanics, seed 7, 400 tries, x2 on tier >= 2, same director seeds) got a new candidate selected by fitness5 with the tier floors (`Fitness5Config`, id c80a0f57; `select5v`, the queue repair competing with the unrepaired level) at the belt of `beltFor` (10 on tier 0 and cycles 1-2 except 12 / 16 on tiers 2 / 3 there; else 14 / 16 / 20 on tiers 1 / 2 / 3). The 20 slots of the rebuild preview were not regenerated: their levels come from `rebuild-preview-levels.json` and were re-measured here.
+
+**Keep or replace.** The shipped level and the candidate are measured the same way (long chain x16, order dependence over 64 draws at 200000 nodes, intended + solver line, the solver line at 3M nodes). The shipped level stays unless the candidate is strictly better in the selection's order: passes the base gates and floors, then fewer failed floors, then fitness5 closer to the recipe target (higher on max recipes). When both pass, the candidate must get at least 2.0 closer to the target (fewer needless replacements). A candidate must also be solved by `Solver.solve(level, 2M)`. Ties keep the shipped level.
+
+Commit 8ce5435-dirty. CPU time over the slots 95979 s (26.7 h); runs: 2026-10-18T05:50:51.840805Z slots 4 threads 4 wall 66 s commit 8ce5435-dirty; 2026-10-18T09:14:41.894625Z slots 96 threads 8 wall 12176 s commit 8ce5435-dirty.
+
+**90 slots replaced, 10 kept.**
+
+## Per slot (old → new; solver line unless noted)
+
+Floors and fitness5 on the mean over the lines (what selection checks). Winnable at 1/3: uniform / with H = 40 re-drawn. Decision in the last column; `*` = from the rebuild preview.
+
+| slot | recipe | tier | ring | belt | unfair | traps | blind bits | fair hidden bits | hidden bits | winnable at 1/3 | w>=2, mean w | fitness5 | floors old | floors new | decision |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| L1 | tutorial | 0 | 40 | 10 | 0 | 0 | 0.0 | 0.0 | 0.0 | 100% / 100% | 100%, 2.00 | 7.0 | fairhidden 0.0 | | kept (tutorial (not rebuilt)) |
+| L2 | juggle intro | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 3.0 → 2.2 | 3.3 → 9.5 | 3.3 → 9.5 | 100% / 100% → 100% / 100% | 93%, 3.59 → 89%, 3.41 | 12.9 → 20.4 | unfair 1.5, deeptraps 1.5, blindratio 0.81 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L3 | juggle + mismatch window | 0 | 40 → 40 | 10 → 10 | 1 → 0 | 1 → 0 | 5.2 → 2.0 | 10.6 → 6.8 | 12.0 → 6.8 | 100% / 100% → 98% / 86% | 80%, 2.80 → 72%, 2.64 | 15.2 → 20.0 | unfair 1.0, deeptraps 1.0, blindratio 0.63 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L4 | juggle + just-enough cascade | 0 | 40 → 40 | 10 → 10 | 1 → 0 | 1 → 0 | 4.2 → 0.0 | 7.6 → 2.0 | 9.0 → 2.0 | 91% / 94% → 100% / 100% | 73%, 3.36 → 94%, 4.85 | 19.6 → 16.1 | unfair 0.5, deeptraps 0.5, blindratio 0.36 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L5 | juggle + left-slot steal | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 0.3 → 5.5 | 8.3 → 15.3 | 8.3 → 15.3 | 58% / 61% → 58% / 61% | 82%, 3.06 → 81%, 3.03 | 25.2 → 25.0 | pass | pass | **kept** (both pass, new fitness5 within 2.0 of the shipped one's distance to target) |
+| L6 | juggle + herald (the climax colour waits early) | 1 | 40 → 40 | 10 → 10 | 2 → 0 | 2 → 0 | 10.2 → 2.2 | 13.9 → 10.4 | 16.2 → 10.4 | 98% / 78% → 100% / 100% | 73%, 2.98 → 91%, 6.70 | 17.4 → 29.2 | unfair 2.0, deeptraps 1.0, blindratio 0.46 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L7 | juggle + interrupted run + cascade | 1 | 40 → 40 | 10 → 10 | 1 → 0 | 0 → 0 | 4.9 → 3.9 | 9.8 → 21.5 | 11.4 → 21.5 | 100% / 100% → 98% / 100% | 83%, 3.18 → 75%, 3.20 | 23.2 → 30.7 | unfair 1.0, deeptraps 0.5, blindratio 0.56 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L8 | juggle + steal + keystone | 1 | 40 → 40 | 10 → 10 | 4 → 0 | 1 → 0 | 5.6 → 0.0 | 7.9 → 7.0 | 13.1 → 7.0 | 2% / 0% → 100% / 97% | 60%, 2.48 → 89%, 6.52 | 17.7 → 34.2 | unfair 3.0, blindratio 0.29, order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L9 | juggle + rolling + heralded climax, mirror | 1 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 8.3 → 0.0 | 9.9 → 6.5 | 9.9 → 6.5 | 98% / 100% → 36% / 42% | 91%, 5.91 → 94%, 3.26 | 31.2 → 34.8 | blindratio 0.48 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L10 | hard: juggle, scarce key -> heralded chain climax | 3 | 40 → 40 | 10 → 16 | 5 → 0 | 3 → 0 | 14.4 → 2.8 | 34.7 → 39.9 | 41.9 → 39.9 | 0% / 0% → 0% / 0% | 55%, 2.47 → 46%, 1.71 | 60.2 → 72.1 | unfair 3.0, deeptraps 1.5, order 0.00 | order 0.00 | **replaced*** (fewer failed floors) |
+| L11 | breather juggle | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 5.6 → 0.0 | 8.2 → 4.6 | 8.2 → 4.6 | 56% / 48% → 100% / 100% | 65%, 1.70 → 87%, 2.87 | 16.5 → 19.0 | blindratio 0.34 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L12 | juggle + mismatch window | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 0.0 → 4.0 | 7.4 → 11.7 | 7.4 → 11.7 | 100% / 100% → 25% / 11% | 80%, 2.53 → 80%, 2.90 | 21.5 → 18.2 | unfair 0.5 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L13 | juggle + just-enough cascade | 0 | 40 → 40 | 10 → 10 | 1 → 0 | 1 → 0 | 8.8 → 3.2 | 10.7 → 6.3 | 11.4 → 6.3 | 98% / 88% → 81% / 84% | 94%, 3.50 → 76%, 2.29 | 17.4 → 16.3 | unfair 0.5, deeptraps 0.5, blindratio 0.75 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L14 | juggle + left-slot steal | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 0.0 → 2.0 | 5.5 → 10.1 | 5.5 → 10.1 | 94% / 84% → 98% / 100% | 77%, 2.57 → 85%, 3.21 | 25.5 → 23.2 | pass | pass | **replaced** (both pass, new fitness5 closer to target by >= 2.0) |
+| L15 | juggle + herald (the climax colour waits early) | 1 | 40 → 40 | 10 → 10 | 3 → 0 | 3 → 0 | 7.4 → 4.8 | 14.7 → 21.0 | 18.4 → 21.0 | 50% / 61% → 30% / 70% | 73%, 3.84 → 59%, 2.27 | 19.5 → 28.5 | unfair 1.5, deeptraps 1.5 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L16 | juggle + interrupted run + cascade | 1 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 3.4 → 0.0 | 17.2 → 8.6 | 17.2 → 8.6 | 44% / 38% → 100% / 100% | 79%, 3.21 → 87%, 3.87 | 27.9 → 23.6 | pass | pass | **replaced** (both pass, new fitness5 closer to target by >= 2.0) |
+| L17 | juggle + steal + keystone | 1 | 40 → 40 | 10 → 10 | 0 → 1 | 0 → 0 | 2.8 → 3.9 | 15.6 → 20.2 | 15.6 → 21.6 | 55% / 53% → 67% / 56% | 82%, 4.09 → 79%, 2.98 | 28.7 → 27.4 | unfair 0.5, blindratio 0.25 | unfair 1.5 | **replaced*** (fewer failed floors) |
+| L18 | juggle + rolling + heralded climax, mirror | 1 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 0.0 → 3.5 | 1.3 → 15.4 | 1.3 → 15.4 | 100% / 100% → 100% / 100% | 98%, 5.09 → 86%, 4.82 | 27.8 → 27.3 | unfair 1.5, deeptraps 0.5, fairhidden 6.2 | blindratio 0.39 | **replaced** (fewer failed floors) |
+| L19 | juggle, mirror spine + steal | 2 | 40 → 40 | 10 → 12 | 0 → 0 | 0 → 0 | 2.0 → 6.7 | 21.0 → 21.1 | 21.0 → 21.1 | 3% / 0% → 88% / 77% | 67%, 2.08 → 84%, 4.34 | 32.1 → 39.6 | order 0.03 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L20 | hard: juggle, scarce key -> heralded chain climax | 3 | 40 → 40 | 10 → 16 | 0 → 0 | 0 → 0 | 3.0 → 3.7 | 52.6 → 29.6 | 52.6 → 29.6 | 0% / 0% → 8% / 11% | 34%, 1.51 → 83%, 4.46 | 71.9 → 54.4 | multi 0.35, order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L21 | breather juggle | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 0.0 → 4.0 | 7.0 → 9.0 | 7.0 → 9.0 | 100% / 100% → 100% / 100% | 61%, 1.78 → 57%, 1.91 | 18.1 → 13.8 | pass | pass | **replaced** (both pass, new fitness5 closer to target by >= 2.0) |
+| L22 | juggle + just-enough cascade | 0 | 38 → 38 | 10 → 10 | 3 → 0 | 3 → 0 | 11.4 → 3.0 | 15.2 → 10.8 | 20.5 → 10.8 | 100% / 81% → 100% / 95% | 65%, 2.59 → 88%, 3.00 | 14.5 → 17.0 | unfair 1.5, deeptraps 2.0, blindratio 0.48 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L23 | juggle + left-slot steal | 0 | 38 → 38 | 10 → 10 | 1 → 0 | 0 → 0 | 3.9 → 1.0 | 21.3 → 6.0 | 22.8 → 6.0 | 0% / 0% → 58% / 34% | 69%, 2.53 → 58%, 1.73 | 24.1 → 20.8 | unfair 0.5, order 0.21 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L24 | juggle + interrupted run + cascade | 1 | 38 → 38 | 10 → 14 | 0 → 0 | 0 → 0 | 0.0 → 1.0 | 0.2 → 4.7 | 0.2 → 4.7 | 100% / 100% → 34% / 56% | 100%, 5.21 → 85%, 3.55 | 25.6 → 24.8 | fairhidden 0.2 | fairhidden 2.4 | **replaced** (same number of failed floors, new fitness5 closer to target) |
+| L25 | juggle + steal + keystone | 1 | 38 → 38 | 10 → 14 | 7 → 0 | 4 → 0 | 18.4 → 0.0 | 13.4 → 8.1 | 26.7 → 8.1 | 95% / 25% → 100% / 100% | 74%, 3.80 → 85%, 3.43 | 9.8 → 29.1 | unfair 5.5, deeptraps 2.0, blindratio 0.52, order 0.20 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L26 | juggle + rolling + heralded climax, mirror | 1 | 38 → 38 | 10 → 14 | 5 → 0 | 4 → 0 | 12.7 → 1.6 | 12.9 → 12.9 | 21.3 → 12.9 | 34% / 17% → 91% / 88% | 71%, 3.47 → 67%, 2.63 | 18.8 → 28.7 | unfair 3.0, deeptraps 1.5, blindratio 0.42 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L27 | juggle, mirror spine + steal | 2 | 36 → 36 | 10 → 16 | 2 → 1 | 1 → 0 | 9.1 → 0.6 | 38.3 → 22.3 | 42.4 → 22.8 | 67% / 55% → 20% / 19% | 62%, 2.66 → 64%, 2.08 | 38.4 → 32.4 | unfair 2.0, deeptraps 2.0 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L28 | juggle, gutter halves + heralded climax | 2 | 36 → 36 | 10 → 16 | 5 → 0 | 4 → 0 | 10.0 → 2.1 | 13.0 → 17.2 | 22.9 → 17.2 | 14% / 55% → 100% / 89% | 69%, 3.12 → 88%, 3.69 | 8.6 → 33.1 | unfair 5.0, deeptraps 4.0, blindratio 0.43, fairhidden 13.0 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L29 | juggle, domino stacks + interrupted run | 2 | 40 → 36 | 10 → 16 | 0 → 1 | 0 → 0 | 6.8 → 5.9 | 19.0 → 23.7 | 19.0 → 25.6 | 91% / 98% → 98% / 98% | 82%, 4.72 → 85%, 4.77 | 35.8 → 34.7 | pass | pass | **kept** (both pass, new fitness5 within 2.0 of the shipped one's distance to target) |
+| L30 | juggle, everything, scarce key -> heralded long chain | 3 | 40 → 36 | 10 → 20 | 1 → 0 | 1 → 0 | 5.5 → 0.6 | 50.2 → 35.4 | 50.9 → 35.4 | 0% / 0% → 0% / 11% | 59%, 2.42 → 63%, 3.44 | 67.8 → 61.6 | order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L31 | breather juggle | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 4.0 → 0.0 | 7.0 → 5.3 | 7.0 → 5.3 | 100% / 100% → 100% / 100% | 59%, 1.68 → 68%, 1.86 | 15.9 → 17.2 | blindratio 0.79 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L32 | juggle + herald (the climax colour waits early) | 1 | 36 → 36 | 10 → 14 | 4 → 0 | 1 → 0 | 13.5 → 2.8 | 17.9 → 13.4 | 21.3 → 13.4 | 9% / 55% → 100% / 100% | 61%, 3.48 → 82%, 3.52 | 11.7 → 26.4 | unfair 4.0, deeptraps 1.0, blindratio 0.64 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L33 | juggle + interrupted run + cascade | 1 | 36 → 36 | 10 → 14 | 1 → 0 | 0 → 0 | 3.5 → 0.0 | 9.5 → 8.8 | 11.3 → 8.8 | 2% / 3% → 98% / 98% | 79%, 4.05 → 90%, 4.83 | 21.5 → 25.0 | unfair 1.0, blindratio 0.31, order 0.03 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L34 | juggle + steal + keystone | 1 | 40 → 36 | 10 → 14 | 0 → 0 | 0 → 0 | 0.0 → 6.3 | 8.8 → 27.3 | 8.8 → 27.3 | 0% / 0% → 84% / 86% | 62%, 2.47 → 79%, 3.23 | 26.7 → 28.6 | order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L35 | juggle + rolling + heralded climax, mirror | 1 | 36 → 36 | 10 → 14 | 1 → 0 | 0 → 0 | 2.0 → 1.0 | 18.0 → 12.5 | 18.2 → 12.5 | 86% / 81% → 47% / 34% | 84%, 4.11 → 79%, 3.38 | 30.9 → 32.3 | unfair 1.0 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L36 | juggle, mirror spine + steal | 2 | 36 → 36 | 10 → 16 | 2 → 0 | 1 → 0 | 6.8 → 3.7 | 17.5 → 18.6 | 21.2 → 18.6 | 63% / 34% → 100% / 100% | 78%, 4.88 → 80%, 4.24 | 28.1 → 33.6 | unfair 2.0, deeptraps 1.0, blindratio 0.32 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L37 | juggle, gutter halves + heralded climax | 2 | 34 → 34 | 10 → 16 | 2 → 0 | 2 → 0 | 12.6 → 3.0 | 22.5 → 25.3 | 31.9 → 25.3 | 14% / 0% → 28% / 39% | 68%, 2.96 → 78%, 4.80 | 23.1 → 33.1 | unfair 2.0, deeptraps 3.0, blindratio 0.39, order 0.00 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L38 | juggle, domino stacks + interrupted run | 2 | 34 → 38 | 10 → 16 | 1 → 0 | 1 → 0 | 9.3 → 1.6 | 14.8 → 15.0 | 16.4 → 15.0 | 97% / 81% → 98% / 100% | 82%, 4.17 → 86%, 3.93 | 27.6 → 37.8 | deeptraps 2.0, blindratio 0.57, fairhidden 14.8 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L39 | juggle, squatter dig + steal | 2 | 38 → 38 | 10 → 16 | 2 → 0 | 2 → 0 | 9.9 → 6.2 | 35.3 → 25.5 | 36.9 → 25.5 | 0% / 0% → 0% / 20% | 57%, 2.11 → 77%, 4.26 | 32.4 → 41.9 | unfair 2.0, deeptraps 2.0, order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L40 | superhard: dense pack, juggle, scarce key, heralded climax | 3 | 40 → 36 | 10 → 20 | 0 → 0 | 0 → 0 | 11.6 → 2.2 | 44.7 → 36.5 | 44.7 → 36.5 | 0% / 0% → 0% / 97% | 65%, 2.51 → 77%, 3.57 | 70.0 → 60.2 | order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L41 | breather juggle | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 3.2 → 1.9 | 7.8 → 6.2 | 7.8 → 6.2 | 100% / 100% → 100% / 100% | 68%, 1.95 → 78%, 2.04 | 17.6 → 16.6 | pass | pass | **kept*** (both pass, new fitness5 within 2.0 of the shipped one's distance to target) |
+| L42 | juggle + interrupted run + cascade | 1 | 34 → 34 | 10 → 14 | 2 → 0 | 2 → 0 | 2.7 → 0.7 | 10.4 → 9.2 | 12.1 → 9.2 | 100% / 100% → 100% / 100% | 90%, 4.13 → 88%, 3.43 | 21.5 → 25.6 | unfair 2.0, deeptraps 3.0 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L43 | juggle + steal + keystone | 1 | 34 → 34 | 10 → 14 | 6 → 0 | 2 → 0 | 10.1 → 1.5 | 13.5 → 13.6 | 21.4 → 13.6 | 56% / 28% → 22% / 56% | 66%, 2.72 → 85%, 2.64 | 5.7 → 34.2 | unfair 6.0, deeptraps 2.0, blindratio 0.47 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L44 | juggle + rolling + heralded climax, mirror | 1 | 40 → 34 | 10 → 14 | 5 → 0 | 5 → 0 | 7.7 → 1.8 | 13.5 → 18.7 | 16.7 → 18.7 | 75% / 63% → 100% / 100% | 79%, 2.45 → 79%, 3.23 | 6.8 → 36.7 | unfair 5.0, deeptraps 5.0, blindratio 0.42 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L45 | juggle, mirror spine + steal | 2 | 38 → 38 | 10 → 16 | 3 → 0 | 2 → 0 | 7.0 → 1.7 | 19.1 → 22.4 | 25.2 → 22.4 | 83% / 70% → 80% / 11% | 84%, 4.82 → 66%, 2.44 | 17.6 → 31.7 | unfair 3.0, deeptraps 2.0 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L46 | juggle, gutter halves + heralded climax | 2 | 38 → 34 | 10 → 16 | 0 → 1 | 0 → 0 | 5.0 → 6.3 | 14.3 → 26.0 | 14.3 → 28.9 | 36% / 34% → 88% / 95% | 88%, 3.30 → 69%, 3.35 | 36.9 → 38.9 | blindratio 0.35, fairhidden 14.3 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L47 | juggle, domino stacks + interrupted run | 2 | 32 → 40 | 10 → 16 | 3 → 0 | 0 → 0 | 8.7 → 0.0 | 27.5 → 19.6 | 33.1 → 19.6 | 39% / 98% → 22% / 13% | 76%, 3.63 → 59%, 2.30 | 33.6 → 36.2 | unfair 3.0 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L48 | juggle, squatter dig + steal | 2 | 40 → 32 | 10 → 16 | 0 → 2 | 0 → 2 | 11.3 → 3.8 | 24.7 → 19.3 | 24.7 → 29.2 | 0% / 2% → 36% / 23% | 82%, 2.77 → 63%, 3.05 | 35.2 → 33.8 | order 0.02 | deeptraps 1.5 | **kept** (new level is not better) |
+| L49 | juggle, keystone + cascades, heralded climax | 2 | 40 → 36 | 10 → 16 | 0 → 0 | 0 → 0 | 3.2 → 8.0 | 27.7 → 30.1 | 27.7 → 30.5 | 0% / 0% → 8% / 25% | 67%, 2.22 → 87%, 4.06 | 40.8 → 40.8 | order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L50 | dense pack + interrupted run | 3 | 40 → 40 | 10 → 20 | 2 → 2 | 1 → 1 | 8.0 → 4.4 | 28.1 → 25.3 | 30.4 → 27.2 | 0% / 2% → 0% / 25% | 81%, 2.48 → 70%, 3.14 | 41.0 → 48.3 | unfair 3.0, deeptraps 2.0, order 0.02 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L51 | breather juggle | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 3.2 → 3.2 | 6.3 → 6.3 | 6.3 → 6.3 | 100% / 100% → 100% / 100% | 78%, 2.65 → 78%, 2.65 | 17.9 → 17.9 | pass | pass | **kept** (shipped level passes and scores at least as well) |
+| L52 | juggle + steal + keystone | 1 | 40 → 40 | 10 → 14 | 3 → 0 | 2 → 0 | 4.4 → 4.2 | 5.7 → 24.2 | 9.8 → 24.2 | 0% / 0% → 100% / 98% | 91%, 3.47 → 68%, 2.96 | 21.5 → 29.0 | unfair 1.5, deeptraps 1.0, blindratio 0.29, fairhidden 7.0, order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L53 | juggle + rolling + heralded climax, mirror | 1 | 32 → 32 | 10 → 14 | 5 → 0 | 4 → 0 | 9.6 → 1.1 | 15.0 → 9.0 | 23.0 → 9.0 | 6% / 9% → 94% / 97% | 74%, 2.98 → 91%, 4.49 | 8.3 → 30.3 | unfair 5.0, deeptraps 5.0, blindratio 0.42, order 0.09 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L54 | juggle, mirror spine + steal | 2 | 32 → 40 | 10 → 16 | 4 → 1 | 4 → 0 | 15.1 → 0.9 | 24.6 → 26.9 | 31.0 → 27.3 | 83% / 45% → 3% / 16% | 80%, 3.49 → 66%, 2.64 | 16.8 → 34.1 | unfair 4.0, deeptraps 4.0, blindratio 0.49 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L55 | juggle, gutter halves + heralded climax | 2 | 32 → 36 | 10 → 16 | 0 → 0 | 0 → 0 | 1.3 → 2.2 | 23.5 → 15.3 | 23.5 → 25.5 | 0% / 3% → 67% / 38% | 76%, 4.20 → 78%, 3.68 | 41.2 → 36.0 | order 0.03 | unsolved | **replaced** (same number of failed floors, new fitness5 closer to target) |
+| L56 | juggle, squatter dig + steal | 2 | 36 → 32 | 10 → 16 | 0 → 0 | 0 → 0 | 1.0 → 7.3 | 18.6 → 17.2 | 18.6 → 17.2 | 0% / 0% → 66% / 83% | 61%, 3.52 → 87%, 5.69 | 40.5 → 37.6 | order 0.00 | fairhidden 12.2 | **replaced** (same number of failed floors, new fitness5 closer to target) |
+| L57 | juggle + chained runs | 2 | 38 → 30 | 10 → 16 | 4 → 1 | 4 → 1 | 16.2 → 4.0 | 27.3 → 37.8 | 33.6 → 39.4 | 0% / 0% → 0% / 2% | 77%, 2.53 → 62%, 2.28 | 22.6 → 41.7 | unfair 4.0, deeptraps 3.0, blindratio 0.48, order 0.00 | order 0.01 | **replaced** (fewer failed floors) |
+| L58 | juggle, keystone + cascades, heralded climax | 2 | 30 → 34 | 10 → 16 | 2 → 0 | 2 → 0 | 14.0 → 0.3 | 34.4 → 19.5 | 36.2 → 19.5 | 0% / 6% → 8% / 56% | 77%, 3.75 → 82%, 4.38 | 32.9 → 38.6 | unfair 2.0, deeptraps 2.0, blindratio 0.39, order 0.06 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L59 | juggle, rolling + squatter | 2 | 40 → 38 | 10 → 16 | 1 → 0 | 0 → 0 | 10.9 → 5.6 | 23.3 → 27.3 | 23.8 → 27.3 | 0% / 0% → 0% / 42% | 72%, 2.10 → 78%, 4.38 | 34.0 → 42.9 | blindratio 0.48, order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L60 | dense pack, gutter halves, heralded | 3 | 40 → 36 | 10 → 20 | 4 → 1 | 3 → 0 | 3.9 → 4.8 | 24.0 → 40.4 | 26.0 → 42.4 | 89% / 80% → 0% / 3% | 79%, 4.72 → 67%, 2.68 | 46.8 → 60.4 | unfair 4.5, deeptraps 1.5 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L61 | breather juggle | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 3.7 → 1.0 | 7.8 → 7.0 | 7.8 → 7.0 | 83% / 77% → 100% / 100% | 87%, 2.70 → 62%, 1.67 | 16.6 → 17.3 | blindratio 0.73 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L62 | juggle + rolling + heralded climax, mirror | 1 | 30 → 30 | 10 → 14 | 2 → 0 | 2 → 0 | 6.1 → 4.1 | 17.1 → 26.4 | 18.8 → 26.4 | 63% / 36% → 100% / 95% | 80%, 2.80 → 72%, 2.81 | 22.3 → 38.7 | unfair 2.0, deeptraps 3.0, blindratio 0.33 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L63 | juggle, mirror spine + steal | 2 | 30 → 30 | 10 → 16 | 0 → 0 | 0 → 0 | 5.3 → 3.6 | 21.3 → 17.8 | 21.3 → 17.8 | 45% / 42% → 100% / 100% | 77%, 4.29 → 88%, 4.62 | 35.3 → 35.3 | pass | pass | **kept** (shipped level passes and scores at least as well) |
+| L64 | juggle, gutter halves + heralded climax | 2 | 30 → 34 | 10 → 16 | 3 → 0 | 2 → 0 | 16.2 → 1.0 | 15.1 → 20.2 | 19.9 → 20.2 | 78% / 89% → 64% / 72% | 82%, 4.36 → 78%, 4.00 | 15.5 → 29.9 | unfair 3.0, deeptraps 2.0, blindratio 0.81 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L65 | juggle, domino stacks + interrupted run | 2 | 38 → 30 | 10 → 16 | 0 → 0 | 0 → 0 | 14.7 → 4.9 | 29.8 → 24.5 | 29.8 → 24.5 | 0% / 0% → 63% / 47% | 82%, 3.59 → 76%, 4.07 | 29.6 → 34.5 | blindratio 0.49, order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L66 | juggle, squatter dig + steal | 2 | 38 → 38 | 10 → 16 | 1 → 0 | 0 → 0 | 7.2 → 6.0 | 28.2 → 28.3 | 30.8 → 28.3 | 0% / 0% → 0% / 17% | 74%, 3.16 → 78%, 3.58 | 37.8 → 42.9 | order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L67 | juggle + chained runs | 2 | 32 → 36 | 10 → 16 | 6 → 1 | 1 → 0 | 15.8 → 4.8 | 24.8 → 27.1 | 32.9 → 28.4 | 0% / 0% → 0% / 0% | 73%, 2.85 → 65%, 2.60 | 19.9 → 37.4 | unfair 6.0, deeptraps 1.0, blindratio 0.48, order 0.00 | order 0.00 | **replaced*** (fewer failed floors) |
+| L68 | juggle, keystone + cascades, heralded climax | 2 | 36 → 40 | 10 → 16 | 0 → 1 | 0 → 0 | 5.8 → 3.0 | 33.5 → 25.8 | 33.5 → 26.8 | 0% / 0% → 0% / 34% | 67%, 2.24 → 61%, 2.37 | 46.9 → 44.0 | order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L69 | juggle, rolling + squatter | 2 | 40 → 36 | 10 → 16 | 5 → 0 | 2 → 0 | 11.3 → 4.1 | 19.0 → 32.0 | 26.8 → 32.0 | 0% / 0% → 0% / 2% | 66%, 3.25 → 69%, 2.24 | 27.6 → 40.0 | unfair 3.5, deeptraps 1.5, order 0.00 | order 0.02 | **replaced** (fewer failed floors) |
+| L70 | dense pack, squatter dig | 3 | 40 → 40 | 10 → 20 | 3 → 0 | 1 → 0 | 13.1 → 2.6 | 51.4 → 32.8 | 54.8 → 32.8 | 0% / 0% → 0% / 0% | 55%, 2.22 → 59%, 2.55 | 61.7 → 65.4 | unfair 4.0, deeptraps 1.5, order 0.00 | order 0.00 | **replaced** (fewer failed floors) |
+| L71 | breather juggle | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 3.0 → 0.0 | 7.2 → 3.2 | 7.2 → 3.2 | 100% / 100% → 100% / 100% | 70%, 2.43 → 86%, 2.95 | 17.8 → 16.2 | pass | pass | **kept** (both pass, new fitness5 within 2.0 of the shipped one's distance to target) |
+| L72 | juggle, mirror spine + steal | 2 | 30 → 34 | 10 → 16 | 8 → 0 | 4 → 0 | 17.6 → 5.2 | 27.1 → 20.0 | 41.0 → 20.0 | 6% / 16% → 45% / 72% | 56%, 1.81 → 90%, 3.54 | 9.0 → 31.7 | unfair 8.0, deeptraps 4.0, blindratio 0.43 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L73 | juggle, gutter halves + heralded climax | 2 | 38 → 34 | 10 → 16 | 0 → 1 | 0 → 0 | 6.9 → 3.9 | 15.1 → 17.8 | 15.1 → 18.5 | 92% / 100% → 69% / 59% | 72%, 3.04 → 82%, 4.04 | 31.2 → 33.6 | blindratio 0.30, fairhidden 12.3 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L74 | juggle, domino stacks + interrupted run | 2 | 30 → 30 | 10 → 16 | 0 → 0 | 0 → 0 | 10.3 → 7.0 | 21.9 → 27.7 | 21.9 → 27.7 | 98% / 100% → 53% / 53% | 80%, 3.15 → 81%, 3.09 | 31.6 → 34.1 | blindratio 0.47 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L75 | juggle, squatter dig + steal | 2 | 40 → 30 | 10 → 16 | 0 → 0 | 0 → 0 | 2.0 → 0.5 | 16.9 → 18.1 | 16.9 → 18.1 | 0% / 0% → 27% / 67% | 71%, 2.96 → 75%, 4.85 | 37.5 → 45.9 | order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L76 | juggle, squatter dig + steal | 2 | 34 → 38 | 10 → 16 | 4 → 1 | 3 → 0 | 22.3 → 3.4 | 40.2 → 22.7 | 46.7 → 25.0 | 3% / 8% → 0% / 0% | 61%, 2.64 → 58%, 2.77 | 21.0 → 37.7 | unfair 4.0, deeptraps 3.0, blindratio 0.48, order 0.08 | order 0.00 | **replaced** (fewer failed floors) |
+| L77 | juggle + chained runs | 2 | 40 → 36 | 10 → 16 | 4 → 1 | 4 → 0 | 9.9 → 6.9 | 19.8 → 25.9 | 21.9 → 28.4 | 0% / 0% → 16% / 11% | 70%, 2.62 → 63%, 2.29 | 9.7 → 38.0 | unfair 6.0, deeptraps 5.0, blindratio 0.44, order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L78 | juggle, keystone + cascades, heralded climax | 2 | 40 → 36 | 10 → 16 | 1 → 1 | 0 → 0 | 0.6 → 3.8 | 12.4 → 22.6 | 12.8 → 23.9 | 0% / 0% → 0% / 0% | 88%, 3.34 → 66%, 3.15 | 39.2 → 39.4 | order 0.00 | order 0.00 | **kept** (new level is not better) |
+| L79 | juggle, rolling + squatter | 2 | 40 → 28 | 10 → 16 | 0 → 0 | 0 → 0 | 1.4 → 6.9 | 45.3 → 37.7 | 45.3 → 37.7 | 0% / 0% → 0% / 52% | 64%, 2.36 → 70%, 3.63 | 40.8 → 50.9 | order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L80 | dense pack, mirror spine | 3 | 28 → 40 | 10 → 20 | 6 → 0 | 2 → 0 | 10.3 → 0.0 | 40.3 → 28.9 | 49.8 → 28.9 | 0% / 0% → 5% / 42% | 45%, 1.70 → 69%, 4.35 | 45.0 → 63.3 | unfair 6.0, deeptraps 2.0, multi 0.45, order 0.00 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L81 | breather juggle | 0 | 40 → 40 | 10 → 10 | 0 → 0 | 0 → 0 | 1.0 → 0.6 | 6.6 → 5.5 | 6.6 → 5.5 | 100% / 100% → 100% / 100% | 74%, 2.70 → 87%, 2.65 | 18.7 → 16.0 | pass | pass | **replaced** (both pass, new fitness5 closer to target by >= 2.0) |
+| L82 | juggle, mirror spine + steal | 2 | 38 → 30 | 10 → 16 | 0 → 1 | 0 → 0 | 6.2 → 5.2 | 23.0 → 16.8 | 23.0 → 17.4 | 64% / 63% → 86% / 94% | 78%, 3.10 → 71%, 2.16 | 36.8 → 32.3 | pass | pass | **replaced** (both pass, new fitness5 closer to target by >= 2.0) |
+| L83 | juggle, gutter halves + heralded climax | 2 | 30 → 30 | 10 → 16 | 2 → 0 | 1 → 0 | 6.3 → 2.9 | 25.6 → 24.0 | 29.7 → 24.0 | 11% / 55% → 44% / 39% | 88%, 5.23 → 88%, 3.94 | 40.5 → 36.1 | unfair 2.0, deeptraps 1.0 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L84 | juggle, domino stacks + interrupted run | 2 | 38 → 30 | 10 → 16 | 3 → 0 | 2 → 0 | 2.6 → 2.2 | 23.5 → 7.5 | 25.7 → 7.5 | 0% / 0% → 98% / 100% | 67%, 2.52 → 89%, 4.13 | 25.1 → 33.8 | unfair 3.0, deeptraps 2.0, order 0.00 | fairhidden 7.5 | **replaced** (fewer failed floors) |
+| L85 | juggle, squatter dig + steal | 2 | 38 → 38 | 10 → 16 | 3 → 0 | 2 → 0 | 5.2 → 4.2 | 40.4 → 22.9 | 44.6 → 22.9 | 0% / 0% → 0% / 16% | 72%, 2.53 → 75%, 3.28 | 29.1 → 40.7 | unfair 3.0, deeptraps 4.0, order 0.00 | pass | **replaced*** (new level passes the floors, the shipped one fails) |
+| L86 | juggle, squatter dig + steal | 2 | 30 → 34 | 10 → 16 | 3 → 0 | 2 → 0 | 4.7 → 2.0 | 20.7 → 26.8 | 39.2 → 26.8 | 0% / 0% → 0% / 31% | 68%, 2.47 → 75%, 3.48 | 23.7 → 53.1 | unfair 3.0, deeptraps 1.0, order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L87 | juggle + chained runs | 2 | 40 → 40 | 10 → 16 | 3 → 0 | 2 → 0 | 10.2 → 0.0 | 29.7 → 17.2 | 34.0 → 17.2 | 0% / 0% → 50% / 30% | 63%, 2.61 → 82%, 3.23 | 30.8 → 39.8 | unfair 1.5, deeptraps 1.0, order 0.09 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L88 | juggle, keystone + cascades, heralded climax | 2 | 36 → 36 | 10 → 16 | 1 → 0 | 0 → 0 | 4.6 → 2.6 | 28.3 → 24.8 | 28.9 → 24.8 | 3% / 13% → 3% / 17% | 61%, 2.06 → 69%, 2.31 | 37.2 → 39.1 | pass | pass | **kept** (both pass, new fitness5 within 2.0 of the shipped one's distance to target) |
+| L89 | juggle, rolling + squatter | 2 | 40 → 40 | 10 → 16 | 2 → 0 | 1 → 0 | 3.6 → 4.4 | 24.8 → 29.5 | 28.4 → 29.5 | 0% / 0% → 2% / 6% | 78%, 3.23 → 63%, 2.13 | 36.1 → 40.0 | unfair 1.5, order 0.00 | order 0.06 | **replaced*** (fewer failed floors) |
+| L90 | juggle, everything, scarce key -> heralded long chain | 3 | 32 → 40 | 10 → 20 | 0 → 0 | 0 → 0 | 9.5 → 2.2 | 21.4 → 32.1 | 40.2 → 32.1 | 2% / 2% → 0% / 23% | 55%, 2.34 → 50%, 1.76 | 47.4 → 53.4 | fairhidden 21.4, order 0.02 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L91 | breather juggle | 0 | 40 → 40 | 10 → 10 | 1 → 0 | 1 → 0 | 7.6 → 3.0 | 9.0 → 6.2 | 9.6 → 6.2 | 100% / 100% → 100% / 100% | 37%, 1.42 → 70%, 2.57 | 11.7 → 15.2 | unfair 0.5, deeptraps 0.5, blindratio 0.40 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L92 | juggle, mirror spine + steal | 2 | 38 → 30 | 10 → 16 | 2 → 0 | 1 → 0 | 4.8 → 8.5 | 22.6 → 29.9 | 27.0 → 29.9 | 5% / 2% → 100% / 100% | 70%, 2.32 → 74%, 3.68 | 29.4 → 33.6 | unfair 2.0, deeptraps 1.0, order 0.02 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L93 | juggle, gutter halves + heralded climax | 2 | 34 → 34 | 10 → 16 | 1 → 1 | 0 → 0 | 0.7 → 6.0 | 27.2 → 18.5 | 27.9 → 23.6 | 30% / 23% → 6% / 67% | 68%, 2.90 → 76%, 3.64 | 39.2 → 35.4 | pass | pass | **replaced*** (both pass, new fitness5 closer to target by >= 2.0) |
+| L94 | juggle, domino stacks + interrupted run | 2 | 38 → 34 | 10 → 16 | 1 → 0 | 0 → 0 | 7.2 → 10.2 | 28.7 → 41.3 | 29.7 → 41.3 | 0% / 0% → 78% / 100% | 69%, 2.70 → 67%, 2.54 | 38.8 → 36.4 | order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L95 | juggle, squatter dig + steal | 2 | 38 → 38 | 10 → 16 | 1 → 0 | 0 → 0 | 7.3 → 2.2 | 23.0 → 23.8 | 24.6 → 23.8 | 0% / 0% → 45% / 89% | 81%, 3.73 → 85%, 4.71 | 36.0 → 43.0 | order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L96 | juggle, squatter dig + steal | 2 | 38 → 40 | 10 → 16 | 0 → 0 | 0 → 0 | 6.3 → 8.0 | 29.0 → 24.2 | 29.0 → 24.2 | 0% / 0% → 70% / 83% | 57%, 1.76 → 81%, 3.34 | 40.4 → 41.6 | order 0.00 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L97 | juggle + chained runs | 2 | 32 → 32 | 10 → 16 | 3 → 0 | 2 → 0 | 15.5 → 1.2 | 30.6 → 21.9 | 33.5 → 21.9 | 11% / 45% → 0% / 0% | 80%, 3.72 → 69%, 3.11 | 32.8 → 35.7 | unfair 3.0, deeptraps 2.0, blindratio 0.46 | order 0.00 | **replaced** (fewer failed floors) |
+| L98 | juggle, keystone + cascades, heralded climax | 2 | 40 → 40 | 10 → 16 | 2 → 0 | 1 → 0 | 3.2 → 3.7 | 19.4 → 22.8 | 22.0 → 22.8 | 0% / 0% → 19% / 56% | 82%, 2.42 → 65%, 2.92 | 37.1 → 47.0 | deeptraps 0.5, order 0.09 | pass | **replaced** (new level passes the floors, the shipped one fails) |
+| L99 | juggle, rolling + squatter | 2 | 40 → 40 | 10 → 16 | 1 → 0 | 1 → 0 | 2.9 → 0.4 | 18.9 → 19.9 | 19.5 → 19.9 | 13% / 13% → 0% / 0% | 94%, 4.17 → 75%, 2.97 | 21.6 → 40.4 | unfair 4.5, deeptraps 3.0, order 0.08 | order 0.02 | **replaced*** (fewer failed floors) |
+| L100 | hard: juggle, scarce key -> heralded chain climax | 3 | 40 → 40 | 10 → 20 | 2 → 1 | 0 → 0 | 11.3 → 8.9 | 35.8 → 39.0 | 40.1 → 41.0 | 0% / 0% → 0% / 0% | 47%, 1.95 → 59%, 1.81 | 64.7 → 68.0 | order 0.00 | order 0.00 | **replaced** (same number of failed floors, new fitness5 closer to target) |
+
+## Totals (100 levels, solver line)
+
+Old = the shipped pack before this run; all new = every slot's candidate (what a full regeneration would ship); final = the pack now shipped.
+
+| metric | old | all new | final |
+|---|---|---|---|
+| levels with >= 1 unfair decision | 62 | 18 | 17 |
+| unfair decisions (sum) | 173 | 20 | 18 |
+| traps (sum) | 104 | 4 | 2 |
+| deep traps (sum) | 108 | 4 | 1 |
+| fair share (mean) | 90% | 99% | 99% |
+| blind bits (mean) | 6.9 | 3.1 | 3.2 |
+| hidden bits (mean) | 23.0 | 19.9 | 19.8 |
+| fair hidden bits (mean) | 20.2 | 19.4 | 19.4 |
+| blind / hidden (mean) | 0.32 | 0.16 | 0.17 |
+| winnable from start, uniform (mean) | 22% | 27% | 26% |
+| winnable at 1/3, uniform (mean) | 40% | 54% | 53% |
+| winnable at 1/3, H=40 (mean) | 39% | 60% | 59% |
+| levels at <= 5% winnable from start (uniform) | 63 | 56 | 56 |
+| choices with w >= 2 (mean) | 73% | 76% | 76% |
+| mean w (mean) | 3.04 | 3.30 | 3.29 |
+| fitness5 (mean) | 28.8 | 34.7 | 34.7 |
+| levels passing gates + floors | 13 | 81 | 81 |
+| belt 10 / 12 / 14 / 16 / 20 | 100 / 0 / 0 / 0 / 0 | 27 / 1 / 13 / 51 / 8 | 32 / 1 / 13 / 46 / 8 |
+
+## By tier (final pack, solver line means)
+
+| tier | levels | replaced | unfair (sum) | traps (sum) | blind bits | fair hidden bits | hidden bits | winnable at 1/3, H=40 | w>=2 | floors pass |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 19 | 14 | 0 | 0 | 1.9 | 6.9 | 6.9 | 88% | 77% | 18 |
+| 1 | 21 | 21 | 1 | 0 | 2.1 | 14.3 | 14.3 | 85% | 81% | 18 |
+| 2 | 50 | 45 | 13 | 1 | 4.2 | 23.4 | 24.0 | 46% | 75% | 38 |
+| 3 | 10 | 10 | 4 | 1 | 3.2 | 34.0 | 34.6 | 21% | 64% | 7 |
+
+## Levels of the final pack that fail their floors
+
+| slot | tier | decision | fails (final) | candidate fails |
+|---|---|---|---|---|
+| L1 | 0 | kept | fairhidden 0.0 | - |
+| L10 | 3 | replaced | order 0.00 | order 0.00 |
+| L17 | 1 | replaced | unfair 1.5 | unfair 1.5 |
+| L18 | 1 | replaced | blindratio 0.39 | blindratio 0.39 |
+| L24 | 1 | replaced | fairhidden 2.4 | fairhidden 2.4 |
+| L48 | 2 | kept | order 0.02 | deeptraps 1.5 |
+| L55 | 2 | replaced | unsolved | unsolved |
+| L56 | 2 | replaced | fairhidden 12.2 | fairhidden 12.2 |
+| L57 | 2 | replaced | order 0.01 | order 0.01 |
+| L67 | 2 | replaced | order 0.00 | order 0.00 |
+| L69 | 2 | replaced | order 0.02 | order 0.02 |
+| L70 | 3 | replaced | order 0.00 | order 0.00 |
+| L76 | 2 | replaced | order 0.00 | order 0.00 |
+| L78 | 2 | kept | order 0.00 | order 0.00 |
+| L84 | 2 | replaced | fairhidden 7.5 | fairhidden 7.5 |
+| L89 | 2 | replaced | order 0.06 | order 0.06 |
+| L97 | 2 | replaced | order 0.00 | order 0.00 |
+| L99 | 2 | replaced | order 0.02 | order 0.02 |
+| L100 | 3 | replaced | order 0.00 | order 0.00 |
+
+By floor: order 12, fairhidden 4, unfair 1, blindratio 1, unsolved 1
+
+## Difficulty curve by cycle
+
+Difficulty under fitness5 is carried by the fair hidden bits (hidden bits at decisions that can be read; mean over the lines). Rows: cycles; columns: the slot in the cycle (1 = breather, 10 = closer). `*` = replaced.
+
+**Fair hidden bits, final pack**
+
+| cycle | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 0.0 | 7.8* | 3.4* | 3.7* | 6.6 | 9.4* | 13.9* | 10.5* | 8.8* | 40.8* |
+| 2 | 3.5* | 5.9* | 3.4* | 7.6* | 12.7* | 8.2* | 16.5* | 14.8* | 20.4* | 27.6* |
+| 3 | 4.5* | 5.4* | 6.0* | 2.4* | 8.1* | 12.9* | 22.3* | 17.2* | 18.6 | 35.4* |
+| 4 | 3.2* | 13.4* | 8.8* | 28.6* | 12.5* | 18.8* | 25.3* | 15.0* | 25.5* | 32.3* |
+| 5 | 3.9 | 9.4* | 13.6* | 15.3* | 22.1* | 26.0* | 16.0* | 19.0 | 30.1* | 26.9* |
+| 6 | 3.2 | 17.8* | 9.0* | 17.7* | 17.4* | 12.2* | 31.3* | 19.5* | 25.8* | 39.3* |
+| 7 | 3.5* | 26.4* | 21.3 | 18.7* | 24.5* | 28.3* | 27.1* | 23.3* | 32.0* | 36.7* |
+| 8 | 5.4 | 18.3* | 16.9* | 27.7* | 18.1* | 18.8* | 24.9* | 15.4 | 37.7* | 29.1* |
+| 9 | 4.0* | 16.8* | 24.0* | 7.5* | 22.7* | 26.8* | 16.5* | 28.3 | 24.2* | 28.7* |
+| 10 | 3.1* | 29.9* | 18.9* | 41.3* | 23.8* | 15.8* | 16.6* | 22.5* | 20.8* | 39.1* |
+
+**Fair hidden bits, old pack**
+
+| cycle | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 0.0 | 4.2 | 8.4 | 6.6 | 6.6 | 8.9 | 8.1 | 8.7 | 10.5 | 39.9 |
+| 2 | 4.1 | 6.9 | 6.7 | 4.6 | 11.0 | 12.1 | 12.7 | 6.2 | 16.1 | 52.6 |
+| 3 | 3.5 | 10.3 | 15.7 | 0.2 | 10.2 | 13.6 | 38.3 | 13.0 | 18.6 | 48.3 |
+| 4 | 4.5 | 17.9 | 9.5 | 10.0 | 18.0 | 17.5 | 22.5 | 14.8 | 35.3 | 42.2 |
+| 5 | 3.9 | 10.4 | 13.5 | 13.2 | 19.1 | 14.3 | 27.5 | 19.0 | 22.1 | 25.6 |
+| 6 | 3.2 | 7.0 | 15.0 | 24.6 | 23.5 | 18.6 | 27.3 | 34.4 | 20.8 | 24.9 |
+| 7 | 4.3 | 17.1 | 21.3 | 15.1 | 29.8 | 28.2 | 24.8 | 33.5 | 17.9 | 53.3 |
+| 8 | 5.4 | 27.1 | 12.3 | 21.9 | 17.3 | 40.2 | 15.1 | 15.4 | 32.3 | 40.3 |
+| 9 | 5.1 | 23.0 | 25.6 | 23.5 | 40.4 | 20.7 | 21.9 | 28.3 | 23.2 | 21.4 |
+| 10 | 4.5 | 22.6 | 27.2 | 28.7 | 23.0 | 29.0 | 30.6 | 19.4 | 16.6 | 35.2 |
+
+**Hidden bits, final pack (old in brackets)**
+
+| cycle | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 0.0 (0.0) | 7.8 (5.6) | 3.4 (9.6) | 3.7 (7.2) | 6.6 (6.6) | 9.4 (11.4) | 13.9 (9.4) | 10.5 (11.9) | 8.8 (10.5) | 40.8 (43.8) |
+| 2 | 3.5 (4.1) | 5.9 (7.4) | 3.4 (7.1) | 7.6 (4.6) | 12.7 (12.9) | 8.2 (12.1) | 17.5 (13.1) | 14.8 (8.2) | 20.4 (16.1) | 27.8 (52.6) |
+| 3 | 4.5 (3.5) | 5.4 (13.0) | 6.0 (16.5) | 2.4 (0.2) | 8.1 (18.9) | 12.9 (18.5) | 22.8 (42.4) | 17.2 (22.9) | 18.6 (18.6) | 35.4 (49.0) |
+| 4 | 3.2 (4.5) | 13.4 (21.3) | 8.8 (11.3) | 28.6 (10.0) | 12.5 (18.2) | 18.8 (21.2) | 25.3 (31.9) | 15.0 (16.4) | 25.5 (36.9) | 32.3 (42.2) |
+| 5 | 3.9 (3.9) | 9.4 (12.1) | 13.6 (21.4) | 15.3 (16.5) | 22.1 (25.2) | 28.9 (14.3) | 16.0 (33.1) | 19.0 (19.0) | 30.5 (22.1) | 28.1 (28.1) |
+| 6 | 3.2 (3.2) | 17.8 (9.0) | 9.0 (23.0) | 17.8 (31.0) | 28.9 (23.5) | 12.2 (18.6) | 32.1 (33.6) | 19.5 (36.2) | 25.8 (21.1) | 41.3 (27.7) |
+| 7 | 3.5 (4.3) | 26.4 (18.8) | 21.3 (21.3) | 18.9 (19.9) | 24.5 (29.8) | 28.3 (30.8) | 28.4 (32.9) | 23.8 (33.5) | 32.0 (22.2) | 37.2 (57.0) |
+| 8 | 5.4 (5.4) | 18.7 (41.0) | 18.8 (12.5) | 27.7 (21.9) | 18.1 (17.3) | 20.0 (46.7) | 27.1 (18.5) | 15.6 (15.6) | 37.7 (32.3) | 29.1 (49.8) |
+| 9 | 4.0 (5.1) | 17.4 (23.0) | 24.0 (29.7) | 7.5 (25.7) | 22.7 (44.6) | 26.8 (39.2) | 16.5 (24.0) | 28.9 (28.9) | 24.4 (25.2) | 28.7 (40.2) |
+| 10 | 3.1 (4.8) | 29.9 (27.0) | 23.8 (27.9) | 41.3 (29.7) | 23.8 (24.6) | 15.8 (29.0) | 16.6 (33.5) | 23.0 (20.7) | 20.8 (21.4) | 40.1 (38.4) |
+
+**Winnable at 1/3 with H = 40, final pack (old in brackets)**
+
+| cycle | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 100% (100%) | 100% (100%) | 93% (100%) | 53% (79%) | 50% (50%) | 98% (69%) | 98% (100%) | 63% (0%) | 61% (97%) | 0% (0%) |
+| 2 | 100% (74%) | 55% (100%) | 82% (92%) | 88% (84%) | 66% (62%) | 100% (46%) | 36% (34%) | 100% (90%) | 50% (3%) | 5% (0%) |
+| 3 | 100% (100%) | 89% (81%) | 34% (21%) | 78% (100%) | 100% (20%) | 88% (32%) | 19% (55%) | 89% (55%) | 99% (99%) | 11% (0%) |
+| 4 | 100% (100%) | 100% (55%) | 98% (3%) | 43% (0%) | 34% (81%) | 100% (34%) | 39% (0%) | 100% (81%) | 20% (0%) | 97% (0%) |
+| 5 | 100% (100%) | 100% (100%) | 56% (28%) | 100% (63%) | 11% (70%) | 95% (34%) | 13% (98%) | 2% (2%) | 25% (0%) | 16% (2%) |
+| 6 | 100% (100%) | 67% (0%) | 97% (9%) | 45% (45%) | 22% (3%) | 83% (0%) | 1% (0%) | 56% (6%) | 42% (0%) | 11% (40%) |
+| 7 | 100% (88%) | 95% (36%) | 42% (42%) | 45% (89%) | 47% (0%) | 17% (0%) | 0% (0%) | 17% (0%) | 2% (0%) | 0% (0%) |
+| 8 | 100% (100%) | 72% (16%) | 30% (100%) | 53% (100%) | 67% (0%) | 0% (8%) | 11% (0%) | 0% (0%) | 52% (0%) | 52% (0%) |
+| 9 | 100% (100%) | 94% (63%) | 39% (55%) | 100% (0%) | 16% (0%) | 31% (0%) | 25% (9%) | 13% (13%) | 6% (0%) | 55% (2%) |
+| 10 | 100% (100%) | 100% (2%) | 67% (23%) | 100% (0%) | 89% (0%) | 53% (0%) | 0% (45%) | 28% (9%) | 2% (8%) | 0% (0%) |
+
+**Rise within each cycle** (fair hidden bits, mean of the slots in each band):
+
+| cycle | breather old → final | 2-5 old → final | 6-9 old → final | closer old → final | rises (final) |
+|---|---|---|---|---|---|
+| 1 | 0.0 → 0.0 | 6.5 → 5.4 | 9.1 → 10.7 | 39.9 → 40.8 | yes |
+| 2 | 4.1 → 3.5 | 7.3 → 7.4 | 11.8 → 15.0 | 52.6 → 27.6 | yes |
+| 3 | 3.5 → 4.5 | 9.1 → 5.5 | 20.9 → 17.8 | 48.3 → 35.4 | yes |
+| 4 | 4.5 → 3.2 | 13.8 → 15.8 | 22.5 → 21.1 | 42.2 → 32.3 | yes |
+| 5 | 3.9 → 3.9 | 14.0 → 15.1 | 20.7 → 22.8 | 25.6 → 26.9 | yes |
+| 6 | 3.2 → 3.2 | 17.5 → 15.5 | 25.3 → 22.2 | 24.9 → 39.3 | yes |
+| 7 | 4.3 → 3.5 | 20.8 → 22.7 | 26.1 → 27.7 | 53.3 → 36.7 | yes |
+| 8 | 5.4 → 5.4 | 19.6 → 20.2 | 25.7 → 24.2 | 40.3 → 29.1 | yes |
+| 9 | 5.1 → 4.0 | 28.1 → 17.8 | 23.5 → 23.9 | 21.4 → 28.7 | yes |
+| 10 | 4.5 → 3.1 | 25.4 → 28.5 | 23.9 → 18.9 | 35.2 → 39.1 | **no** |
+
+**Slots much easier than their tier** (final fair hidden bits below half the tier median, or a replacement that lost over 40% of the hidden bits and some fair hidden bits): 
+
+| slot | tier | tier median fair hidden | fair hidden old → final | hidden old → final | decision |
+|---|---|---|---|---|---|
+| L3 | 0 | 4.0 | 8.4 → 3.4 | 9.6 → 3.4 | replaced |
+| L4 | 0 | 4.0 | 6.6 → 3.7 | 7.2 → 3.7 | replaced |
+| L13 | 0 | 4.0 | 6.7 → 3.4 | 7.1 → 3.4 | replaced |
+| L20 | 3 | 35.4 | 52.6 → 27.6 | 52.6 → 27.8 | replaced |
+| L22 | 0 | 4.0 | 10.3 → 5.4 | 13.0 → 5.4 | replaced |
+| L23 | 0 | 4.0 | 15.7 → 6.0 | 16.5 → 6.0 | replaced |
+| L24 | 1 | 12.7 | 0.2 → 2.4 | 0.2 → 2.4 | replaced |
+| L25 | 1 | 12.7 | 10.2 → 8.1 | 18.9 → 8.1 | replaced |
+| L27 | 2 | 22.1 | 38.3 → 22.3 | 42.4 → 22.8 | replaced |
+| L47 | 2 | 22.1 | 27.5 → 16.0 | 33.1 → 16.0 | replaced |
+| L53 | 1 | 12.7 | 15.0 → 9.0 | 23.0 → 9.0 | replaced |
+| L54 | 2 | 22.1 | 24.6 → 17.7 | 31.0 → 17.8 | replaced |
+| L58 | 2 | 22.1 | 34.4 → 19.5 | 36.2 → 19.5 | replaced |
+| L72 | 2 | 22.1 | 27.1 → 18.3 | 41.0 → 18.7 | replaced |
+| L76 | 2 | 22.1 | 40.2 → 18.8 | 46.7 → 20.0 | replaced |
+| L80 | 3 | 35.4 | 40.3 → 29.1 | 49.8 → 29.1 | replaced |
+| L84 | 2 | 22.1 | 23.5 → 7.5 | 25.7 → 7.5 | replaced |
+| L85 | 2 | 22.1 | 40.4 → 22.7 | 44.6 → 22.7 | replaced |
+| L96 | 2 | 22.1 | 29.0 → 15.8 | 29.0 → 15.8 | replaced |
+| L97 | 2 | 22.1 | 30.6 → 16.6 | 33.5 → 16.6 | replaced |
+
+candidate pack in levelgen/out/campaign-f5-levels.json (--write true updates the shipped files)

@@ -20,7 +20,7 @@
 | Depart | Dispatch (full container leaves dock) |
 | Bump | Blocked |
 
-Packages: `:core` is `com.phloots.jam.core.*` and `:levelgen` is `com.phloots.jam.levelgen`. The `:app` namespace, its packages and the applicationId stay `com.phloots.busjam` until the re-skin.
+Packages: `:core` is `com.phloots.crittercafe.core.*` and `:levelgen` is `com.phloots.crittercafe.levelgen` (both were `com.phloots.jam.*` until 2026-10-17). The `:app` namespace, its packages and the applicationId are `com.phloots.crittercafe` (renamed from `com.phloots.busjam` on 2026-10-17).
 
 **Sizes:** S = length 1 / capacity 4, M = length 2 / capacity 6, L = length 3 / capacity 10. No length-4 containers.
 A length-1 container still faces a direction.
@@ -217,6 +217,76 @@ including during the fill and while boarding/refill is still in progress (impati
   the fill also converges to `Engine.apply` from that state.
 - Undo = rewind to just before the last tap, including carousel phase. Deterministic: real-time state is advanced
   by integer ticks; the UI maps wall-clock time to ticks.
+
+**Mechanics (v4, 2026-10-17).** Seven optional level mechanics. Nothing about them is time-based: each one
+advances only on a **release** (a tap that moves a container off the board). Blocked and ignored taps change
+nothing. Every mechanic's state is a function of `releases = n - |onBoard|`, so `GameState` and the solver memo key
+gain no fields. The real-time carousel applies the same checks at the moment of the tap. Old levels use none of these
+fields, take exactly the v2 code paths, and behave identically: the 100 official levels re-encode byte for byte,
+their pre-v4 solver lines still win, and the solver finds the same lines. Ids from `Level.mechanics()`: `frozen`,
+`tied`, `hidden`, `wide`, `colour_bench`, `turntable`, `gate`.
+
+| Mechanic | JSON (all optional, omitted at default) | Rule |
+|---|---|---|
+| Frozen ticket | container `"frozen": N` (default 0) | Can't be released until N releases have happened (all of them are of other containers, since it is still on the board). Counter shown = `GameState.frozenRemaining(id)` = max(0, N - releases). Validation: 0 <= N <= n-1. |
+| Tied tickets | container `"tiedTo": p` (default -1) | **Directional**: this container can't be released while container p is on the board; p is not restricted. The ribbon joins a disjoint pair: p is not tied itself, no two containers tie to the same p, and a container can't tie to itself (validated). |
+| Hidden ticket | container `"hidden": true` | Information only; the rules use the real colour and so does the solver. Its *cover* (`Level.coverOf`) is the container occupying the cell directly in front of its front cell (front + dir) **at level start**. The colour shows as "?" until the cover has left the board, or the hidden container has itself left. Containers never move except to leave, so "cover gone" is the same as "that cell is empty". View: `GameState.isRevealed(id)` / `RealTimeState.isRevealed(id)`. Validation: there must be a cover, and the container may not stand on a turntable. |
+| Wide ticket | container `"wide": true` | Needs **two adjacent free slots** and takes the leftmost such pair (with benches: both slots must accept its colour). Capacity unchanged (`size.capacity`). It occupies both slots, and both `dock` entries hold the same `DockedContainer` (`isWideTail(s)` marks the right half). For boarding priority it is one container at its **left** slot. Dispatch frees both slots. `Released`/`Boarded`/`Dispatched` events name the left slot. Validation: some adjacent pair accepts its colour. |
+| Colour-only bench | level `"benchColors": [c0,c1,c2,c3]` (-1 = any colour) | Release takes the leftmost free slot **that accepts the colour**. Slots restricted to another colour are skipped. Boarding is unaffected. Validation: 4 entries in -1..9, and every container fits some slot (pair). |
+| Turntable | level `"turntables": [{"row":r,"col":c}]` | The container standing on it turns **90 degrees clockwise after every release** (UP -> RIGHT -> DOWN -> LEFT): facing = initial dir turned `releases` times (`GameState.dirOf(id)`), and its exit ray follows the current facing. **Only size S containers** may stand on one (validated), so nothing sweeps other cells. An empty turntable is allowed and does nothing. |
+| Gate | level `"gates": [{"side":"UP","index":3,"open":true}]` | A flap at the edge cell (side = edge named by the exit direction, index = column for UP/DOWN, row for LEFT/RIGHT). Open at start iff `open` (default true), **toggling on every release** (`GameState.isGateOpen(i)`). A container whose exit crosses that edge cell while the gate is closed is blocked: `Event.Blocked(id, stop, blockerId = Event.Blocked.GATE (-1))`, stop = the last cell before the edge. |
+
+Also `"queuePreview": k` (level, default 10 = the app's `RingField.QUEUE_MAX`, 1..40): queue elements the belt
+shows. View only; the rules ignore it. The pack format stays **version 2**: every field is optional and the pack
+ships inside the app.
+
+Tap order (Engine and real-time): GAME_OVER, INVALID_ID, NOT_ON_BOARD, **FROZEN**, **TIED**, DOCK_FULL (all 4
+slots occupied), **NO_FITTING_SLOT** (a slot is free, but none this container may use: benches, or no adjacent pair
+for a wide one), then Blocked (container or gate). The new `IgnoreReason`s are FROZEN, TIED and NO_FITTING_SLOT.
+
+Status, after the boarding loop: WON as before. **DEADLOCK** = no legal move *because of the dock*: either all 4
+slots are occupied (no staged element matches, as before), or some container could otherwise leave (thawed, untied,
+path clear) but no free slot fits it. **STUCK** = no legal move otherwise (e.g. only frozen, tied, buried or
+gated containers are left). Mechanics advance only on releases, so a state with no legal move is final.
+
+Solver: the memo key stays (onBoard, dock, staging counts, queueIndex). A wide container's right half is stored
+as a TAIL marker (spaceLeft 15) in its slot. On mechanic levels:
+- moves additionally need a fitting slot;
+- the release lookahead becomes a sound lower bound: closure over static rays plus tie partners, wide halves count
+  2 slots, and frozen counters need that many releases first;
+- the blocking-free relaxed game keeps the exact dock rules (benches, wide pairs);
+- free-leaf symmetry only merges plain containers (not wide, frozen, tied or a tie partner, not on a turntable, no
+  gate on the exit).
+
+Cost on the official boards with a mechanic added (2M-node budget, mean nodes per solved level): v2 65k,
+frozen 54k, turntable 77k, gate 70k, wide 92k, tied 102k, bench 136k. Of 99 levels, at most 6 per mechanic ran past
+the budget.
+
+**Generating with mechanics (2026-10-17).** A recipe requests mechanics as `MechanicRequest(mechanic, count)`
+(`core/.../generator/reverse/MechanicPlacer.kt`); the placer puts them on a level the stall director has built,
+anchored on its intended line: every instance keeps that line a win (replayed after each one) and must *bind* on it
+(`MechanicUse`: a container that every other rule would let leave is stopped by the mechanic), so none is decoration.
+Per mechanic:
+- frozen: a container whose way out opens early but whose release comes late, frozen for exactly its release step,
+  preferring one whose colour waits on the carousel meanwhile;
+- tied: a close pair where the tied one's way out opens before its partner leaves, the partner not already blocking
+  it, preferring a partner that docks as a dummy (off-colour), so the ribbon forces a dock spent out of order;
+- hidden: a container under a cover, chosen for the decisions taken before the reveal and a short reveal-to-use lead.
+  Information check (`HiddenCheck`): every *world* that looks identical until the cover leaves (other colour for the
+  hidden one, the same number of its colour's never-shown queue elements recoloured to match) must still be solvable
+  after the moves the line made blind; placements without such a world, or with a lost one, are refused;
+- wide: an M/L container whose second slot blocks a release or eats the last free slot on the line;
+- colour bench: the (slot, colour) that pushes most releases off their slot or refuses a free one;
+- turntable: an S container, its start facing turned back by its release step so it faces its exit exactly then;
+- gate: an exit cell crossed on the line only at releases of one parity, open at those; chosen where other
+  containers find it closed.
+`queuePreview` is a generator dial (`StallScript.queuePreview`, default 10); the official campaign keeps 10 for now.
+Preview: `levelgen/.../reverse/MechanicsPreview.kt` -> `levelgen/out/mechanics-preview.md`.
+
+**Provenance.** OfficialPack and the mechanics preview write `{hash: record}` files (`official-meta.json`,
+`mechanics-preview-meta.json`; `levelgen/.../reverse/Provenance.kt`). hash = CRC32 of `level.toString()`, 8 hex
+digits (the app analytics' level id); record = level number, recipe, pack seed, director seed, try index, generator
+commit (`git rev-parse --short HEAD`, `-dirty` if tracked files differ), ring, winning line.
 
 **UI (v2):** board, then a staging area of the level's 20–40 spots (compact multi-row grid) between the dock and the two-lane queue preview
 (left lane = next ~12 after staging, right lane = ~12 from the halfway point). Keep current car art for now.

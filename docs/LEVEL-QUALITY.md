@@ -174,3 +174,30 @@ Built as a schedule (2026-10-11) in the official campaign (`reverse/OfficialPack
 `levelgen/out/official.md`): 40 seats for cycles 1-2 and every breather, then 40 - 2(c-1) seats (floor 30, 2 fewer
 on levels 7-9) and 28 (cycles 3-6) or 24 seats on the hard closers, stepping up 4 seats when the solver cannot prove
 the level solvable at the planned size. The table lists hidden bits at 40 and at the chosen size.
+
+## 9. Fitness5: difficulty from decisions that can be read (2026-10-17)
+
+The fairness report (`levelgen/out/fairness-report.md`) found most hidden bits of the official campaign could not be
+read from what is on show. `Fitness5` (core `generator/reverse/Fitness5.kt`, weights and tier floors in
+`Fitness5Config`) implements its section-7 proposal: fitness3 + fitness4's axes on *fair* hidden bits + options (a
+band) + order robustness - blind bits - unfair decisions - traps, with per-tier floors (unfair decisions, deep traps,
+blind/hidden ratio, fair hidden bits, w >= 2 share, mean w, winnable at 1/3 with H = 40). Selection
+(`levelgen/.../reverse/Fitness5Select.kt`): fitness4 ranks every try, the best 16 are measured with the short chain
+at the slot's ring, the best 4 again with the long chain. The belt (`Level.queuePreview`) is a dial by tier (10 / 14 /
+16 / 20, at most 20). `Readability.kt` measures where the colour batch that decides each fork arrives relative to
+carousel + belt and can repair the queue to pull it forward. Results: `levelgen/out/rebuild-preview.md`.
+
+**Campaign rebuild (2026-10-18).** `levelgen/.../reverse/OfficialPackF5.kt` ran the fitness5 selection on every slot of
+the official plan (same recipes, rings, seeds) and kept the shipped level unless the candidate was clearly better
+(rule and per-slot decisions in `levelgen/out/campaign-f5.md`): 88 of 100 slots replaced. Over the pack, unfair
+decisions went from 173 to 18, traps from 104 to 2, and levels passing their floors from 13 to 81. Fair hidden bits
+stayed level (20.2 to 19.5 mean), but raw hidden bits dropped (23.0 to 19.7): several closers and tier-2 levels are
+easier than before (see the report's flag list).
+
+**Clued-squeeze rebuild (2026-10-29).** A squeeze (a stall in the generator) is clued when the plates that decide the
+right choice are on the carousel or belt at decision time. `OfficialPackF5 --clued off,w3:d10 --clued-weight 15` let
+the default and the clued-squeeze construction compete in each slot's pool and ranked by
+`dist5(fitness5) - 15 x clued-fork share` after the floors, in selection and in keep-or-replace alike
+(`levelgen/out/clued-rebuild.md`): 51 slots replaced (34 clued-squeeze builds). Clued-fork share 39% to 56%, unfair
+decisions 18 to 16, traps 2 to 2, blind bits 3.1 to 2.6, winnable at 1/3 (H = 40) 58% to 59%, floors passed 81 to 90;
+fair hidden bits 19.5 to 19.1.

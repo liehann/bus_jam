@@ -19,5 +19,15 @@
     "mood": "sweet, cheerful and cozy, with everyone happily eating",
     "lighting": "Soft warm morning light",
     "extra_avoid": "flour clouds covering the plates or reservation cards, cakes on the board"
+  },
+  "kit": {
+    "backdrop_ground": "pale cream and vanilla tiled floor",
+    "backdrop_edges": "a striped awning along the top edge, glass display cases of little cakes along the left and right edges, a few hanging copper pans near the top corners",
+    "belt_rim": "a light wooden rim",
+    "mat_surface": "a pale pastry board lightly dusted with flour",
+    "mat_texture": "almost plain pale wood with a faint grain and a few soft wisps of flour",
+    "frame_piece": "light wood rail with softly rounded edges",
+    "frame_corner": "a corner joint where two short light wood rails meet at a right angle",
+    "props_decor": "a small tiered cake stand, a hanging copper pan and a small jar of cookies"
   }
 }

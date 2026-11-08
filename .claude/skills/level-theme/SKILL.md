@@ -18,7 +18,8 @@ Files:
 | `art/themes/<id>.json` | one theme: `name`, `variant` (`day`/`night`), `status` (`draft`/`final`), `slots` |
 | `art/themes/worlds.json` | worlds in play order (status: proposed). Not a theme. |
 | `art/prompts/generated/<id>.txt` | rendered prompt (output, regenerate rather than edit) |
-| `tools/art/build_prompt.py` | renderer: `python3 tools/art/build_prompt.py <id>` or `--all` |
+| `tools/art/build_prompt.py` | renderer: `python3 tools/art/build_prompt.py <id>` or `--all`; `--kit` for the kit prompts |
+| `art/prompts/kit.template.txt` | kit template: one prompt per theme piece |
 | `tools/art/test_build_prompt.py` | `python3 -m unittest tools/art/test_build_prompt.py` |
 
 ## Slots
@@ -83,6 +84,27 @@ When invoked with a theme name or idea:
   gameplay colours are never tinted by the lighting. Put light sources at the edges or above the belts, not over the
   board.
 - Use `extra_avoid` for theme-specific failure modes (e.g. "animals in the water", "steam covering the plates").
+
+## Kit slots (theme pieces)
+
+A theme's raster pieces for the game (backdrop, kitchen, belt, loop, counter, bench, mat, frame, props; see
+docs/ART-PIPELINE.md, "Level themes") are generated from `art/prompts/kit.template.txt`, rendered with
+`python3 tools/art/build_prompt.py --kit <id>` (or `--kit --all`) into `art/prompts/generated/<id>_kit.md`. The
+template reuses the theme's slots (palette, lighting, variant, setting, kitchen, belt_material, loop_interior,
+counter, bench_material, obstacles) and adds a `kit` object in the theme file:
+
+| Kit slot | Reads as |
+|---|---|
+| `backdrop_ground` | "The whole middle of the image is one calm, even, plain ___" (pale for day themes, dark for night) |
+| `backdrop_edges` | "All decoration sits in a thin border along the edges only: ___" (comma list with positions) |
+| `belt_rim` | "{belt_material} running across the strip, ___ along both sides" |
+| `mat_surface` | "a seamless, tileable square texture of ___" (the board surface without its frame) |
+| `mat_texture` | "seen straight down: ___" (soft and low contrast) |
+| `frame_piece` | "one long, perfectly straight, horizontal ___" (the board's border) |
+| `frame_corner` | the frame's corner joint, a props sheet item |
+| `props_decor` | exactly three decor items, "a X, a Y and a Z" (like `obstacles`) |
+
+When drafting a new theme, add its `kit` object too, then run both renders and the unit test.
 
 ## Worlds
 

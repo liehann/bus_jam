@@ -18,5 +18,15 @@
     "obstacles": "a coffee cup, a jam jar and a small flower vase",
     "mood": "bright, fresh and cheerful, with everyone happily eating",
     "lighting": "Bright soft morning light"
+  },
+  "kit": {
+    "backdrop_ground": "pale cream terrace floor of large smooth tiles",
+    "backdrop_edges": "a striped awning along the top edge, climbing roses and small hanging flower baskets along the left and right edges, a few potted herbs in the bottom corners",
+    "belt_rim": "a white-painted wooden rim",
+    "mat_surface": "a pale cream linen tablecloth",
+    "mat_texture": "a soft, even, barely visible linen weave",
+    "frame_piece": "light wood rail with softly rounded edges",
+    "frame_corner": "a corner joint where two short light wood rails meet at a right angle",
+    "props_decor": "a small potted herb, a hanging flower basket and a small basket of croissants"
   }
 }

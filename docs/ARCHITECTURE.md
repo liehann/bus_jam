@@ -27,11 +27,12 @@ All versions live in `gradle/libs.versions.toml`. `local.properties` (gitignored
 :app       Android, Compose, single MainActivity (portrait). Depends on :core. No game logic.
 ```
 
-Packages: `:core` = `com.phloots.jam.core.*`, `:levelgen` = `com.phloots.jam.levelgen`. `:app` keeps namespace,
-packages and applicationId `com.phloots.busjam` until the re-skin.
+Packages: `:core` = `com.phloots.crittercafe.core.*`, `:levelgen` = `com.phloots.crittercafe.levelgen` (both were
+`com.phloots.jam.*` until 2026-10-17). `:app` namespace, packages and applicationId are `com.phloots.crittercafe`
+(renamed from `com.phloots.busjam` on 2026-10-17).
 
 ```
-core/src/main/kotlin/com/phloots/jam/core/
+core/src/main/kotlin/com/phloots/crittercafe/core/
   model/Model.kt                 Limits, Dir, ContainerSize, Cell, Container, Level, DockedContainer, Status,
                                  Bits128, GameState, Move, IgnoreReason, Event, Transition (frozen, architect)
   engine/Engine.kt               Engine.apply / legalMoves / isTappable / computeStatus  (gamestate)
@@ -47,8 +48,8 @@ core/src/main/kotlin/com/phloots/jam/core/
   generator/MotifCheck.kt        MotifCheck (decision / core / wall-certificate checks),
                                  MotifFilter, MotifResult, MotifGenerator.generate        (generator)
   io/LevelPackCodec.kt           LevelPack, PackedLevel, LevelPackCodec                  (frozen, architect)
-levelgen/src/main/kotlin/com/phloots/jam/levelgen/*.kt                                   (generator)
-app/src/main/kotlin/com/phloots/busjam/...                                               (UI)
+levelgen/src/main/kotlin/com/phloots/crittercafe/levelgen/*.kt                           (generator)
+app/src/main/kotlin/com/phloots/crittercafe/...                                          (UI)
 ```
 
 ## File ownership
@@ -313,7 +314,8 @@ Gotchas:
     pressure + forks on the solver's line and applies the floors (`MotifFilter.pressureFloor`). `:levelgen
     --pressure-preview <n>` (and diagnostics `--pressure-explore`, `--stall-explore`, `--pressure-debug`).
 - 2026-10-11 (gamestate): **real-time carousel layer** (DESIGN.md "Real-time carousel (v3)"). Additive; Engine,
-  Solver, generator, scoring unchanged. New package `com.phloots.jam.core.realtime`, file `core/.../realtime/Carousel.kt`:
+  Solver, generator, scoring unchanged. New package `com.phloots.jam.core.realtime` (now
+  `com.phloots.crittercafe.core.realtime`), file `core/.../realtime/Carousel.kt`:
   - `RtConfig(ticksPerSeat=4, releaseTicks=12, boardTicks=8, dispatchTicks=16, gatePosition=0, entryPosition=20)`
     (all durations >= 1 tick; `secondsPerTick(seatSeconds=0.1)` = 0.025 s by default, i.e. ~4 s per rotation).
   - `RealTimeState` (immutable value, content equality): `level, config, tick: Long, phase, ringCount, onBoard, dock:
@@ -397,3 +399,26 @@ Gotchas:
   `drawBoardArea`/`drawReleaseFlight` take an optional `skin` (turn-based `PlayField` stays on `FlatSkin`).
   Debug toggle "Critter Café skin": `SkinStore` (pref `critter_cafe_skin`), `AppViewModel.critterCafe`, home switch
   `skin-switch`. Screenshot tests at Pixel 9 Pro size (`w427dp-h952dp-xxhdpi`): `p9p_flat_*`, `p9p_critter_*`.
+- 2026-10-17 (mechanics agent): **v4 level mechanics** (DESIGN.md "Mechanics (v4)"). Additive and
+  source-compatible. Pack version stays 2, and the shipped pack re-encodes byte for byte.
+  - Model: `Container` gained trailing defaulted `frozen`, `tiedTo`, `hidden` and `wide` (`@EncodeDefault(NEVER)`),
+    plus `dockSlots`. `Level` gained `benchColors`, `turntables`, `gates: List<Gate>` and `queuePreview` (all
+    `@EncodeDefault(NEVER)`), plus `benchAccepts`, `onTurntable`, `coverOf` and `mechanics(): List<Mechanic>`.
+    `validate()` checks the mechanics.
+  - New types: `Gate(side, index, open)`, `enum Mechanic(id)`, and `MechanicsView` (pure functions of
+    (level, onBoard)). `Dir.clockwise` / `turnedClockwise`. `Limits.DEFAULT_QUEUE_PREVIEW` (10) and
+    `MAX_QUEUE_PREVIEW` (40). `IgnoreReason` gained FROZEN, TIED and NO_FITTING_SLOT. `Event.Blocked.GATE` (-1).
+  - `GameState` gained `isWideTail`, `releases`, `frozenRemaining`, `isTieLocked`, `dirOf`, `isGateOpen` and
+    `isRevealed`. `RealTimeState` gained the same views.
+  - Engine/LevelData: shared internal `Engine.checkTap` (used by `RealTime.tap` and `isTappable`). `LevelData.mech`
+    selects the mechanic paths; v2 levels run the old code. Dock TAIL marker for wide halves.
+  - Solver: the changes are described in its KDoc.
+  - Tests: `engine/MechKit.kt` (naive reference `MechRef`, `MechBrute`, random `MechLevels`),
+    `engine/MechanicsTest`, `solver/MechanicsSolverTest`, `realtime/MechanicsRealTimeTest` and
+    `MechanicsFormatTest`. `src/test/resources/official-baseline-lines.txt` holds the pre-v4 solver lines of the
+    official pack.
+- 2026-10-17: **package rename** (behaviour-preserving). `com.phloots.jam.core` -> `com.phloots.crittercafe.core`,
+  `com.phloots.jam.levelgen` -> `com.phloots.crittercafe.levelgen` (source dirs moved to match), so all three modules
+  share the app's `com.phloots.crittercafe` root. Main classes for `-PreverseMain` change accordingly (e.g.
+  `com.phloots.crittercafe.levelgen.reverse.OfficialPackKt`). No serialized type names, so the JSON formats and the
+  shipped packs are unchanged.

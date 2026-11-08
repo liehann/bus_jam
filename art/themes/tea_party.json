@@ -19,5 +19,15 @@
     "mood": "whimsical, charming and cheerful, with everyone happily eating",
     "lighting": "Soft bright afternoon light",
     "extra_avoid": "a bold or busy floral pattern behind the reservation cards"
+  },
+  "kit": {
+    "backdrop_ground": "neat pale green lawn",
+    "backdrop_edges": "pastel bunting along the top edge, neat trimmed hedges and climbing roses along the left and right edges, a little white archway in one top corner",
+    "belt_rim": "a white lace-edged rim",
+    "mat_surface": "a pale floral tablecloth",
+    "mat_texture": "a very faint, low-contrast scattered flower print",
+    "frame_piece": "white-painted wooden rail with softly rounded edges",
+    "frame_corner": "a corner joint where two short white-painted wooden rails meet at a right angle",
+    "props_decor": "a climbing rose sprig, a small cake stand and a pastel bunting flag"
   }
 }

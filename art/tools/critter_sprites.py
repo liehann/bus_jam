@@ -20,7 +20,7 @@ from kitten_process import cutout, fur_weights, scaled, sheet, tint  # noqa: E40
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / 'art/raw'
 OUT = ROOT / 'app/src/main/res/drawable-nodpi'
-PALETTE_KT = ROOT / 'app/src/main/kotlin/com/phloots/busjam/ui/skin/critter/CritterPalette.kt'
+PALETTE_KT = ROOT / 'app/src/main/kotlin/com/phloots/crittercafe/ui/skin/critter/CritterPalette.kt'
 SPECIES = ['kitten', 'red_panda', 'fox', 'wolf']  # Species enum order in CritterArt.kt
 HEIGHT = 192
 LIGHTEN = 0.3  # fur is the ticket colour lifted toward white, so faces stay readable on the dark colours

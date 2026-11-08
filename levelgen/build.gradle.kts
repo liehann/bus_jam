@@ -15,7 +15,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("com.phloots.jam.levelgen.MainKt")
+    mainClass.set("com.phloots.crittercafe.levelgen.MainKt")
 }
 
 tasks.named<JavaExec>("run") {
@@ -32,7 +32,7 @@ tasks.register<JavaExec>("reversePreview") {
     group = "application"
     description = "Reverse (director) generator preview: levelgen/out/reverse-preview-levels.json"
     classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set(providers.gradleProperty("reverseMain").orElse("com.phloots.jam.levelgen.reverse.ReversePreviewKt"))
+    mainClass.set(providers.gradleProperty("reverseMain").orElse("com.phloots.crittercafe.levelgen.reverse.ReversePreviewKt"))
     workingDir = rootProject.projectDir
     jvmArgs("-Xss16m", "-Xmx4g")
 }

@@ -1,0 +1,219 @@
+package com.phloots.crittercafe
+
+import android.os.Bundle
+import android.os.SystemClock
+import androidx.activity.viewModels
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.phloots.crittercafe.data.GameAnalyticsLevels
+import com.phloots.crittercafe.data.Progress
+import com.phloots.crittercafe.game.LevelAnalytics
+import com.phloots.crittercafe.game.GameViewModel
+import com.phloots.crittercafe.ui.AppViewModel
+import com.phloots.crittercafe.data.PackInfo
+import com.phloots.crittercafe.game.rt.CoreRealTimeRules
+import com.phloots.crittercafe.game.rt.RealTimeViewModel
+import com.phloots.crittercafe.ui.game.GameScreen
+import com.phloots.crittercafe.ui.game.RealTimeGameScreen
+import com.phloots.crittercafe.core.realtime.RealTimeState
+import com.phloots.crittercafe.ui.theme.Palette
+import com.phloots.crittercafe.ui.skin.FlatSkin
+import com.phloots.crittercafe.ui.skin.LocalSkin
+import com.phloots.crittercafe.ui.skin.critter.CafeSkin
+import com.phloots.crittercafe.ui.skin.critter.CritterPalette
+import com.phloots.crittercafe.ui.skin.critter.LocalThemeSwitch
+import com.phloots.crittercafe.ui.skin.critter.CritterHomeScreen
+import com.phloots.crittercafe.ui.skin.critter.CritterLevelSelect
+import androidx.compose.runtime.CompositionLocalProvider
+
+/** Single activity, portrait only (manifest). */
+class MainActivity : ComponentActivity() {
+    private val app: AppViewModel by viewModels()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // the launch splash stays up until the skin, mode, pack and progress are read (so the first frame is the
+        // right home screen), at most 4 s
+        val started = SystemClock.uptimeMillis()
+        installSplashScreen().setKeepOnScreenCondition { !app.isReady() && SystemClock.uptimeMillis() - started < 4000 }
+        super.onCreate(savedInstanceState)
+        // off (LevelAnalytics.None) in builds without the GameAnalytics keys
+        val analytics = GameAnalyticsLevels.start(this)
+        enableEdgeToEdge()
+        setContent {
+            MaterialTheme {
+                BusJamApp(analytics)
+            }
+        }
+    }
+}
+
+private const val HOME = 0
+private const val LEVELS = -1
+
+/** Screen routing: [HOME], [LEVELS], or a positive level number for the game screen. */
+@Composable
+fun BusJamApp(analytics: LevelAnalytics = LevelAnalytics.None) {
+    val app: AppViewModel = viewModel()
+    val game: GameViewModel = viewModel(
+        factory = viewModelFactory { initializer { GameViewModel(app.progressStore(PackInfo.CAMPAIGN)) } },
+    )
+    val rtGame: RealTimeViewModel<RealTimeState> = viewModel(
+        factory = viewModelFactory {
+            initializer {
+                RealTimeViewModel(app.progressStore(PackInfo.CAMPAIGN), CoreRealTimeRules(), analytics = analytics)
+            }
+        },
+    )
+    val critterCafe by app.critterCafe.collectAsStateWithLifecycle()
+    // not read yet counts as Critter Café (the default), so the flat look never flashes on launch
+    val cafeSkin by app.cafeSkin.collectAsStateWithLifecycle()
+    val loadedPack by app.loaded.collectAsStateWithLifecycle()
+    var screen by rememberSaveable { mutableIntStateOf(HOME) }
+    // a level whose pack entry names a theme is drawn in it (the prototype pack); otherwise the selected theme
+    val levelMeta = loadedPack?.takeIf { screen > 0 }?.meta(screen)
+    val skin = when {
+        critterCafe == false -> FlatSkin
+        levelMeta?.theme != null -> remember(levelMeta.theme, cafeSkin) { app.skinFor(levelMeta) }
+        else -> cafeSkin
+    }
+    val realTimeOrNull by app.realTime.collectAsStateWithLifecycle()
+    val realTime = realTimeOrNull == true
+    val commitWins = {
+        game.commitPendingWin()
+        rtGame.commitPendingWin()
+    }
+    val levels = loadedPack?.levels?.takeIf { it.isNotEmpty() }
+    val packInfo = loadedPack?.info
+    val progressOrNull by app.progress.collectAsStateWithLifecycle()
+    val progress = progressOrNull ?: Progress()
+    // A win whose animation is still playing when the app goes to the background is recorded now: the process may
+    // be killed before the animation can finish.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { commitWins() }
+
+    BackHandler(enabled = screen != HOME) {
+        commitWins()
+        screen = HOME
+    }
+    val openLevel: (Int) -> Unit = { n ->
+        levels?.let { pack ->
+            val number = n.coerceIn(1, pack.size)
+            val sink = app.progressStore(packInfo!!)
+            if (realTime) {
+                rtGame.start(pack[number - 1].level, number, hasNext = number < pack.size, fresh = true, sink = sink)
+            } else {
+                game.start(pack[number - 1].level, number, hasNext = number < pack.size, fresh = true, sink = sink)
+            }
+            screen = number
+        }
+    }
+
+    CompositionLocalProvider(
+        LocalSkin provides skin,
+        LocalThemeSwitch provides if (BuildConfig.DEBUG) app::nextCafeTheme else null,
+    ) {
+    val cafe = skin is CafeSkin
+    val back = when {
+        screen > 0 && realTime -> skin.background
+        screen <= HOME && cafe -> CritterPalette.background
+        else -> Palette.background
+    }
+    Box(Modifier.fillMaxSize().background(back).safeDrawingPadding()) {
+        val pack = levels
+        when {
+            screen == HOME && cafe -> CritterHomeScreen(
+                nextLevel = pack?.let { progress.firstUnbeaten(it.size) }.takeIf { progressOrNull != null && realTimeOrNull != null },
+                totalLevels = pack?.size ?: 0,
+                totalStars = progress.stars.values.sum(),
+                onPlay = { pack?.let { openLevel(progress.firstUnbeaten(it.size)) } },
+                onLevels = { screen = LEVELS },
+            )
+            screen == LEVELS && pack != null && cafe -> CritterLevelSelect(
+                count = pack.size,
+                progress = progress,
+                groups = loadedPack?.meta?.map { it.group }.orEmpty(),
+                onPlay = openLevel,
+                onBack = { screen = HOME },
+            )
+            screen > 0 && pack != null && realTime -> {
+                val number = screen.coerceIn(1, pack.size)
+                LaunchedEffect(number, pack) {
+                    rtGame.start(
+                        pack[number - 1].level, number, hasNext = number < pack.size, fresh = false,
+                        sink = app.progressStore(packInfo!!),
+                    )
+                }
+                val ui by rtGame.ui.collectAsStateWithLifecycle()
+                val current = ui
+                if (current != null && current.levelNumber == number) {
+                    RealTimeGameScreen(
+                        ui = current,
+                        onFrame = rtGame::onFrame,
+                        onHostPause = rtGame::setHostPaused,
+                        onTogglePause = rtGame::togglePause,
+                        onTap = rtGame::onContainerTapped,
+                        onUndo = rtGame::undo,
+                        onRestart = rtGame::restart,
+                        onHint = rtGame::hint,
+                        onNext = { openLevel(number + 1) },
+                        onLevels = { commitWins(); screen = LEVELS },
+                        onHome = { commitWins(); screen = HOME },
+                        mechanics = com.phloots.crittercafe.game.levelMechanics(pack[number - 1].level),
+                        seenMechanics = app.seenMechanics,
+                    )
+                }
+            }
+            screen > 0 && pack != null -> {
+                val number = screen.coerceIn(1, pack.size)
+                LaunchedEffect(number, pack) {
+                    game.start(
+                        pack[number - 1].level, number, hasNext = number < pack.size, fresh = false,
+                        sink = app.progressStore(packInfo!!),
+                    )
+                }
+                val ui by game.ui.collectAsStateWithLifecycle()
+                val current = ui
+                if (current != null && current.levelNumber == number) {
+                    GameScreen(
+                        ui = current,
+                        onTap = game::onContainerTapped,
+                        onAnimationFinished = game::onAnimationFinished,
+                        onUndo = game::undo,
+                        onRestart = game::restart,
+                        onHint = game::hint,
+                        onNext = { openLevel(number + 1) },
+                        onLevels = { commitWins(); screen = LEVELS },
+                        onHome = { commitWins(); screen = HOME },
+                    )
+                }
+            }
+            else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+    }
+    }
+}

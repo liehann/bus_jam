@@ -18,5 +18,15 @@
     "obstacles": "a soy sauce bottle, a chopstick holder and a small wasabi dish",
     "mood": "cheerful, cozy and playful, with everyone happily eating",
     "lighting": "Soft natural light"
+  },
+  "kit": {
+    "backdrop_ground": "pale cream wooden floor",
+    "backdrop_edges": "light natural wood beams and cream paper screens along the top and side edges, a few small paper lanterns and short noren curtains near the top corners, a small potted plant in each bottom corner",
+    "belt_rim": "a light wooden rim",
+    "mat_surface": "a very pale, smooth light-wood counter top",
+    "mat_texture": "almost plain cream wood with a faint, soft grain",
+    "frame_piece": "darker wood rail with softly rounded edges",
+    "frame_corner": "a corner joint where two short darker wood rails meet at a right angle, with a small wooden peg",
+    "props_decor": "a small round paper lantern, a small potted green plant and a folded cream noren curtain"
   }
 }

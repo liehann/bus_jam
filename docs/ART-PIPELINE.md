@@ -55,6 +55,12 @@ Steps for a theme (`<id>` from `art/themes/worlds.json`):
 4. The app picks the theme up by itself (`CafeThemes.available`: any world theme with a `kit_<id>_backdrop`). The
    debug build's in-game Settings card has a theme switch; `ScreenshotTest.pixel9ProLuauNight` renders luau night.
 
+## Generating locally
+
+`art/tools/gen_local.py <theme> --model klein` generates kit pieces on bazzite (FLUX.2 [klein] 9B, 15-25 s a piece,
+reference images and exact sizes). Without `--model` it uses FLUX.1 Kontext on goblin (~25 min a piece). The
+comparison with Gemini, the style block and the prompt rules for critters are in `docs/BAZZITE-ART.md`.
+
 ## Generating with Gemini (Chrome)
 
 Prompts that worked: paste the kitten front and side views, then ask for "the same chibi style, same proportions and

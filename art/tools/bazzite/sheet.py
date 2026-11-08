@@ -14,6 +14,8 @@ KIND = {  # banner colour, banner text
     "gemini": ("#c8742c", "GEMINI"),
     "bazzite": ("#2a7f8f", "BAZZITE  ·  FLUX.2 klein"),
     "zimage": ("#5a6fa8", "BAZZITE  ·  Z-Image"),
+    "qwen": ("#7b4c9e", "BAZZITE  ·  Qwen-Image"),
+    "qwenfast": ("#a3527e", "BAZZITE  ·  Qwen Lightning"),
     "goblin": ("#6b6b6b", "OLD LOCAL  ·  Kontext"),
 }
 

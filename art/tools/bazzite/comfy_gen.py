@@ -15,7 +15,7 @@ def post(path, data, ctype="application/json"):
 
 
 def get(path):
-    return urllib.request.urlopen(B + path, timeout=60).read()
+    return urllib.request.urlopen(B + path, timeout=120).read()
 
 
 def upload(path):
@@ -73,6 +73,42 @@ def zimage(prompt, w, h, seed, steps=8, prefix="cc", **_):
     }
 
 
+def qwen(prompt, w, h, seed, refs=(), steps=40, prefix="cc", cfg=4.0, gguf=None, lightning=False):
+    """Qwen-Image-2512 (no refs) or Qwen-Image-Edit-2511 (1-3 refs), full steps, no Lightning LoRA."""
+    edit = bool(refs)
+    unet = "qwen_image_edit_2511_fp8mixed.safetensors" if edit else "qwen_image_2512_fp8_e4m3fn.safetensors"
+    g = {
+        "unet": ({"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": gguf}} if gguf else
+                 {"class_type": "UNETLoader", "inputs": {"unet_name": unet, "weight_dtype": "default"}}),
+        "clip": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors", "type": "qwen_image"}},
+        "vae": {"class_type": "VAELoader", "inputs": {"vae_name": "qwen_image_vae.safetensors"}},
+        "ms": {"class_type": "ModelSamplingAuraFlow", "inputs": {"model": ["unet", 0], "shift": 3.1}},
+        "lat": {"class_type": "EmptySD3LatentImage", "inputs": {"width": w, "height": h, "batch_size": 1}},
+    }
+    model = ["ms", 0]
+    if lightning and not edit:
+        g["lora"] = {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["unet", 0], "lora_name": "Qwen-Image-2512-Lightning-4steps-V1.0-bf16.safetensors", "strength_model": 1.0}}
+        g["ms"]["inputs"]["model"] = ["lora", 0]
+    if edit:
+        g["norm"] = {"class_type": "CFGNorm", "inputs": {"model": ["ms", 0], "strength": 1.0}}
+        model = ["norm", 0]
+        imgs = {}
+        for i, r in enumerate(refs[:3]):
+            g[f"li{i}"] = {"class_type": "LoadImage", "inputs": {"image": r}}
+            g[f"sc{i}"] = {"class_type": "ImageScaleToTotalPixels", "inputs": {"image": [f"li{i}", 0], "upscale_method": "lanczos", "megapixels": 1.0, "resolution_steps": 16}}
+            imgs[f"image{i + 1}"] = [f"sc{i}", 0]
+        g["pos"] = {"class_type": "TextEncodeQwenImageEditPlus", "inputs": {"clip": ["clip", 0], "prompt": prompt, "vae": ["vae", 0], **imgs}}
+        g["neg"] = {"class_type": "TextEncodeQwenImageEditPlus", "inputs": {"clip": ["clip", 0], "prompt": "", "vae": ["vae", 0], **imgs}}
+    else:
+        g["pos"] = {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["clip", 0]}}
+        g["neg"] = {"class_type": "CLIPTextEncode", "inputs": {"text": "blurry, photorealistic, 3d render, text, watermark", "clip": ["clip", 0]}}
+    g["ks"] = {"class_type": "KSampler", "inputs": {"model": model, "positive": ["pos", 0], "negative": ["neg", 0], "latent_image": ["lat", 0],
+               "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0}}
+    g["dec"] = {"class_type": "VAEDecode", "inputs": {"samples": ["ks", 0], "vae": ["vae", 0]}}
+    g["save"] = {"class_type": "SaveImage", "inputs": {"images": ["dec", 0], "filename_prefix": prefix}}
+    return g
+
+
 def run(job, outdir, uploaded):
     seed = job.get("seed", random.randint(1, 2**31))
     for r in job.get("refs", []):
@@ -81,6 +117,13 @@ def run(job, outdir, uploaded):
     refs = [uploaded[r] for r in job.get("refs", [])]
     if job["model"] == "klein":
         g = klein(job["prompt"], job["w"], job["h"], seed, refs, job.get("steps", 4), "cc_" + job["name"])
+    elif job["model"] == "qwengguf":
+        g = qwen(job["prompt"], job["w"], job["h"], seed, (), job.get("steps", 40), "cc_" + job["name"],
+                 gguf=job.get("gguf", "qwen-image-2512-Q4_K_M.gguf"))
+    elif job["model"] == "qwenfast":
+        g = qwen(job["prompt"], job["w"], job["h"], seed, (), job.get("steps", 4), "cc_" + job["name"], cfg=1.0, lightning=True)
+    elif job["model"] == "qwen":
+        g = qwen(job["prompt"], job["w"], job["h"], seed, refs, job.get("steps", 40), "cc_" + job["name"])
     else:
         g = zimage(job["prompt"], job["w"], job["h"], seed, job.get("steps", 8), "cc_" + job["name"])
     t0 = time.time()

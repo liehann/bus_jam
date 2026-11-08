@@ -76,7 +76,24 @@ Kit pieces add: "Use exactly the art style of the reference image … Draw a new
 content." with `art/raw/sushi/backdrop_v2.jpeg` (or `kit_decor.jpeg`) as the reference. Critter prompts are in
 `art/tools/bazzite/jobs_batch3.py`.
 
-## Bigger models (not installed; need a shell on bazzite)
+## Qwen-Image on bazzite (sheets 08_qwen_*)
+
+Installed 2026-11-07 in `~/ai/models/comfyui/`: `diffusion_models/qwen_image_2512_fp8_e4m3fn.safetensors`,
+`diffusion_models/qwen_image_edit_2511_fp8mixed.safetensors`, `unet/qwen-image-2512-Q4_K_M.gguf` (+ `Q4_K_S`).
+`comfy_gen.py` models: `qwen` (fp8, 40 steps, cfg 4; with refs = Edit 2511), `qwengguf`, `qwenfast` (fp8 +
+Lightning LoRA, 4-8 steps, cfg 1).
+
+| Variant | Time (896x1200) | Notes |
+|---|---|---|
+| fp8, 40 steps | 3.2-7.5 min | 20 GB model streamed from RAM (16 GB card); richest detail |
+| Q4_K_M GGUF, 40 steps | 5.3 min | fully on the GPU but slower: GGUF dequantises every step on ROCm; looks the same as fp8 |
+| fp8 + Lightning, 8 steps | ~30 s | close to the 40-step look, slightly shinier, sometimes a grey background |
+| Edit 2511 + kitten refs | ~11 min | stays too close to the reference (the fox reads as a cat); not better than klein |
+
+Qwen is more detailed than klein (fur, eye shine, richer props) but warmer, more saturated and heavier-outlined than
+the Gemini look, and it drew a phone frame around the backdrop. klein + Gemini reference stays the default for kits.
+
+## Bigger models
 
 | Model | Why | Fit on 16 GB / 32 GB RAM | Refs |
 |---|---|---|---|

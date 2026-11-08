@@ -14,14 +14,14 @@ reference**. It is already installed on bazzite, takes 15-50 s per image, render
 the prompt is required. With a one-line style prompt it produces the thin-outline, flat, simpler look the laptop
 gave.
 
-## Real theme kits (`gen_local.py --model klein`, sheets 08-10)
+## Real theme kits (`gen_local.py --model klein`, sheets 05-06)
 
 Same kit prompts, mock crops and sizes as the goblin Kontext run, plus `STYLE_BLOCK`. 15-25 s per piece, so a
 whole 9-piece kit takes about 3 minutes instead of about 4 hours.
 
-- **Jungle (sheet 08):** the Klein kitchen is the mock's treehouse with its rope pulley, close to Gemini's. Goblin
-  Kontext drew a generic leaf hut. Backdrop, counter and props are close to Gemini (sheet 09).
-- **Spa (sheet 10):** kitchen, bench and props are good. Klein follows the mock more literally than Gemini did, which
+- **Jungle (sheet 05):** the Klein kitchen is the mock's treehouse with its rope pulley, close to Gemini's. Goblin
+  Kontext drew a generic leaf hut. Backdrop, counter and props are close to Gemini (sheet 05).
+- **Spa (sheet 06):** kitchen, bench and props are good. Klein follows the mock more literally than Gemini did, which
   gives a grey stone backdrop centre and a bamboo mat instead of tatami. If Gemini's interpretation is preferred,
   say it in the kit prompt.
 - **Recurring faults:** belt strips get rounded end caps (`theme_kit.py` cross-fades the ends, but the prompt should
@@ -54,7 +54,7 @@ whole 9-piece kit takes about 3 minutes instead of about 4 hours.
     references ONLY for style; anatomy follows the description" and list the anatomy explicitly (fixed in round 3);
   - red panda came out orange, which the tint pipeline can't use: add the COLOUR RULE (cream `#F2E3C8`, "absolutely no
     orange…") (fixed in round 3, seed 3);
-  - natural-colour critters with fox + red panda as refs copied the fox instead of drawing the new animal (sheet 05).
+  - natural-colour critters with fox + red panda as refs copied the fox instead of drawing the new animal.
     Use the kitten pair, not a finished species, as the reference.
 - **Kit prompts that still need work:** the ticket stand comes out as a box with a slot (round 3 is closer but still
   not a place-card holder). The belt tiles once you say "runs off both edges, no end caps" (round 3 seed 3), but the

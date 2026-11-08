@@ -93,6 +93,19 @@ Lightning LoRA, 4-8 steps, cfg 1).
 Qwen is more detailed than klein (fur, eye shine, richer props) but warmer, more saturated and heavier-outlined than
 the Gemini look, and it drew a phone frame around the backdrop. klein + Gemini reference stays the default for kits.
 
+## Toward the Gemini look (sheet 09_qwen_gemini_4x4)
+
+The kids prefer Gemini. Four animals (kitten, fox, red panda, wolf) x four Qwen prompts, plus klein, all seed 7
+(`jobs_batch8_qwen_gemini.py`):
+- P1-P3, Qwen text only (detailed / flat clip-art / one sentence): flat and consistent within a row, but rounder,
+  generic kawaii with blush cheeks. Prompting alone doesn't reach the Gemini look.
+- P4, Qwen-Edit 2511 with a different Gemini animal as the reference (~6.5 min): closest to Gemini (slim build,
+  small eyes, no blush), but the species bleeds from the reference (the kitten given the fox reads as a fox).
+- K, klein with the kitten + another Gemini animal as references (~20 s): close second; adds blush and has the same
+  species bleed.
+Every row is consistent across animals; matching Gemini needs Gemini images as input. Next step: train a style LoRA
+on the approved Gemini art.
+
 ## Bigger models
 
 | Model | Why | Fit on 16 GB / 32 GB RAM | Refs |

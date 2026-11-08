@@ -73,7 +73,7 @@ def zimage(prompt, w, h, seed, steps=8, prefix="cc", **_):
     }
 
 
-def qwen(prompt, w, h, seed, refs=(), steps=40, prefix="cc", cfg=4.0, gguf=None, lightning=False):
+def qwen(prompt, w, h, seed, refs=(), steps=40, prefix="cc", cfg=4.0, gguf=None, lightning=False, neg=None):
     """Qwen-Image-2512 (no refs) or Qwen-Image-Edit-2511 (1-3 refs), full steps, no Lightning LoRA."""
     edit = bool(refs)
     unet = "qwen_image_edit_2511_fp8mixed.safetensors" if edit else "qwen_image_2512_fp8_e4m3fn.safetensors"
@@ -101,7 +101,7 @@ def qwen(prompt, w, h, seed, refs=(), steps=40, prefix="cc", cfg=4.0, gguf=None,
         g["neg"] = {"class_type": "TextEncodeQwenImageEditPlus", "inputs": {"clip": ["clip", 0], "prompt": "", "vae": ["vae", 0], **imgs}}
     else:
         g["pos"] = {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["clip", 0]}}
-        g["neg"] = {"class_type": "CLIPTextEncode", "inputs": {"text": "blurry, photorealistic, 3d render, text, watermark", "clip": ["clip", 0]}}
+        g["neg"] = {"class_type": "CLIPTextEncode", "inputs": {"text": neg or "blurry, photorealistic, 3d render, text, watermark", "clip": ["clip", 0]}}
     g["ks"] = {"class_type": "KSampler", "inputs": {"model": model, "positive": ["pos", 0], "negative": ["neg", 0], "latent_image": ["lat", 0],
                "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0}}
     g["dec"] = {"class_type": "VAEDecode", "inputs": {"samples": ["ks", 0], "vae": ["vae", 0]}}
@@ -123,7 +123,7 @@ def run(job, outdir, uploaded):
     elif job["model"] == "qwenfast":
         g = qwen(job["prompt"], job["w"], job["h"], seed, (), job.get("steps", 4), "cc_" + job["name"], cfg=1.0, lightning=True)
     elif job["model"] == "qwen":
-        g = qwen(job["prompt"], job["w"], job["h"], seed, refs, job.get("steps", 40), "cc_" + job["name"])
+        g = qwen(job["prompt"], job["w"], job["h"], seed, refs, job.get("steps", 40), "cc_" + job["name"], neg=job.get("neg"))
     else:
         g = zimage(job["prompt"], job["w"], job["h"], seed, job.get("steps", 8), "cc_" + job["name"])
     t0 = time.time()

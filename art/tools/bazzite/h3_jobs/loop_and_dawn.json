@@ -1,0 +1,6 @@
+[
+ {"name":"loop_kitten_idle","w":768,"h":1024,"seconds":2,"seed":1,"first_frame":"kitten_768x1024.png","last_frame":"kitten_768x1024.png",
+  "prompt":"A seamless looping idle animation for a 2D mobile game character sprite, flat 2D cartoon, keep the art style, outlines and colours exactly as in the frame. A chibi cream kitten with a light blue collar and gold bell sits on a plain pure white background. It blinks once, its ears twitch, its tail curls and swishes gently, it breathes softly. The body stays in place, static camera, no zoom, background stays plain white. Audio: silence, a tiny bell jingle. No text."},
+ {"name":"anim_dawn_4s","w":768,"h":512,"seconds":4,"seed":1,"first_frame":"ff_dawn.png",
+  "prompt":"Gentle cosy children's picture-book animation in the same flat pastel 2D style as the first frame, keep the art style exactly. Dawn by the sea: the pink kitten in a white apron pushes open the round wooden door of her tiny café and turns to wave happily at the red panda and the sky-blue wolf pup, who wag their tails and hop excitedly. Seagulls glide across the pink sky, the lantern flickers on, waves sparkle. Static camera with a slight slow push-in. Audio: soft waves, seagulls, a door creak, a cheerful ukulele tune. No text, no subtitles."}
+]

@@ -117,12 +117,59 @@ on the approved Gemini art.
 Both GGUF options need the ComfyUI-GGUF custom node, which the container doesn't have yet. Suggested next test:
 Qwen-Image-Edit-2511 on the critter prompts (identity consistency), FLUX.2 dev on the backdrop and kit.
 
+## Batch 9: new critters and story scenes (2026-11-11, sheets 10-11)
+
+`jobs_batch9_critters_story.py`: 42 images, about 20 min in total.
+
+- **Six new cream critters (sheet 10)**, using the batch-3 recipe (klein, kitten front and side as references, COLOUR
+  RULE), at about 23 s each. The hamster, koala and panda are on-model in both views and both seeds. The fawn has its
+  dapple spots only in seed 4. The hedgehog's spines come out grey-tan, not cream, so the tint pipeline would leave
+  them untinted; tell it "cream spines" if that matters. The otter is the weakest: it reads somewhat like a ferret.
+- **Story scenes (sheet 11)**: six beats of "how the café began" (dawn opening, first customer, lunch rush, colour
+  sorting, closing time, the journey to new cafés), 1344x896. klein with `home/hero.jpeg` as the style reference
+  (15-24 s) matches the Gemini hero closely, keeps the cast (pink kitten, red panda, yellow fox, blue wolf), and stays
+  pale and soft. Qwen Lightning, text only (8 steps, about 35 s), is richer and more painterly but drifts off-cast: the
+  fox comes out orange, it adds a second red panda, and the kitten gets tabby stripes. klein s4 has no café behind
+  the stools, and klein s1 of s6 writes "CAFF" on the treehouse. Best picks: s1 klein s1, s2 klein s1, s3 klein s2,
+  s4 Qwen, s5 klein s1, s6 klein s2.
+
+## MiniMax H3 on bazzite (sheet 12, clips in `docs/bazzite-art/h3/`)
+
+MiniMax H3 (open weights since 2026-08-03) is a **33B omni video model**: text, first and last frame, or references
+to 24 fps video with stereo audio. It is not an image model. ComfyUI 0.43.2 has the native nodes
+(`MiniMaxH3ImageToVideo`, `EmptyMiniMaxH3LatentAV`, ...). Files from `Comfy-Org/MiniMax-H3`, 44 GB in total:
+
+| File | Size | Note |
+|---|---|---|
+| `diffusion_models/minimax_h3_fl2va_pruned_fp8_scaled` | 21 GB | fp8 runs natively on gfx1200. The log says this ROCm build also has native `int8_tensorwise` / `w6a8_int8`, so `pruned_int8_convrot` (the template's default) may work too; untested |
+| `text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq` | 15.7 GB | nvfp4 is emulated on ROCm but encodes in about 5 s |
+| `vae/minimax_h3_video_vae_fp16`, `vae/minimax_h3_audio_vae_fp32` | 5.2 + 0.6 GB | |
+| `loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16` | 2 GB | 8 steps, `res_multistep` / `simple`, BasicGuider (no CFG) |
+
+Driver: `art/tools/bazzite/h3_gen.py` (the template's image-to-video subgraph, flattened). Results, RX 9060 XT 16 GB,
+32 GB RAM (it uses about 28 GB of RAM while sampling):
+
+| Job | Size | Time | Result |
+|---|---|---|---|
+| Still: 5 frames, keep frame 0 (cold start) | 768x768 | 69 s | on-prompt and clean, but softer than klein; fake text on signs; the kitten became a striped tabby. Not worth using for stills |
+| Story s5 animated (first frame) | 768x512, 2.3 s | 90 s | keeps the picture-book style; the kitten yawns and leans over, the tail swings, the lanterns glow; soft ambient audio |
+| Story s1 animated (first frame) | 768x512, 4.5 s | 159 s | the door swings open, the sun rises, the critters hop and wag; style stays stable |
+| Kitten idle loop (first = last = `kitten_front`) | 768x1024, 2.3 s | 222 s | it blinks and swishes its tail, the body stays put on white; the first and last frames differ by under 1/255 on average, so the loop has no visible seam |
+
+**Verdict:** it works, and at 768p it is fast enough (1.5-4 min per clip) to use. It is no replacement for klein
+for stills, but it is good for **animating finished art**: story cut-scenes with sound, and idle loops for critter
+sprites. A critter idle loop needs the white background removed and the frames downsampled (for example 12 fps) into
+a sprite sheet before the game can use it; that has not been tried. Untested: longer clips at the full 1344x768 (RAM
+is the limit), the `ref2va` reference model for multi-critter scenes, and the int8_convrot weights.
+
 ## Running it
 
 ```
 python3 art/tools/bazzite/jobs_batch3.py        # writes batch3.json (run from a dir holding refsm/ refs)
 COMFY=http://192.168.1.164:8188 python3 art/tools/bazzite/comfy_gen.py batch3.json out/
 python3 art/tools/bazzite/gallery.py out/ review.html
+# MiniMax H3 clips (jobs: name, prompt, w, h, seconds, seed, first_frame?, last_frame?, still?)
+COMFY=http://192.168.1.164:8188 python3 art/tools/bazzite/h3_gen.py h3jobs.json out/
 ```
 
 ComfyUI must be up (`ssh bazzite ai-mode on image`, or `story` mode, which bazzite's story illustrator also uses).

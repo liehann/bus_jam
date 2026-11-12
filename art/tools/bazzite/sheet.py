@@ -16,6 +16,7 @@ KIND = {  # banner colour, banner text
     "zimage": ("#5a6fa8", "BAZZITE  ·  Z-Image"),
     "qwen": ("#7b4c9e", "BAZZITE  ·  Qwen-Image"),
     "qwenfast": ("#a3527e", "BAZZITE  ·  Qwen Lightning"),
+    "h3": ("#b5482f", "BAZZITE  ·  MiniMax H3"),
     "goblin": ("#6b6b6b", "OLD LOCAL  ·  Kontext"),
 }
 
